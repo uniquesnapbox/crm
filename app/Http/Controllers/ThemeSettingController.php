@@ -116,6 +116,9 @@ class ThemeSettingController extends AccountBaseController
     {
         $updateObject->header_color = $primaryColor;
         $updateObject->sidebar_theme = $themeSetting['sidebar_theme'];
+        if (isset($themeSetting['sidebar_color'])) {
+            $updateObject->sidebar_color = $themeSetting['sidebar_color'];
+        }
         $updateObject->save();
         session()->forget(['admin_theme', 'employee_theme', 'client_theme']);
     }

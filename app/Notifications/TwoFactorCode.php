@@ -33,7 +33,7 @@ class TwoFactorCode extends BaseNotification
         $build = parent::build();
         $this->company = $notifiable->company;
 
-        $twoFaCode = '<p style="color:#1d82f5"><strong>' . $notifiable->two_factor_code . '</strong></p>';
+        $twoFaCode = '<p style="color:#e2430b"><strong>' . $notifiable->two_factor_code . '</strong></p>';
 
         $content = __('email.twoFactor.line1') . '<br>' . new HtmlString($twoFaCode) . '<br>' . __('email.twoFactor.line2') . '<br>' . __('email.twoFactor.line3');
 

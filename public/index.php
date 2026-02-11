@@ -9,7 +9,7 @@ if(!file_exists('../.env')){
     exit(1);
 }
 
-if (version_compare(PHP_VERSION, '8.2.0') < 0){
+if (version_compare(PHP_VERSION, '8.1.0') < 0){
     $GLOBALS["error_type"] = "php-version";
     include('error_install.php');
     exit(1);

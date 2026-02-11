@@ -21,6 +21,22 @@
 
 <div class="col-lg-6">
     <div class="form-group my-3">
+        <x-forms.label fieldId="sidebar_color_1" :fieldLabel="__('modules.themeSettings.sidebarColor')">
+        </x-forms.label>
+        <x-forms.input-group class="color-picker">
+            <input type="text" class="form-control height-35 f-14 sidebar_color"
+                   value="{{ $adminTheme->sidebar_color ?? '#171F29' }}"
+                   placeholder="{{ __('placeholders.colorPicker') }}" name="theme_settings[1][sidebar_color]">
+
+            <x-slot name="append">
+                <span class="input-group-text height-35 colorpicker-input-addon"><i></i></span>
+            </x-slot>
+        </x-forms.input-group>
+    </div>
+</div>
+
+<div class="col-lg-6">
+    <div class="form-group my-3">
         <x-forms.label fieldId="late_yes" :fieldLabel="__('modules.themeSettings.sidebarTheme')">
         </x-forms.label>
         <div class="d-flex">
@@ -61,6 +77,22 @@
 
 <div class="col-lg-6">
     <div class="form-group my-3">
+        <x-forms.label fieldId="sidebar_color_3" :fieldLabel="__('modules.themeSettings.sidebarColor')">
+        </x-forms.label>
+        <x-forms.input-group class="color-picker">
+            <input type="text" class="form-control height-35 f-14 sidebar_color"
+                   value="{{ $employeeTheme->sidebar_color ?? '#171F29' }}"
+                   placeholder="{{ __('placeholders.colorPicker') }}" name="theme_settings[3][sidebar_color]">
+
+            <x-slot name="append">
+                <span class="input-group-text height-35 colorpicker-input-addon"><i></i></span>
+            </x-slot>
+        </x-forms.input-group>
+    </div>
+</div>
+
+<div class="col-lg-6">
+    <div class="form-group my-3">
         <x-forms.label fieldId="late_yes" :fieldLabel="__('modules.themeSettings.sidebarTheme')">
         </x-forms.label>
         <div class="d-flex">
@@ -91,6 +123,22 @@
             <input type="text" class="form-control height-35 f-14 header_color"
                    value="{{ $clientTheme->header_color }}"
                    placeholder="{{ __('placeholders.colorPicker') }}" name="primary_color[]">
+
+            <x-slot name="append">
+                <span class="input-group-text height-35 colorpicker-input-addon"><i></i></span>
+            </x-slot>
+        </x-forms.input-group>
+    </div>
+</div>
+
+<div class="col-lg-6">
+    <div class="form-group my-3">
+        <x-forms.label fieldId="sidebar_color_4" :fieldLabel="__('modules.themeSettings.sidebarColor')">
+        </x-forms.label>
+        <x-forms.input-group class="color-picker">
+            <input type="text" class="form-control height-35 f-14 sidebar_color"
+                   value="{{ $clientTheme->sidebar_color ?? '#171F29' }}"
+                   placeholder="{{ __('placeholders.colorPicker') }}" name="theme_settings[4][sidebar_color]">
 
             <x-slot name="append">
                 <span class="input-group-text height-35 colorpicker-input-addon"><i></i></span>

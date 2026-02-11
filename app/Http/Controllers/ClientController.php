@@ -623,7 +623,7 @@ class ClientController extends AccountBaseController
     {
         $labels = ['paid', 'unpaid', 'partial', 'canceled', 'draft'];
         $data['labels'] = [__('app.paid'), __('app.unpaid'), __('app.partial'), __('app.canceled'), __('app.draft')];
-        $data['colors'] = ['#2CB100', '#FCBD01', '#1d82f5', '#D30000', '#616e80'];
+        $data['colors'] = ['#2CB100', '#FCBD01', '#e2430b', '#D30000', '#616e80'];
         $data['values'] = [];
 
         foreach ($labels as $label) {

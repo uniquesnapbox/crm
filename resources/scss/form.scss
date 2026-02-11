@@ -94,7 +94,7 @@
     position: absolute;
     top: 0;
     left: 0;
-    border: solid 2px #1d82f5;
+    border: solid 2px #e2430b;
     background-color: $white;
 
     &:after{
@@ -146,24 +146,24 @@
 }
 
 .form_custom_label input:checked ~ .checkmark {
-  background-color: #1d82f5;
+  background-color: #e2430b;
 }
 .form_custom_label input:checked ~ .checkmark:after {
   display: block;
 }
 
 // .custom-control-label::before{
-//     border:#1d82f5 solid 2px;
+//     border:#e2430b solid 2px;
 // }
 
 .custom-control-input:checked ~ .custom-control-label::before {
     color: #fff;
-    border-color :#1d82f5;
-    background-color: #1d82f5;
+    border-color :#e2430b;
+    background-color: #e2430b;
 }
 
 .custom-control-input:focus ~ .custom-control-label::before{
-  box-shadow: 0 0 0 0.2rem #1d82f529;
+  box-shadow: 0 0 0 0.2rem #e2430b29;
 }
 
 /*********** DROPDOWN *************/
@@ -223,12 +223,12 @@
     background :#f2f4f7;
 }
 .qs-current {
-    background: #1d82f5;
+    background: #e2430b;
     color: #fff;
     text-decoration: none;
 
     &:hover{
-      background: #1d82f5 !important;
+      background: #e2430b !important;
     }
 }
 .qs-active, .qs-range-end, .qs-range-start {

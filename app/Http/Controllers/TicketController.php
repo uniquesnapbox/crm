@@ -215,7 +215,7 @@ class TicketController extends AccountBaseController
     {
         $labels = ['open', 'pending', 'resolved', 'closed'];
         $data['labels'] = [__('app.open'), __('app.pending'), __('app.resolved'), __('app.closed')];
-        $data['colors'] = ['#D30000', '#FCBD01', '#2CB100', '#1d82f5'];
+        $data['colors'] = ['#D30000', '#FCBD01', '#2CB100', '#e2430b'];
         $data['values'] = [];
 
         foreach ($labels as $label) {

@@ -169,7 +169,7 @@ trait HRDashboard
         }
 
         $data['values'] = $genderWiseEmployee->pluck('totalEmployee')->toArray();
-        $data['colors'] = ['#1d82f5', '#FCBD01', '#D30000'];
+        $data['colors'] = ['#e2430b', '#FCBD01', '#D30000'];
 
         return $data;
     }

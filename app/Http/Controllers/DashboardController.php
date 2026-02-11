@@ -282,7 +282,7 @@ class DashboardController extends AccountBaseController
                         'start' => $holiday->date,
                         'end' => $holiday->date,
                         'event_type' => 'holiday',
-                        'extendedProps' => ['bg_color' => '#1d82f5', 'color' => '#fff', 'icon' => 'fa-star']
+                        'extendedProps' => ['bg_color' => '#e2430b', 'color' => '#fff', 'icon' => 'fa-star']
                     ];
                 }
             }
@@ -332,7 +332,7 @@ class DashboardController extends AccountBaseController
                         'start' => $ticket->updated_at,
                         'end' => $ticket->updated_at,
                         'event_type' => 'ticket',
-                        'extendedProps' => ['bg_color' => '#1d82f5', 'color' => '#fff', 'icon' => 'fa-ticket-alt']
+                        'extendedProps' => ['bg_color' => '#e2430b', 'color' => '#fff', 'icon' => 'fa-ticket-alt']
                     ];
                 }
             }

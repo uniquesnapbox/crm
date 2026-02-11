@@ -185,7 +185,7 @@
 
     $error = false;
 
-    if (version_compare(PHP_VERSION, '8.2.0') >= 0) {
+    if (version_compare(PHP_VERSION, '8.1.0') >= 0) {
         $requirement1 = "<span class='label label-success'>v." . PHP_VERSION . '</span>';
     }
     else {
@@ -366,7 +366,7 @@
             </thead>
             <tbody>
                 <tr>
-                    <td>PHP 8.2.0+</td>
+                    <td>PHP 8.1.0+</td>
                     <td><?php echo $requirement1; ?></td>
                 </tr>
                 <tr>

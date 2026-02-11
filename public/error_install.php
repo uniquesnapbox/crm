@@ -17,8 +17,8 @@
             <div class="alert alert-danger">
                 <div class="row text-center">
                     <div class="col-md-12"><strong>Lower PHP version! </strong> Your server's php version is lower than
-                        <b>8.2.0</b>. Please upgrade your version
-                        to php version greater than equal <b>8.2.0</b> to make it work
+                        <b>8.1.0</b>. Please upgrade your version
+                        to php version greater than equal <b>8.1.0</b> to make it work
                         <br>
                         <br>
                         <p class="">Your server current PHP version:

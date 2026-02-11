@@ -111,7 +111,7 @@ trait TicketDashboard
 
             switch ($value) {
             case 'closed':
-                $data['colors'][] = '#1d82f5';
+                $data['colors'][] = '#e2430b';
                 break;
 
             case 'pending':

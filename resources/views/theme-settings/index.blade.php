@@ -222,8 +222,13 @@
             document.documentElement.style.setProperty('--header_color', e.target.value);
         });
 
+        $('.sidebar_color').on('change', function (e) {
+            document.documentElement.style.setProperty('--sidebar_color', e.target.value);
+        });
+
         $('#reset-colors').click(function () {
-            $('.header_color').val('#1d82f5');
+            $('.header_color').val('#e2430b');
+            $('.sidebar_color').val('#171F29');
             $('.sidebar_theme .custom-control-input').val('dark');
             $('.auth_theme .custom-control-input .auth_theme_text').val('light');
             $('#logo_background_color').val('#FFFFFF');
