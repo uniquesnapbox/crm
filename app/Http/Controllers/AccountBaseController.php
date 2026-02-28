@@ -46,10 +46,16 @@ class AccountBaseController extends Controller
 
     public function adminSpecific()
     {
+        $user = user();
+        
+        // Skip if user is not authenticated
+        if (!$user) {
+            return;
+        }
 
-        abort_403(!user()->admin_approval && request()->ajax());
+        abort_403(!$user->admin_approval && request()->ajax());
 
-        if (!user()->admin_approval && Route::currentRouteName() != 'account_unverified') {
+        if (!$user->admin_approval && Route::currentRouteName() != 'account_unverified') {
             // send() is added to force redirect from here rather return to called function
             return redirect(route('account_unverified'))->send();
         }

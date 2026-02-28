@@ -121,8 +121,6 @@ use App\Http\Controllers\LeadContactController;
 use App\Http\Controllers\PipelineController;
 use App\Models\AttendanceSetting;
 
-Route::get('/debug-calendar', [App\Http\Controllers\CalendarController::class, 'index']);
-
 Route::group(['middleware' => 'auth', 'prefix' => 'account'], function () {
     Route::post('image/upload', [ImageController::class, 'store'])->name('image.store');
 
