@@ -44,6 +44,9 @@ class AppServiceProvider extends ServiceProvider
             $this->app->register(IdeHelperServiceProvider::class);
         }
 
+        // prevent scripts from timing out during long operations
+        ini_set('max_execution_time', '300');
+
         CarbonInterval::macro('formatHuman', function ($totalMinutes, $seconds = false): string {
 
             if ($seconds) {

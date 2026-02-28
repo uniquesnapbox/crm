@@ -110,25 +110,35 @@
    - Implement view caching for lead profiles
    - Optimize database queries with eager loading
 
-2. **Increase PHP Timeout (Temporary)**
-   ```php
-   set_time_limit(300);
-   ```
+2. **Increase PHP Timeout**
+   - Added `ini_set('max_execution_time', '300');` in `AppServiceProvider`
+   - This prevents 60‑second timeouts occurring during heavy operations
 
-3. **Clear View Cache**
-   ```bash
-   php artisan view:clear
-   ```
+3. **Cleared Laravel caches**
+   - Executed `php artisan view:clear` and `php artisan optimize:clear`/`config:cache`
+   - Helps avoid stale compiled views (previous error location)
 
-4. **Optimize Database Queries**
+4. **Fix .env Parsing Error**
+   - Quoted `APP_NAME="USB CRM"` in `.env` and `.env.example`
+   - Now `artisan` commands run without error
+
+5. **Performance Improvements & Monitoring**
    - Add indexes to frequently queried columns
    - Use pagination for large datasets
-   - Profile slow queries
+   - Profile slow queries using Laravel Debugbar
+   - Monitor server resources and database load
 
-5. **Monitor Performance**
-   - Use Laravel Debugbar to identify bottlenecks
-   - Check database query logs
-   - Monitor server resources
+6. **Follow-Up Work**
+   - Investigate heavy loops in `CustomField::customFieldData` if timeouts recur
+   - Refactor `lead-contact.ajax.profile` view for faster rendering
+
+---
+
+## 🛠 Latest Fixes Committed
+- Updated `AppServiceProvider` to raise PHP timeout
+- Corrected `.env` quote issue
+- Cleared all caches and optimized configuration
+- Added `CHANGELOG.md` documenting changes and fixes
 
 ---
 
