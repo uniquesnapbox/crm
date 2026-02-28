@@ -1,10 +1,10 @@
 <?php
 
-$PRODUCT = 'worksuite-new';
+$PRODUCT = 'usb-crm';
 $ENVATO_ID = 20052522;
-$PRODUCT_URL = 'https://1.envato.market/worksuite';
-$UPDATE_DOMAIN = 'https://froiden-update-hub.s3.ap-south-1.amazonaws.com';
-$VERIFY_DOMAIN = 'https://envato.froid.works';
+$PRODUCT_URL = 'https://usbcrm.local';
+$UPDATE_DOMAIN = 'https://usbcrm.local';
+$VERIFY_DOMAIN = 'https://usbcrm.local';
 
 return [
 

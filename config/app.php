@@ -16,14 +16,14 @@ return [
     |
     */
 
-    // This will determine if the application worksuite or worksuite-saas
-    'app_name' => 'worksuite',
+    // This will determine if the application USB CRM or USB CRM-saas
+    'app_name' => 'USB CRM',
 
-    'name' => 'Worksuite',
+    'name' => env('APP_NAME', 'USB CRM'),
 
 
     // We will use this for email copyright message
-    'global_app_name' => 'Worksuite',
+    'global_app_name' => 'USB CRM',
 
     /*
     |--------------------------------------------------------------------------

@@ -15,7 +15,7 @@
 <div class="master">
     <div class="box">
         <div class="header">
-           <img src="{{ asset('img/worksuite-logo.png') }}" height="40px" alt="">
+           <img src="{{ asset('img/USB CRM-logo.png') }}" height="40px" alt="">
             <h1 class="header__title">@yield('title')</h1>
         </div>
         <ul class="step">

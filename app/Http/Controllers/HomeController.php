@@ -882,9 +882,9 @@ class HomeController extends Controller
             )
         );
         $enableModules = [];
-        $enableModules['application'] = 'worksuite';
+        $enableModules['application'] = 'USB CRM';
         $enableModules['version'] = $applicationVersion;
-        $enableModules['worksuite'] = $applicationVersion;
+        $enableModules['USB CRM'] = $applicationVersion;
 
         foreach ($plugins as $plugin) {
             $enableModules[$plugin->getName()] = trim(
@@ -900,7 +900,7 @@ class HomeController extends Controller
             $message .= 'Please update Rest API module greater then 1.1.0 version';
         }
 
-        if (((int)str_replace('.', '', $enableModules['worksuite'])) < 400) {
+        if (((int)str_replace('.', '', $enableModules['USB CRM'])) < 400) {
             $message .= 'Please update' . config('app.name') . ' greater then 4.0.0 version';
         }
 

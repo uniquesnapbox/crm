@@ -164,7 +164,7 @@ class UsersTableSeeder extends Seeder
         /* @phpstan-ignore-line */
         $client->company_name = 'Client Company ' . $companyId;
         $client->address = 'Default client address';
-        $client->website = 'https://worksuite.biz';
+        $client->website = 'https://usbcrm.local';
         $client->save();
 
         // Assign Role

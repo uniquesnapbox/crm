@@ -133,6 +133,19 @@
     <script>
         const checkMiniSidebar = localStorage.getItem("mini-sidebar");
     </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const blockedDomains = ['USB CRM', 'froiden', 'envato', 'codecanyon'];
+            document.querySelectorAll('a[href]').forEach(function (a) {
+                const href = (a.getAttribute('href') || '').toLowerCase();
+                if (blockedDomains.some(d => href.includes(d))) {
+                    a.setAttribute('href', 'javascript:;');
+                    a.removeAttribute('target');
+                    a.removeAttribute('rel');
+                }
+            });
+        });
+    </script>
 
 </head>
 

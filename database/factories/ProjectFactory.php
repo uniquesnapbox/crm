@@ -22,7 +22,7 @@ class ProjectFactory extends Factory
     public function definition()
     {
         $projectArray = [
-            'Create Design of worksuite',
+            'Create Design of USB CRM',
             'Install Application',
             'Modify Application',
             'Server Installation',

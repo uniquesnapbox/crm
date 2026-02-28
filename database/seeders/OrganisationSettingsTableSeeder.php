@@ -20,7 +20,7 @@ class OrganisationSettingsTableSeeder extends Seeder
     {
         $defaultDriver = config('session.driver') == 'database' ? 'database' : 'file';
 
-        $appName = 'Worksuite';
+        $appName = 'USB CRM';
 
         $globalSetting = new GlobalSetting();
         $globalSetting->global_app_name = $appName;
@@ -48,7 +48,7 @@ class OrganisationSettingsTableSeeder extends Seeder
         $setting->company_email = 'company@email.com';
         $setting->company_phone = '1234567891';
         $setting->address = 'Your Company address here';
-        $setting->website = 'https://worksuite.biz';
+        $setting->website = 'https://usbcrm.local';
         $setting->date_format = 'd-m-Y';
 
         $setting->save();
@@ -60,7 +60,7 @@ class OrganisationSettingsTableSeeder extends Seeder
             for ($i = 0; $i < $seedCount; $i++) {
                 $this->command->info('Seeding company: ' . ($i + 1) . ' Remaining:' . ($seedCount - $i));
 
-                $companyName = 'Worksuite Company ' . ($i + 2);
+                $companyName = 'USB CRM Company ' . ($i + 2);
 
                 Company::create([
                     'company_name' => $companyName,
@@ -69,7 +69,7 @@ class OrganisationSettingsTableSeeder extends Seeder
                     'company_phone' => '9000000' . str_pad((string)($i + 2), 3, '0', STR_PAD_LEFT),
                     'address' => 'Default company address ' . ($i + 2),
                     'created_at' => now()->subDays(rand(1, 150)),
-                    'website' => 'https://worksuite.biz',
+                    'website' => 'https://usbcrm.local',
                 ]);
             }
         }

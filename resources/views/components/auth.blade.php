@@ -17,6 +17,7 @@
     <!-- Template CSS -->
     <link href="{{ asset('vendor/froiden-helper/helper.css') }}" rel="stylesheet" defer="defer">
     <link type="text/css" rel="stylesheet" media="all" href="{{ asset('css/main.css') }}">
+    <link type="text/css" rel="stylesheet" media="all" href="{{ asset('css/custom.css') }}">
 
     <title>{{ $globalSetting->global_app_name }}</title>
 
@@ -130,6 +131,17 @@
                 }
             }
         })
+    });
+    document.addEventListener('DOMContentLoaded', function () {
+        const blockedDomains = ['USB CRM', 'froiden', 'envato', 'codecanyon'];
+        document.querySelectorAll('a[href]').forEach(function (a) {
+            const href = (a.getAttribute('href') || '').toLowerCase();
+            if (blockedDomains.some(d => href.includes(d))) {
+                a.setAttribute('href', 'javascript:;');
+                a.removeAttribute('target');
+                a.removeAttribute('rel');
+            }
+        });
     });
 </script>
 

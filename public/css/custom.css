@@ -1,6 +1,26 @@
+@import url('https://fonts.googleapis.com/css2?family=Merriweather:opsz,wght,ital@18..144,300..900,0;18..144,300..900,1&family=Pangolin&display=swap');
+
 :root {
   --primary-color: #0B0B7A;
   --secondary-color: #F97316;
+  --font-primary: 'Merriweather', serif;
+  --font-secondary: 'Pangolin', cursive;
+}
+
+body,
+input,
+select,
+textarea,
+button {
+  font-family: var(--font-primary) !important;
+}
+
+h1, h2, h3, h4, h5, h6,
+.heading-h1, .heading-h2, .heading-h3,
+.sidebar-brand-text,
+.sidebar-brand-logo,
+.nav-item {
+  font-family: var(--font-secondary) !important;
 }
 
 .sidebar {

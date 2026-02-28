@@ -91,8 +91,6 @@
 
         @if(in_array('admin', user_roles()))
             <div class="row">
-                @include('dashboard.update-message-dashboard')
-                @includeIf('dashboard.update-message-module-dashboard')
                 <x-cron-message :modal="true"></x-cron-message>
             </div>
         @endif

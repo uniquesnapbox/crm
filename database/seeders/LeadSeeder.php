@@ -72,7 +72,7 @@ class LeadSeeder extends Seeder
 
         $leadContact = new Lead();
         $leadContact->company_id = $companyId;
-        $leadContact->website = 'https://worksuite.biz';
+        $leadContact->website = 'https://usbcrm.local';
         $leadContact->address = 'Jaipur, India';
         $leadContact->client_name = 'John Doe';
         $leadContact->client_email = 'testing@test.com';
@@ -86,7 +86,7 @@ class LeadSeeder extends Seeder
         $lead->pipeline_stage_id = $randomStageId;
         $lead->company_id = $companyId;
         $lead->agent_id = $randomLeadId;
-        $lead->name = 'Buying Worksuite';
+        $lead->name = 'Buying USB CRM';
         $lead->value = rand(10000, 99999);
         $lead->currency_id = $currencyID;
         $lead->next_follow_up = 'yes';

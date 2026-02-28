@@ -4,6 +4,42 @@
     <div class="col-xl-12 col-lg-12 col-md-12 mb-4 mb-xl-0 mb-lg-4 mb-md-0">
 
         <x-cards.data :title="__('modules.client.profileInfo')">
+            @php
+                $contactNumber = $leadContact->mobile ?: ($leadContact->cell ?: $leadContact->office);
+                $sanitizedPhone = $contactNumber ? preg_replace('/\D+/', '', $contactNumber) : null;
+                $whatsAppUrl = $sanitizedPhone ? 'https://wa.me/' . $sanitizedPhone : null;
+                $mailUrl = $leadContact->client_email ? 'mailto:' . $leadContact->client_email : null;
+                $callUrl = $contactNumber ? 'tel:' . $contactNumber : null;
+                $directMessageUrl = (!is_null($leadContact->client_id) && in_array('messages', user_modules()))
+                    ? route('messages.index') . '?user=' . $leadContact->client_id
+                    : null;
+            @endphp
+
+            <div class="col-12 px-0 pb-3 d-flex flex-wrap">
+                @if ($callUrl)
+                    <x-forms.link-secondary class="mr-2 mb-2" :link="$callUrl" icon="phone">Call</x-forms.link-secondary>
+                @else
+                    <button type="button" class="btn btn-secondary rounded f-14 p-2 mr-2 mb-2" disabled><i class="fa fa-phone mr-1"></i>Call</button>
+                @endif
+
+                @if ($whatsAppUrl)
+                    <x-forms.link-secondary class="mr-2 mb-2" :link="$whatsAppUrl" icon="whatsapp" target="_blank">WhatsApp</x-forms.link-secondary>
+                @else
+                    <button type="button" class="btn btn-secondary rounded f-14 p-2 mr-2 mb-2" disabled><i class="fa fa-whatsapp mr-1"></i>WhatsApp</button>
+                @endif
+
+                @if ($mailUrl)
+                    <x-forms.link-secondary class="mr-2 mb-2" :link="$mailUrl" icon="envelope">@lang('app.email')</x-forms.link-secondary>
+                @else
+                    <button type="button" class="btn btn-secondary rounded f-14 p-2 mr-2 mb-2" disabled><i class="fa fa-envelope mr-1"></i>@lang('app.email')</button>
+                @endif
+
+                @if ($directMessageUrl)
+                    <x-forms.link-secondary class="mr-2 mb-2" :link="$directMessageUrl" icon="comments">@lang('app.menu.messages')</x-forms.link-secondary>
+                @else
+                    <button type="button" class="btn btn-secondary rounded f-14 p-2 mr-2 mb-2" disabled><i class="fa fa-comments mr-1"></i>@lang('app.menu.messages')</button>
+                @endif
+            </div>
 
             <x-slot name="action">
                 <div class="dropdown">

@@ -94,7 +94,7 @@ class CustomModuleController extends AccountBaseController
         $zipName = $this->getZipName($filePath);
 
         // Extract the files to storage folder first for checking the right plugin
-        // Filename Like codecanyon-0gOuGKoY-zoom-meeting-module-for-worksuite.zip
+        // Filename Like codecanyon-0gOuGKoY-zoom-meeting-module-for-USB CRM.zip
         if (str_contains($zipName, 'codecanyon-')) {
             $zipName = $this->unzipCodecanyon($zip);
         }

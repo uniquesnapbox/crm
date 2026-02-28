@@ -1,6 +1,6 @@
 <html>
 <head>
-    <title>Worksuite Not installed</title>
+    <title>USB CRM Not installed</title>
     <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
 </head>
 
@@ -32,9 +32,7 @@
 
         <?php } else { ?>
             <div class="alert alert-danger">
-                <strong>.env file missing! </strong> You forgot to upload the .env file. For more info visit <a
-                    href="https://froiden.freshdesk.com/support/solutions/articles/43000491463"
-                    target="_blank">https://froiden.freshdesk.com/support/solutions/articles/43000491463</a>
+                <strong>.env file missing! </strong> You forgot to upload the .env file.
             </div>
         <?php } ?>
     </div>

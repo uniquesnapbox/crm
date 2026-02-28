@@ -44,7 +44,7 @@ class Common
     {
 
         // DO NOT CHANGE IT. CHANGING IT WILL AFFECT THE APPLICATION
-        $secret_key = 'worksuite'; // User define private key
+        $secret_key = 'USB CRM'; // User define private key
         $secret_iv = 'froiden'; // User define secret key
 
         $encryptMethod = 'AES-256-CBC';

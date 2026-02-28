@@ -25,7 +25,7 @@ return new class extends Migration {
 
         /** @phpstan-ignore-next-line */
         $first = Company::pluck('id')->first();
-        // Delete if more than one companies in database for worksuite
+        // Delete if more than one companies in database for USB CRM
         // Delete all other companies except first
         if ($count > 1 && $first === 1) {
             Company::where('id', '<>', $first)->delete();

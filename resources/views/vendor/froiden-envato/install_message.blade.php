@@ -1,6 +1,6 @@
 <html>
 <head>
-    <title> Worksuite Not installed</title>
+    <title> USB CRM Not installed</title>
     <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
     <link rel="stylesheet" href="//envato.froid.works/plugins/froiden-helper/helper.css">
     <link href="//stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
@@ -93,7 +93,7 @@ if (function_exists('apache_get_modules')) {
 <div class="container">
     <div class="row" style="margin-top: 30px">
         <div class="text-center m-t-20 mt-20">
-            <img class="text-center" src="{{ asset('img/worksuite-logo.png') }}" style="max-height: 40px" alt="Home"/>
+            <img class="text-center" src="{{ asset('img/USB CRM-logo.png') }}" style="max-height: 40px" alt="Home"/>
         </div>
         <div class="bs-example" data-example-id="alerts-with-links" style="margin-top:10px ">
 

@@ -1,4 +1,4 @@
-# Worksuite - E-Learning CRM
+# USB CRM - E-Learning CRM
 
 A comprehensive Laravel-based e-learning CRM system built with modern web technologies.
 
@@ -85,7 +85,7 @@ php artisan key:generate
 3. Edit the `.env` file with your configuration:
 ```bash
 # Application Settings
-APP_NAME=Worksuite
+APP_NAME=USB CRM
 APP_ENV=codecanyon
 APP_DEBUG=false
 APP_URL=http://your-domain.com

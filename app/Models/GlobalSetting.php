@@ -388,23 +388,23 @@ class GlobalSetting extends BaseModel
 
     public function getLogoUrlAttribute()
     {
-        return asset('img/worksuite-logo.png');
+        return asset('img/USB CRM-logo.png');
 
     }
 
     public function defaultLogo()
     {
-        return asset('img/worksuite-logo.png');
+        return asset('img/USB CRM-logo.png');
     }
 
     public function getLightLogoUrlAttribute()
     {
-        return asset('img/worksuite-logo.png');
+        return asset('img/USB CRM-logo.png');
     }
 
     public function getDarkLogoUrlAttribute()
     {
-        return asset('img/worksuite-logo.png');
+        return asset('img/USB CRM-logo.png');
     }
 
     public function getLoginBackgroundUrlAttribute()
@@ -421,7 +421,7 @@ class GlobalSetting extends BaseModel
     {
         return Attribute::make(
             get: function () {
-                return asset('img/worksuite-logo.png');
+                return asset('img/USB CRM-logo.png');
             },
         );
 
@@ -431,7 +431,7 @@ class GlobalSetting extends BaseModel
     {
         return Attribute::make(
             get: function () {
-                return asset('img/worksuite-logo.png');
+                return asset('img/USB CRM-logo.png');
             },
         );
     }
@@ -440,7 +440,7 @@ class GlobalSetting extends BaseModel
     {
         return Attribute::make(
             get: function () {
-                return asset('img/worksuite-logo.png');
+                return asset('img/USB CRM-logo.png');
             },
         );
 
@@ -450,7 +450,7 @@ class GlobalSetting extends BaseModel
     {
         return Attribute::make(
             get: function () {
-                return asset('img/worksuite-logo.png');
+                return asset('img/USB CRM-logo.png');
             },
         );
 

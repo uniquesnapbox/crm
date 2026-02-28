@@ -120,7 +120,7 @@ class FortifyServiceProvider extends ServiceProvider
 
             $this->checkMigrateStatus();
             $globalSetting = GlobalSetting::first();
-            // Is worksuite
+            // Is USB CRM
             $company = Company::first();
 
             if (!$this->isLegal()) {

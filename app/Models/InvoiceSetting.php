@@ -112,7 +112,7 @@ class InvoiceSetting extends BaseModel
 
     public function getLogoUrlAttribute()
     {
-        return asset('img/worksuite-logo.png');
+        return asset('img/USB CRM-logo.png');
     }
 
     public function getAuthorisedSignatorySignatureUrlAttribute()

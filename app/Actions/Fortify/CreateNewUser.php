@@ -27,7 +27,7 @@ class CreateNewUser implements CreatesNewUsers
      */
     public function create(array $input)
     {
-        // Is worksuite
+        // Is USB CRM
         $company = Company::first();
 
         if ((!$company->allow_client_signup) || isWorksuiteSaas()) {
