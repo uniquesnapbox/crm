@@ -267,51 +267,23 @@ class Company extends BaseModel
 
     public function getLogoUrlAttribute()
     {
-        if (user()) {
-            if (user()->dark_theme) {
-                return $this->defaultLogo();
-            }
-        }
-
-        if (company() && company()->auth_theme == 'dark') {
-            return $this->defaultLogo();
-
-        }
-
-        if (is_null($this->light_logo)) {
-            return global_setting()->light_logo_url;
-        }
-
-        return asset_url_local_s3('app-logo/' . $this->light_logo);
+        return asset('img/worksuite-logo.png');
 
     }
 
     public function defaultLogo()
     {
-        if (is_null($this->logo)) {
-            return global_setting()->dark_logo_url;
-        }
-
-        return asset_url_local_s3('app-logo/' . $this->logo);
+        return asset('img/worksuite-logo.png');
     }
 
     public function getLightLogoUrlAttribute()
     {
-        if (is_null($this->light_logo)) {
-            return global_setting()->light_logo_url;
-        }
-
-        return asset_url_local_s3('app-logo/' . $this->light_logo);
+        return asset('img/worksuite-logo.png');
     }
 
     public function getDarkLogoUrlAttribute()
     {
-
-        if (is_null($this->logo)) {
-            return asset('img/worksuite-logo.png');
-        }
-
-        return asset_url_local_s3('app-logo/' . $this->logo);
+        return asset('img/worksuite-logo.png');
     }
 
     public function getLoginBackgroundUrlAttribute()
@@ -328,11 +300,7 @@ class Company extends BaseModel
     {
         return Attribute::make(
             get: function () {
-                if (is_null($this->logo)) {
-                    return global_setting()->dark_logo_url;
-                }
-
-                return $this->generateMaskedImageAppUrl('app-logo/' . $this->logo);
+                return asset('img/worksuite-logo.png');
             },
         );
 
@@ -342,22 +310,7 @@ class Company extends BaseModel
     {
         return Attribute::make(
             get: function () {
-                if (user()) {
-                    if (user()->dark_theme) {
-                        return $this->masked_default_logo;
-                    }
-                }
-
-                if (company() && company()->auth_theme == 'dark') {
-                    return $this->masked_default_logo;
-
-                }
-
-                if (is_null($this->light_logo)) {
-                    return global_setting()->light_logo_url;
-                }
-
-                return $this->generateMaskedImageAppUrl('app-logo/' . $this->light_logo);
+                return asset('img/worksuite-logo.png');
             },
         );
     }
@@ -366,11 +319,7 @@ class Company extends BaseModel
     {
         return Attribute::make(
             get: function () {
-                if (is_null($this->light_logo)) {
-                    return global_setting()->light_logo_url;
-                }
-
-                return $this->generateMaskedImageAppUrl('app-logo/' . $this->light_logo);
+                return asset('img/worksuite-logo.png');
             },
         );
 
@@ -380,11 +329,7 @@ class Company extends BaseModel
     {
         return Attribute::make(
             get: function () {
-                if (is_null($this->logo)) {
-                    return asset('img/worksuite-logo.png');
-                }
-
-                return $this->generateMaskedImageAppUrl('app-logo/' . $this->logo);
+                return asset('img/worksuite-logo.png');
             },
         );
 

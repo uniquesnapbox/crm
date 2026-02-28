@@ -48,12 +48,7 @@ class SmtpConfigProvider extends ServiceProvider
                 Config::set('app.name', $settings->global_app_name);
                 Config::set('app.global_app_name', $settings->global_app_name);
 
-                if (is_null($settings->light_logo)) {
-                    Config::set('app.logo', asset('img/worksuite-logo.png'));
-                }
-                else {
-                    Config::set('app.logo', $this->generateMaskedImageAppUrl('app-logo/' . $settings->light_logo));
-                }
+                Config::set('app.logo', asset('img/worksuite-logo.png'));
 
                 $pushSetting = DB::table('push_notification_settings')->first();
 

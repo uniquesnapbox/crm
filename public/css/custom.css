@@ -1,0 +1,30 @@
+:root {
+  --primary-color: #0B0B7A;
+  --secondary-color: #F97316;
+}
+
+.sidebar {
+  background-color: #0B0B7A !important;
+}
+
+.sidebar .nav-item:hover {
+  background-color: #1A1AA6 !important;
+}
+
+.btn-primary {
+  background-color: #0B0B7A !important;
+  border-color: #0B0B7A !important;
+}
+
+.btn-primary:hover {
+  background-color: #F97316 !important;
+  border-color: #F97316 !important;
+}
+
+a {
+  color: #0B0B7A;
+}
+
+a:hover {
+  color: #F97316;
+}

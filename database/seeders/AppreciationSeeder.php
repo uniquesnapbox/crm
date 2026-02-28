@@ -56,7 +56,7 @@ class AppreciationSeeder extends Seeder
         $employees = User::allEmployees(null, false, null, $companyId)->pluck('id')->toArray();
         $awards = Award::where('company_id', $companyId)->get()->pluck('id')->toArray();
 
-        $date = fake()->randomElement([fake()->dateTimeThisMonth()->format('Y-m-d'), fake()->dateTimeThisYear()->format('Y-m-d')]);
+        $date = now()->subDays(rand(1, 30))->format('Y-m-d');
 
         $appreciations = [];
 

@@ -60,15 +60,15 @@ class OrganisationSettingsTableSeeder extends Seeder
             for ($i = 0; $i < $seedCount; $i++) {
                 $this->command->info('Seeding company: ' . ($i + 1) . ' Remaining:' . ($seedCount - $i));
 
-                $companyName = fake()->company();
+                $companyName = 'Worksuite Company ' . ($i + 2);
 
                 Company::create([
                     'company_name' => $companyName,
                     'app_name' => $companyName,
-                    'company_email' => fake()->unique()->safeEmail(),
-                    'company_phone' => fake()->phoneNumber(),
-                    'address' => fake()->address(),
-                    'created_at' => fake()->dateTimeBetween(now()->subMonths(5), now()),
+                    'company_email' => 'company' . ($i + 2) . '@example.com',
+                    'company_phone' => '9000000' . str_pad((string)($i + 2), 3, '0', STR_PAD_LEFT),
+                    'address' => 'Default company address ' . ($i + 2),
+                    'created_at' => now()->subDays(rand(1, 150)),
                     'website' => 'https://worksuite.biz',
                 ]);
             }

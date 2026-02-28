@@ -25,15 +25,17 @@ return [
     ],
 
     'authorize' => [
+        'enabled' => false,
         'login' => env('AUTHORIZE_PAYMENT_API_LOGIN_ID'),
         'transaction' => env('AUTHORIZE_PAYMENT_TRANSACTION_KEY'),
         'sandbox' => env('AUTHORIZE_SANDBOX', true),
     ],
 
     'square' => [
+        'enabled' => false,
         'application_id' => env('SQUARE_APPLICATION_ID'),
         'access_token' => env('SQUARE_ACCESS_TOKEN'),
-        'location_id' => env('SQUARE_ACCESS_TOKEN'),
+        'location_id' => env('SQUARE_LOCATION_ID'),
         'environment' => env('SQUARE_ENVIRONMENT', 'sandbox'),
     ],
 
@@ -75,3 +77,4 @@ return [
         'rest_api_key' => 'YOUR-REST-API-KEY-HERE',
     ],
 ];
+

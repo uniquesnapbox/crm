@@ -39,24 +39,7 @@ class DatabaseSeeder extends Seeder
                 $this->call(UsersTableSeeder::class, false, ['companyId' => $company->id]);
                 $this->call(BankAccountSeeder::class, false, ['companyId' => $company->id]);
                 $this->call(ProjectCategorySeeder::class, false, ['companyId' => $company->id]);
-                $this->call(ProjectSeeder::class, false, ['companyId' => $company->id]);
-                $this->call(EstimateSeeder::class, false, ['companyId' => $company->id]);
-                $this->call(ExpenseSeeder::class, false, ['companyId' => $company->id]);
-                $this->call(TicketSeeder::class, false, ['companyId' => $company->id]);
                 $this->call(RoleSeeder::class, false, ['companyId' => $company->id]);
-                $this->call(LeaveSeeder::class, false, ['companyId' => $company->id]);
-                $this->call(NoticesTableSeeder::class, false, ['companyId' => $company->id]);
-                $this->call(EventTableSeeder::class, false, ['companyId' => $company->id]);
-                $this->call(LeadSeeder::class, false, ['companyId' => $company->id]);
-                $this->call(TaxTableSeeder::class, false, ['companyId' => $company->id]);
-                $this->call(ProductTableSeeder::class, false, ['companyId' => $company->id]);
-                $this->call(ContractTypeTableSeeder::class, false, ['companyId' => $company->id]);
-                $this->call(ContractTableSeeder::class, false, ['companyId' => $company->id]);
-                $this->call(LeadsTableSeeder::class, false, ['companyId' => $company->id]);
-                $this->call(MessageSeeder::class, false, ['companyId' => $company->id]);
-                $this->call(ShiftSeeder::class, false, ['companyId' => $company->id]);
-                $this->call(AttendanceTableSeeder::class, false, ['companyId' => $company->id]);
-                $this->call(AppreciationSeeder::class, false, ['companyId' => $company->id]);
             }
 
             $this->call(EmployeePermissionSeeder::class, false, ['companyId' => $company->id]);

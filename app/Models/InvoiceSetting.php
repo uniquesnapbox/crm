@@ -112,7 +112,7 @@ class InvoiceSetting extends BaseModel
 
     public function getLogoUrlAttribute()
     {
-        return (is_null($this->logo)) ? $this->company->logo_url : asset_url_local_s3('app-logo/' . $this->logo);
+        return asset('img/worksuite-logo.png');
     }
 
     public function getAuthorisedSignatorySignatureUrlAttribute()
