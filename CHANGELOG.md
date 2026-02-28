@@ -139,6 +139,9 @@
 - Corrected `.env` quote issue
 - Cleared all caches and optimized configuration
 - Added `CHANGELOG.md` documenting changes and fixes
+- Added new `CalendarController` and unified calendar view
+- Registered calendar routes with proper `account/` prefix
+- Updated calendar view to use route helper for events URL
 
 ---
 

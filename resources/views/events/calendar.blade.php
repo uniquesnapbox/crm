@@ -42,7 +42,7 @@
             editable: false,
             dayMaxEvents: true,
             events: {
-                url: '/calendar/events',
+                url: "{{ route('crm.calendar.events') }}",
             },
             eventClick: function(arg) {
                 // you can handle clicks differently based on type
