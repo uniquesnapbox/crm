@@ -142,6 +142,8 @@
 - Added new `CalendarController` and unified calendar view
 - Registered calendar routes with proper `account/` prefix
 - Updated calendar view to use route helper for events URL
+- Fixed 500 error: switched from nonexistent `LeadFollowUp` to `DealFollowUp` model
+- Added calendar menu link under Leads section in sidebar
 
 ---
 
