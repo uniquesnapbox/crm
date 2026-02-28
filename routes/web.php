@@ -121,6 +121,8 @@ use App\Http\Controllers\LeadContactController;
 use App\Http\Controllers\PipelineController;
 use App\Models\AttendanceSetting;
 
+Route::get('/debug-calendar', [App\Http\Controllers\CalendarController::class, 'index']);
+
 Route::group(['middleware' => 'auth', 'prefix' => 'account'], function () {
     Route::post('image/upload', [ImageController::class, 'store'])->name('image.store');
 
@@ -630,13 +632,13 @@ Route::group(['middleware' => 'auth', 'prefix' => 'account'], function () {
     Route::resource('expenses', ExpenseController::class);
     Route::resource('expenseCategory', ExpenseCategoryController::class);
 
+    // unified CRM calendar routes (tasks + followups)
+    Route::get('/calendar', [App\Http\Controllers\CalendarController::class, 'index'])->name('crm.calendar');
+    Route::get('/calendar/events', [App\Http\Controllers\CalendarController::class, 'events'])->name('crm.calendar.events');
+
     // Timelogs
     Route::group(['prefix' => 'timelogs'], function () {
         Route::resource('timelog-calendar', TimelogCalendarController::class);
-
-    // unified CRM calendar for tasks + lead followups
-    Route::get('/calendar', [App\Http\Controllers\CalendarController::class, 'index'])->name('crm.calendar');
-    Route::get('/calendar/events', [App\Http\Controllers\CalendarController::class, 'events'])->name('crm.calendar.events');
         Route::resource('timelog-break', ProjectTimelogBreakController::class);
         Route::get('by-employee', [TimelogController::class, 'byEmployee'])->name('timelogs.by_employee');
         Route::get('export', [TimelogController::class, 'export'])->name('timelogs.export');
