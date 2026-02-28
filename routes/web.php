@@ -633,6 +633,10 @@ Route::group(['middleware' => 'auth', 'prefix' => 'account'], function () {
     // Timelogs
     Route::group(['prefix' => 'timelogs'], function () {
         Route::resource('timelog-calendar', TimelogCalendarController::class);
+
+    // unified CRM calendar for tasks + lead followups
+    Route::get('/calendar', [App\Http\Controllers\CalendarController::class, 'index'])->name('crm.calendar');
+    Route::get('/calendar/events', [App\Http\Controllers\CalendarController::class, 'events'])->name('crm.calendar.events');
         Route::resource('timelog-break', ProjectTimelogBreakController::class);
         Route::get('by-employee', [TimelogController::class, 'byEmployee'])->name('timelogs.by_employee');
         Route::get('export', [TimelogController::class, 'export'])->name('timelogs.export');
