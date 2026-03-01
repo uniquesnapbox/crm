@@ -631,7 +631,7 @@ Route::group(['middleware' => 'auth', 'prefix' => 'account'], function () {
     Route::resource('expenseCategory', ExpenseCategoryController::class);
 
     // unified CRM calendar routes (tasks + followups)
-    Route::get('/calendar', [App\Http\Controllers\CalendarController::class, 'index'])->name('crm.calendar');
+    Route::get('/calendar', [App\Http\Controllers\CalendarController::class, 'index'])->name('calendar.index');
     Route::get('/calendar/events', [App\Http\Controllers\CalendarController::class, 'events'])->name('crm.calendar.events');
 
     // Timelogs
@@ -801,3 +801,7 @@ Route::group(['middleware' => 'auth', 'prefix' => 'account'], function () {
     Route::get('quickbooks/{hash}/callback', [QuickbookController::class, 'callback'])->name('quickbooks.callback');
     Route::get('quickbooks', [QuickbookController::class, 'index'])->name('quickbooks.index');
 });
+
+if (file_exists(app_path('Modules/WhatsApp/routes.php'))) {
+    require app_path('Modules/WhatsApp/routes.php');
+}

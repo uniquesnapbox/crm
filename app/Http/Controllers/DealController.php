@@ -34,6 +34,7 @@ use App\Models\Product;
 use App\Models\PurposeConsent;
 use App\Models\PurposeConsentLead;
 use App\Models\User;
+use App\Modules\WhatsApp\WhatsAppService;
 use App\Traits\ImportExcel;
 use Carbon\Carbon;
 use Froiden\RestAPI\Exceptions\RelatedResourceNotFoundException;
@@ -575,6 +576,15 @@ class DealController extends AccountBaseController
         $followUp->status = 'pending';
 
         $followUp->save();
+
+        $lead = $this->deal->contact;
+
+        if ($lead && !empty($lead->mobile)) {
+            app(WhatsAppService::class)->sendMessage(
+                $lead->mobile,
+                "Hello {$lead->client_name}, following up regarding your inquiry."
+            );
+        }
 
         return Reply::success(__('messages.recordSaved'));
 

@@ -47,7 +47,7 @@
             @endif
             {{-- calendar under leads --}}
             <div class="accordionItemContent">
-                <x-sub-menu-item :link="route('crm.calendar')" :text="__('app.menu.calendar')" />
+                <x-sub-menu-item :link="route('calendar.index')" :text="__('app.menu.calendar')" />
             </div>
             @if ($sidebarUserPermissions['view_deals'] != 5 && $sidebarUserPermissions['view_deals'] != 'none')
                 <div class="accordionItemContent ">

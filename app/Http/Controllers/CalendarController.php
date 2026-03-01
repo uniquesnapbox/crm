@@ -22,7 +22,11 @@ class CalendarController extends AccountBaseController
      */
     public function index()
     {
-        return view('events.calendar');
+        $pageTitle = 'Calendar';
+
+        return view('events.calendar', [
+            'pageTitle' => $pageTitle,
+        ]);
     }
 
     /**

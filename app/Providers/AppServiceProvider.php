@@ -3,9 +3,11 @@
 namespace App\Providers;
 
 use App\Models\Company;
+use App\Models\PushNotificationSetting;
 use Barryvdh\LaravelIdeHelper\IdeHelperServiceProvider;
 use Carbon\CarbonInterval;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Cashier\Cashier;
 use Laravel\Sanctum\Sanctum;
@@ -39,6 +41,8 @@ class AppServiceProvider extends ServiceProvider
         }
 
         Schema::defaultStringLength(191);
+        View::share('pushSetting', PushNotificationSetting::first());
+        View::share('pageTitle', 'USB CRM');
 
         if (app()->environment('development')) {
             $this->app->register(IdeHelperServiceProvider::class);

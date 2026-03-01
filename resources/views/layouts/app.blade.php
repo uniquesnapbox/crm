@@ -31,7 +31,7 @@
     <!-- Template CSS -->
     <link type="text/css" rel="stylesheet" media="all" href="{{ asset('css/main.css') }}">
 
-    <title>{{ is_array(__($pageTitle)) ? $pageTitle : __($pageTitle) }}</title>
+    <title>{{ isset($pageTitle) ? (is_array(__($pageTitle)) ? $pageTitle : __($pageTitle)) : config('app.name') }}</title>
     <meta name="msapplication-TileColor" content="#ffffff">
     <meta name="msapplication-TileImage" content="{{ companyOrGlobalSetting()->favicon_url }}">
     <meta name="theme-color" content="#ffffff">
