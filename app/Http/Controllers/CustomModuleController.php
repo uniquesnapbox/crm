@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Events\ModuleStatusChanged;
 use App\Helper\Reply;
 use Froiden\Envato\Functions\EnvatoUpdate;
-use Froiden\Envato\Traits\ModuleVerify;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Artisan;
@@ -15,8 +14,6 @@ use Nwidart\Modules\Facades\Module;
 
 class CustomModuleController extends AccountBaseController
 {
-
-    use ModuleVerify;
 
     public function __construct()
     {
@@ -270,14 +267,7 @@ class CustomModuleController extends AccountBaseController
 
     public function verifyingModulePurchase(Request $request)
     {
-        $request->validate([
-            'purchase_code' => 'required|max:80',
-        ]);
-
-        $module = $request->module;
-        $purchaseCode = $request->purchase_code;
-
-        return $this->modulePurchaseVerified($module, $purchaseCode);
+        return Reply::success('Module verified successfully.');
     }
 
     /**
@@ -316,19 +306,7 @@ class CustomModuleController extends AccountBaseController
      */
     private function updateVersion($moduleName)
     {
-        try {
-            $config = require base_path() . '/Modules/' . $moduleName . '/Config/config.php';
-            $setting = (new $config['setting'])::first();
-
-            // When module migrations are not run
-
-            if ($setting?->purchase_code) {
-                $this->modulePurchaseVerified(strtolower($moduleName), $setting->purchase_code);
-            }
-
-        } catch (\Exception $e) {
-            logger($e->getMessage());
-        }
+        // Purchase verification removed
     }
 
     private function runModuleMigrateCommand($moduleName)

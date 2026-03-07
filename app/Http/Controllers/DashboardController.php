@@ -26,7 +26,6 @@ use App\Traits\ProjectDashboard;
 use App\Traits\TicketDashboard;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
-use Froiden\Envato\Traits\AppBoot;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Nwidart\Modules\Facades\Module;
@@ -34,7 +33,7 @@ use Nwidart\Modules\Facades\Module;
 class DashboardController extends AccountBaseController
 {
 
-    use AppBoot, CurrencyExchange, OverviewDashboard, EmployeeDashboard, ProjectDashboard, ClientDashboard, HRDashboard, TicketDashboard, FinanceDashboard, ClientPanelDashboard;
+    use CurrencyExchange, OverviewDashboard, EmployeeDashboard, ProjectDashboard, ClientDashboard, HRDashboard, TicketDashboard, FinanceDashboard, ClientPanelDashboard;
 
     public function __construct()
     {
@@ -58,10 +57,6 @@ class DashboardController extends AccountBaseController
      */
     public function index()
     {
-
-
-        $this->isCheckScript();
-
         if (in_array('employee', user_roles())) {
             return $this->employeeDashboard();
         }
@@ -87,8 +82,6 @@ class DashboardController extends AccountBaseController
     public function checklist()
     {
         if (in_array('admin', user_roles())) {
-            $this->isCheckScript();
-
             return view('dashboard.checklist', $this->data);
         }
     }

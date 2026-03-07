@@ -12,7 +12,6 @@ use App\Models\GlobalSetting;
 use Laravel\Fortify\Features;
 use App\Models\LanguageSetting;
 use App\Models\SocialAuthSetting;
-use Froiden\Envato\Traits\AppBoot;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Hash;
 use App\Actions\Fortify\CreateNewUser;
@@ -29,8 +28,6 @@ use Laravel\Fortify\Actions\PrepareAuthenticatedSession;
 
 class FortifyServiceProvider extends ServiceProvider
 {
-
-    use AppBoot;
 
     /**
      * Register any application services.
@@ -116,16 +113,9 @@ class FortifyServiceProvider extends ServiceProvider
 
         Fortify::loginView(function () {
 
-            $this->showInstall();
-
             $this->checkMigrateStatus();
             $globalSetting = GlobalSetting::first();
-            // Is USB CRM
             $company = Company::first();
-
-            if (!$this->isLegal()) {
-                return redirect('verify-purchase');
-            }
 
             App::setLocale($globalSetting->locale);
             Carbon::setLocale($globalSetting->locale);
