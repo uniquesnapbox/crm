@@ -26,16 +26,12 @@ use Illuminate\Notifications\Notifiable;
  * @property string|null $company_name
  * @property string|null $website
  * @property string|null $address
- * @property string|null $salutation
  * @property string $client_name
  * @property string $client_email
  * @property string|null $mobile
  * @property string|null $cell
  * @property string|null $office
- * @property string|null $city
- * @property string|null $state
  * @property string|null $country
- * @property string|null $postal_code
  * @property string|null $note
  * @property string $next_follow_up
  * @property \Illuminate\Support\Carbon|null $created_at
@@ -70,7 +66,6 @@ use Illuminate\Notifications\Notifiable;
  * @method static \Illuminate\Database\Eloquent\Builder|Lead whereAgentId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Lead whereCategoryId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Lead whereCell($value)
- * @method static \Illuminate\Database\Eloquent\Builder|Lead whereCity($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Lead whereClientEmail($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Lead whereClientId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Lead whereClientName($value)
@@ -85,10 +80,7 @@ use Illuminate\Notifications\Notifiable;
  * @method static \Illuminate\Database\Eloquent\Builder|Lead whereNextFollowUp($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Lead whereNote($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Lead whereOffice($value)
- * @method static \Illuminate\Database\Eloquent\Builder|Lead wherePostalCode($value)
- * @method static \Illuminate\Database\Eloquent\Builder|Lead whereSalutation($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Lead whereSourceId($value)
- * @method static \Illuminate\Database\Eloquent\Builder|Lead whereState($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Lead whereStatusId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Lead whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Lead whereValue($value)
@@ -114,10 +106,10 @@ class Lead extends BaseModel
 
     const CUSTOM_FIELD_MODEL = 'App\Models\Lead';
 
-    protected $appends = ['image_url', 'client_name_salutation'];
+    protected $appends = ['image_url'];
 
     protected $casts = [
-        'salutation' => Salutation::class,
+        // 'salutation' => Salutation::class,  // removed
     ];
 
     public function getImageUrlAttribute()
@@ -125,13 +117,6 @@ class Lead extends BaseModel
         $gravatarHash = md5(strtolower(trim($this->email)));
 
         return 'https://www.gravatar.com/avatar/' . $gravatarHash . '.png?s=200&d=mp';
-    }
-
-    public function clientNameSalutation(): Attribute
-    {
-        return Attribute::make(
-            get: fn($value) => ($this->salutation ? $this->salutation->label() . ' ' : '') . $this->client_name
-        );
     }
 
     /**

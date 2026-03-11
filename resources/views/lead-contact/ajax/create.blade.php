@@ -17,22 +17,11 @@ $addProductPermission = user()->permission('add_product');
                 <div class="row p-20">
 
                     <div class="col-lg-4 col-md-6">
-                        <x-forms.select fieldId="salutation" :fieldLabel="__('modules.client.salutation')"
-                            fieldName="salutation">
-                            <option value="">--</option>
-                            @foreach ($salutations as $salutation)
-                                <option value="{{ $salutation->value }}">{{ $salutation->label() }}</option>
-                            @endforeach
-                        </x-forms.select>
-                    </div>
-
-                    <div class="col-lg-4 col-md-6">
                         <x-forms.text :fieldLabel="__('app.name')" fieldName="client_name"
                             fieldId="client_name" :fieldPlaceholder="__('placeholders.name')" fieldRequired="true" />
                     </div>
 
                     <div class="col-lg-4 col-md-6">
-
                         <x-forms.email fieldId="client_email" :fieldLabel="__('app.email')"
                             fieldName="client_email" :fieldPlaceholder="__('placeholders.email')" :fieldHelp="__('modules.lead.leadEmailInfo')">
                         </x-forms.email>
@@ -82,7 +71,6 @@ $addProductPermission = user()->permission('add_product');
                         @lang('modules.client.companyDetails')</a>
                 </h4>
 
-
                 <div class="row p-20 d-none" id="other-details">
 
                     <div class="col-lg-3 col-md-6">
@@ -96,8 +84,8 @@ $addProductPermission = user()->permission('add_product');
                     </div>
 
                     <div class="col-lg-3 col-md-6">
-                        <x-forms.tel fieldId="mobile" :fieldLabel="__('modules.lead.mobile')" fieldName="mobile"
-                           :fieldPlaceholder="__('placeholders.mobile')"></x-forms.tel>
+                        <x-forms.tel fieldId="mobile" fieldLabel="WhatsApp Mobile" fieldName="mobile"
+                           :fieldPlaceholder="__('placeholders.mobile')" fieldRequired="true"></x-forms.tel>
                     </div>
 
                     <div class="col-lg-3 col-md-6">
@@ -112,46 +100,48 @@ $addProductPermission = user()->permission('add_product');
                             @foreach ($countries as $item)
                                 <option data-tokens="{{ $item->iso3 }}"
                                     data-content="<span class='flag-icon flag-icon-{{ strtolower($item->iso) }} flag-icon-squared'></span> {{ $item->nicename }}"
-                                    value="{{ $item->nicename }}">{{ $item->nicename }}</option>
+                                    value="{{ $item->nicename }}"
+                                    {{ $item->nicename == 'India' ? 'selected' : '' }}>
+                                    {{ $item->nicename }}
+                                </option>
                             @endforeach
                         </x-forms.select>
                     </div>
 
-                    <div class="col-lg-3 col-md-6">
-                        <x-forms.text :fieldLabel="__('modules.stripeCustomerAddress.state')" fieldName="state"
-                            fieldId="state" :fieldPlaceholder="__('placeholders.state')" />
-                    </div>
-
-                    <div class="col-lg-3 col-md-6">
-                        <x-forms.text :fieldLabel="__('modules.stripeCustomerAddress.city')" fieldName="city"
-                            fieldId="city" :fieldPlaceholder="__('placeholders.city')" />
-                    </div>
-
-                    <div class="col-lg-3 col-md-6">
-                        <x-forms.text :fieldLabel="__('modules.stripeCustomerAddress.postalCode')"
-                            fieldName="postal_code" fieldId="postal_code" :fieldPlaceholder="__('placeholders.postalCode')" />
-                    </div>
                     <div class="col-md-12">
                         <div class="form-group my-3">
-                            <x-forms.textarea class="mr-0 mr-lg-2 mr-md-2" :fieldLabel="__('app.address')"
-                                fieldName="address" fieldId="address" :fieldPlaceholder="__('placeholders.address')">
-                            </x-forms.textarea>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <label class="f-14 text-dark-grey mb-12" data-label="true" for="address">
+                                    @lang('app.address')
+                                </label>
+                                <button type="button" class="btn btn-sm btn-outline-secondary mb-2" id="fetch-address">
+                                    <i class="fa fa-map-marker-alt"></i> Fetch Address
+                                </button>
+                            </div>
+                            <textarea class="form-control" name="address" id="address" rows="3" placeholder="@lang('placeholders.address')"></textarea>
                         </div>
                     </div>
 
                     <x-forms.custom-field :fields="$fields" class="col-md-12"></x-forms.custom-field>
 
-
                 </div>
 
-                <x-form-actions>
-                    <x-forms.button-primary id="save-lead-form" class="mr-3" icon="check">@lang('app.save')
-                    </x-forms.button-primary>
-                    <x-forms.button-secondary class="mr-3" id="save-more-lead-form" icon="check-double">@lang('app.saveAddMore')
-                    </x-forms.button-secondary>
-                    <x-forms.button-cancel :link="route('lead-contact.index')" class="border-0">@lang('app.cancel')
-                    </x-forms.button-cancel>
-                </x-form-actions>
+                {{-- Dropdown button for actions --}}
+                <div class="row p-20">
+                    <div class="col-md-12">
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                @lang('app.actions')
+                            </button>
+                            <div class="dropdown-menu">
+                                <button type="button" class="dropdown-item" id="save-lead-form">@lang('app.save')</button>
+                                <button type="button" class="dropdown-item" id="save-more-lead-form">@lang('app.saveAddMore')</button>
+                                <div class="dropdown-divider"></div>
+                                <a class="dropdown-item" href="{{ route('lead-contact.index') }}">@lang('app.cancel')</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
             </div>
         </x-form>
@@ -160,8 +150,6 @@ $addProductPermission = user()->permission('add_product');
 </div>
 
 <script>
-
-
     $(document).ready(function() {
 
         $('.custom-date-picker').each(function(ind, el) {
@@ -171,24 +159,17 @@ $addProductPermission = user()->permission('add_product');
             });
         });
 
-
         $('#save-more-lead-form').click(function () {
-
             $('#add_more').val(true);
-
             const url = "{{ route('lead-contact.store') }}?add_more=true";
-
             var data = $('#save-lead-data-form').serialize() + '&add_more=true';
-
             saveLead(data, url, "#save-more-lead-form");
-
         });
 
         $('#save-lead-form').click(function() {
             const url = "{{ route('lead-contact.store') }}";
             var data = $('#save-lead-data-form').serialize();
             saveLead(data, url, "#save-lead-form");
-
         });
 
         function saveLead(data, url, buttonSelector) {
@@ -203,16 +184,12 @@ $addProductPermission = user()->permission('add_product');
                 data: data,
                 success: function(response) {
                     if(response.add_more == true) {
-
                         var right_modal_content = $.trim($(RIGHT_MODAL_CONTENT).html());
-
                         if(right_modal_content.length) {
-
                             $(RIGHT_MODAL_CONTENT).html(response.html.html);
                             $('#add_more').val(false);
                         }
                         else {
-
                             $('.content-wrapper').html(response.html.html);
                             init('.content-wrapper');
                             $('#add_more').val(false);
@@ -223,14 +200,11 @@ $addProductPermission = user()->permission('add_product');
                     }
 
                     if (typeof showTable !== 'undefined' && typeof showTable === 'function') {
-                            showTable();
+                        showTable();
                     }
                 }
             });
-
         }
-
-
 
         $('body').on('click', '.add-lead-source', function() {
             var url = '{{ route('lead-source-settings.create') }}';
@@ -244,6 +218,53 @@ $addProductPermission = user()->permission('add_product');
         });
 
         init(RIGHT_MODAL);
+
+        $('body').on('click', '#fetch-address', function() {
+            var button = $(this);
+            var originalText = button.html();
+            button.html('<i class="fa fa-spinner fa-spin"></i> Fetching...');
+            button.prop('disabled', true);
+
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    var lat = position.coords.latitude;
+                    var lon = position.coords.longitude;
+                    var url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`;
+
+                    $.ajax({
+                        url: url,
+                        type: 'GET',
+                        success: function(response) {
+                            if (response && response.display_name) {
+                                $('#address').val(response.display_name);
+                            } else {
+                                alert('Could not fetch the address from coordinates.');
+                            }
+                        },
+                        error: function() {
+                            alert('Error occurred while fetching the address.');
+                        },
+                        complete: function() {
+                            button.html(originalText);
+                            button.prop('disabled', false);
+                        }
+                    });
+                }, function(error) {
+                    alert('Geolocation failed: ' + error.message);
+                    button.html(originalText);
+                    button.prop('disabled', false);
+                }, {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                });
+            } else {
+                alert("Geolocation is not supported by this browser.");
+                button.html(originalText);
+                button.prop('disabled', false);
+            }
+        });
+
     });
 
     function checkboxChange(parentClass, id){

@@ -66,7 +66,7 @@ class LeadContactController extends AccountBaseController
 
         abort_403(!($this->viewPermission == 'all'));
 
-        $this->pageTitle = $this->leadContact->client_name_salutation;
+        $this->pageTitle = $this->leadContact->client_name; // removed salutation
 
         $this->categories = LeadCategory::all();
 
@@ -180,7 +180,7 @@ class LeadContactController extends AccountBaseController
         $this->status = LeadStatus::all();
         $this->categories = LeadCategory::all();
         $this->countries = countries();
-        $this->salutations = Salutation::cases();
+        // salutations removed
 
         $this->view = 'lead-contact.ajax.create';
 
@@ -213,7 +213,7 @@ class LeadContactController extends AccountBaseController
 
         $leadContact = new Lead();
         $leadContact->company_id = company()->id;
-        $leadContact->salutation = $request->salutation;
+        // salutation removed
         $leadContact->client_name = $request->client_name;
         $leadContact->client_email = $request->client_email;
         $leadContact->note = trim_editor($request->note);
@@ -224,11 +224,10 @@ class LeadContactController extends AccountBaseController
         $leadContact->address = $request->address;
         $leadContact->cell = $request->cell;
         $leadContact->office = $request->office;
-        $leadContact->city = $request->city;
-        $leadContact->state = $request->state;
+        // city, state, postal_code removed
         $leadContact->country = $request->country;
-        $leadContact->postal_code = $request->postal_code;
         $leadContact->mobile = $request->mobile;
+        $leadContact->added_by = $request->added_by ?? user()->id; // save added_by, fallback to current user
         $leadContact->save();
 
         // To add custom fields data
@@ -291,7 +290,7 @@ class LeadContactController extends AccountBaseController
         $this->countries = countries();
 
         $this->pageTitle = __('modules.leadContact.updateTitle');
-        $this->salutations = Salutation::cases();
+        // salutations removed
 
         if (request()->ajax()) {
             $html = view('lead-contact.ajax.edit', $this->data)->render();
@@ -323,7 +322,7 @@ class LeadContactController extends AccountBaseController
             || user()->id == $leadContact->added_by)
         );
 
-        $leadContact->salutation = $request->salutation;
+        // salutation removed
         $leadContact->client_name = $request->client_name;
         $leadContact->client_email = $request->client_email;
         $leadContact->note = trim_editor($request->note);
@@ -334,11 +333,10 @@ class LeadContactController extends AccountBaseController
         $leadContact->address = $request->address;
         $leadContact->cell = $request->cell;
         $leadContact->office = $request->office;
-        $leadContact->city = $request->city;
-        $leadContact->state = $request->state;
+        // city, state, postal_code removed
         $leadContact->country = $request->country;
-        $leadContact->postal_code = $request->postal_code;
         $leadContact->mobile = $request->mobile;
+        $leadContact->added_by = $request->added_by ?? $leadContact->added_by; // update added_by if provided
         $leadContact->save();
 
         // To add custom fields data
@@ -346,8 +344,12 @@ class LeadContactController extends AccountBaseController
             $leadContact->updateCustomFieldData($request->custom_fields_data);
         }
 
-        return Reply::successWithData(__('messages.updateSuccess'), ['redirectUrl' => route('lead-contact.index')]);
+        // Handle "Save & Add More" action
+        if ($request->add_more == 'true') {
+            return Reply::successWithData(__('messages.updateSuccess'), ['redirectUrl' => route('lead-contact.create')]);
+        }
 
+        return Reply::successWithData(__('messages.updateSuccess'), ['redirectUrl' => route('lead-contact.index')]);
     }
 
     /**
