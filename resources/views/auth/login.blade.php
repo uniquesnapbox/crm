@@ -128,6 +128,71 @@
 
     </form>
 
+
+
+
+    {{-- ============ WhatsApp OTP Login Section ============ --}}
+<div class="position-relative my-4">
+    <hr/>
+    <span class="position-absolute bg-white px-3 text-muted"
+          style="top:-12px; left:50%; transform:translateX(-50%); font-size:13px;">
+        OR
+    </span>
+</div>
+
+{{-- Step 1: Enter WhatsApp Number --}}
+<div id="wa-number-step">
+    <div class="form-group text-left">
+        <label class="f-15">
+            <i class="fab fa-whatsapp text-success"></i>
+            Login with WhatsApp Number
+        </label>
+        <input type="tel"
+               id="wa_mobile"
+               class="form-control height-50 f-15 light_text"
+               placeholder="e.g. 923001234567 (with country code)"/>
+        <small class="text-muted">Enter number with country code, no + or spaces</small>
+    </div>
+    <div id="wa-send-error" class="text-danger f-13 mb-2 d-none"></div>
+    <button type="button"
+            id="wa-send-btn"
+            onclick="waSendOtp()"
+            class="btn btn-success f-w-500 rounded w-100 height-50 f-15">
+        <i class="fab fa-whatsapp mr-2"></i> Send OTP via WhatsApp
+    </button>
+</div>
+
+{{-- Step 2: Enter OTP --}}
+<div id="wa-otp-step" class="d-none">
+    <div class="form-group text-left">
+        <label class="f-15">
+            <i class="fab fa-whatsapp text-success"></i>
+            Enter OTP sent to your WhatsApp
+        </label>
+        <input type="text"
+               id="wa_otp"
+               class="form-control height-50 f-15 light_text text-center f-20 letter-spacing-5"
+               placeholder="_ _ _ _ _ _"
+               maxlength="6"
+               style="letter-spacing: 8px; font-size: 22px;"/>
+        <small class="text-muted">OTP expires in 5 minutes</small>
+    </div>
+    <div id="wa-otp-error" class="text-danger f-13 mb-2 d-none"></div>
+    <button type="button"
+            id="wa-verify-btn"
+            onclick="waVerifyOtp()"
+            class="btn btn-primary f-w-500 rounded w-100 height-50 f-15">
+        Verify OTP &amp; Login
+    </button>
+    <button type="button"
+            onclick="waReset()"
+            class="btn btn-link w-100 mt-2 f-13 text-muted">
+        &larr; Use different number
+    </button>
+</div>
+{{-- ============ End WhatsApp Section ============ --}}
+
+
     <x-slot name="scripts">
 
 
@@ -222,6 +287,64 @@
 
             });
         </script>
+
+
+
+
+
+<script>
+function waSendOtp() {
+    const mobile = document.getElementById('wa_mobile').value.trim();
+    // const errDiv = document.getElementById('wa-number-error');
+      const errDiv = document.getElementById('wa-send-error')
+    const btn    = document.getElementById('wa-send-btn');
+    errDiv.classList.add('d-none');
+    if (!mobile) { errDiv.textContent = 'Please enter your WhatsApp number.'; errDiv.classList.remove('d-none'); return; }
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+    fetch('{{ route("whatsapp.send_otp") }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+        body: JSON.stringify({ mobile: mobile })
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false; btn.textContent = 'Send OTP via WhatsApp';
+        if (data.status === 'success') {
+            document.getElementById('wa-number-step').classList.add('d-none');
+            document.getElementById('wa-otp-step').classList.remove('d-none');
+        } else { errDiv.textContent = data.message; errDiv.classList.remove('d-none'); }
+    })
+    .catch(() => { btn.disabled = false; btn.textContent = 'Send OTP via WhatsApp'; errDiv.textContent = 'Something went wrong.'; errDiv.classList.remove('d-none'); });
+}
+
+function waVerifyOtp() {
+    const mobile = document.getElementById('wa_mobile').value.trim();
+    const otp    = document.getElementById('wa_otp').value.trim();
+    const errDiv = document.getElementById('wa-otp-error');
+    const btn    = document.getElementById('wa-verify-btn');
+    errDiv.classList.add('d-none');
+    if (!otp || otp.length !== 6) { errDiv.textContent = 'Please enter the 6-digit OTP.'; errDiv.classList.remove('d-none'); return; }
+    btn.disabled = true; btn.textContent = 'Verifying...';
+    fetch('{{ route("whatsapp.verify_otp") }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+        body: JSON.stringify({ mobile: mobile, otp: otp })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.status === 'success') { window.location.href = data.redirect; }
+        else { btn.disabled = false; btn.textContent = 'Verify OTP & Login'; errDiv.textContent = data.message; errDiv.classList.remove('d-none'); }
+    })
+    .catch(() => { btn.disabled = false; btn.textContent = 'Verify OTP & Login'; errDiv.textContent = 'Something went wrong.'; errDiv.classList.remove('d-none'); });
+}
+
+function waReset() {
+    document.getElementById('wa-number-step').classList.remove('d-none');
+    document.getElementById('wa-otp-step').classList.add('d-none');
+    document.getElementById('wa_otp').value = '';
+}
+</script>
     </x-slot>
 
 </x-auth>
