@@ -24,6 +24,7 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Laravel\Sanctum\HasApiTokens;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticationProvider;
 use Trebol\Entrust\Traits\EntrustUserTrait;
@@ -221,7 +222,7 @@ use Yajra\DataTables\Html\Editor\Fields\BelongsTo;
 class User extends BaseModel implements AuthenticatableContract, AuthorizableContract, CanResetPasswordContract
 {
 
-    use Notifiable, EntrustUserTrait, Authenticatable, Authorizable, CanResetPassword, HasFactory, TwoFactorAuthenticatable;
+    use HasApiTokens, Notifiable, EntrustUserTrait, Authenticatable, Authorizable, CanResetPassword, HasFactory, TwoFactorAuthenticatable;
     use HasCompany;
     use HasMaskImage;
 

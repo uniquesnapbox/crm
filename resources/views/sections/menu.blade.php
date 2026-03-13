@@ -84,7 +84,7 @@
                 @if (in_array('attendance', user_modules()) && $sidebarUserPermissions['view_attendance'] != 5 && $sidebarUserPermissions['view_attendance'] != 'none')
                     <x-sub-menu-item :link="route('attendances.index')" :text="__('app.menu.attendance')" />
                     @if (in_array('admin', user_roles()))
-                        <x-sub-menu-item :link="route('admin.live-tracking')" :text="__('app.menu.liveTracking')" />
+                        <x-sub-menu-item :link="route('account.live-tracking')" :text="__('app.menu.liveTracking')" />
                     @endif
                 @endif
                 @if (in_array('holidays', user_modules()) && $sidebarUserPermissions['view_holiday'] != 5 && $sidebarUserPermissions['view_holiday'] != 'none')

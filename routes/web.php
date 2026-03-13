@@ -120,13 +120,19 @@ use App\Http\Controllers\EmployeeShiftChangeRequestController;
 use App\Http\Controllers\LeadContactController;
 use App\Http\Controllers\LiveTrackingController;
 use App\Http\Controllers\PipelineController;
+use App\Http\Controllers\Api\AuthController;
 use App\Models\AttendanceSetting;
 
-Route::group(['middleware' => 'auth', 'prefix' => 'admin'], function () {
-    Route::get('live-tracking', [LiveTrackingController::class, 'index'])->name('admin.live-tracking');
-});
+Route::post('mobile-login', [AuthController::class, 'login'])
+    ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class])
+    ->name('mobile.login');
 
 Route::group(['middleware' => 'auth', 'prefix' => 'account'], function () {
+    Route::get('live-tracking', [LiveTrackingController::class, 'index'])->name('account.live-tracking');
+    Route::get('admin/live-tracking', function () {
+        return redirect()->route('account.live-tracking');
+    })->name('account.admin.live-tracking');
+
     Route::post('image/upload', [ImageController::class, 'store'])->name('image.store');
 
 
