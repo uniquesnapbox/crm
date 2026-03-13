@@ -116,7 +116,7 @@ class LeadContactDataTable extends BaseDataTable
                 $label = '';
             }
 
-            $client_name = $row->client_name_salutation;
+            $client_name = $row->client_name;
 
             return '
                         <div class="media-body">
@@ -153,7 +153,6 @@ class LeadContactDataTable extends BaseDataTable
                 'leads.id',
                 'leads.added_by',
                 'leads.client_id',
-                'leads.salutation',
                 'leads.category_id',
                 'leads.client_name',
                 'leads.client_email',
