@@ -81,6 +81,12 @@ Route::post('check-email', [LoginController::class, 'checkEmail'])->name('check_
 Route::post('check-code', [LoginController::class, 'checkCode'])->name('check_code');
 Route::get('resend-code', [LoginController::class, 'resendCode'])->name('resend_code');
 
+
+
+// WhatsApp OTP Login
+Route::post('whatsapp-send-otp',   [LoginController::class, 'sendWhatsappOtp'])->name('whatsapp.send_otp');
+Route::post('whatsapp-verify-otp', [LoginController::class, 'verifyWhatsappOtp'])->name('whatsapp.verify_otp');
+
 // Payment routes
 Route::post('stripe/{invoiceId}', [StripeController::class, 'paymentWithStripe'])->name('stripe');
 Route::post('stripe-public/{hash}', [StripeController::class, 'paymentWithStripePublic'])->name('stripe_public');

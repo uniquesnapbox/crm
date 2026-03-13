@@ -16,6 +16,12 @@ use Illuminate\Support\Facades\Auth;
 use Laravel\Socialite\Facades\Socialite;
 use \Illuminate\Validation\ValidationException;
 
+
+
+use Carbon\Carbon;
+use App\Models\WhatsappOtp;
+use App\Services\WhatsAppOtpService;
+
 class LoginController extends Controller
 {
 
@@ -76,6 +82,116 @@ class LoginController extends Controller
         return Reply::success(__('messages.codeSent'));
     }
 
+    public function sendWhatsappOtp(Request $request)
+    {
+        $request->validate([
+            'mobile' => 'required|string|min:7|max:20',
+        ]);
+
+        // Clean the number - digits only
+        $mobile = preg_replace('/[^0-9]/', '', $request->mobile);
+
+        // Find active user with this mobile number
+        $user = User::where('mobile', $mobile)
+            ->where('status', 'active')
+            ->where('login', 'enable')
+            ->first();
+
+        if (!$user) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'No active account found with this WhatsApp number.',
+            ], 422);
+        }
+
+        // Delete old unused OTPs for this number
+        WhatsappOtp::where('mobile', $mobile)
+            ->where('used', false)
+            ->delete();
+
+        // Generate 6-digit OTP
+        $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        // Save OTP to database
+        WhatsappOtp::create([
+            'mobile'     => $mobile,
+            'otp'        => $otp,
+            'expires_at' => Carbon::now()->addMinutes(5),
+            'used'       => false,
+        ]);
+
+        // Send OTP via WhatsApp
+        $service = new WhatsAppOtpService();
+        $sent    = $service->sendOtp($mobile, $otp);
+
+        if (!$sent) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Failed to send OTP. Please try again.',
+            ], 500);
+        }
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'OTP sent to your WhatsApp number. Check your messages.',
+        ]);
+    }
+
+    public function verifyWhatsappOtp(Request $request)
+    {
+        $request->validate([
+            'mobile' => 'required|string',
+            'otp'    => 'required|string|size:6',
+        ]);
+
+        $mobile = preg_replace('/[^0-9]/', '', $request->mobile);
+
+        // Find the OTP record
+        $otpRecord = WhatsappOtp::where('mobile', $mobile)
+            ->where('otp', $request->otp)
+            ->where('used', false)
+            ->latest()
+            ->first();
+
+        // Check OTP exists and is not expired
+        if (!$otpRecord || $otpRecord->isExpired()) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Invalid or expired OTP. Please try again.',
+            ], 422);
+        }
+
+        // Mark OTP as used
+        $otpRecord->update(['used' => true]);
+
+        // Find the user
+        $user = User::where('mobile', $mobile)
+            ->where('status', 'active')
+            ->where('login', 'enable')
+            ->first();
+
+        if (!$user) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => __('messages.invalidOrInactiveAccount'),
+            ], 422);
+        }
+
+        // Log in the user
+        Auth::login($user);
+
+        return response()->json([
+            'status'   => 'success',
+            'message'  => 'Login successful!',
+            'redirect' => route('dashboard'),
+        ]);
+    }
+
+
+
+
+
+
     public function redirect($provider)
     {
         $this->setSocailAuthConfigs();
@@ -85,15 +201,14 @@ class LoginController extends Controller
 
     public function callback(Request $request, $provider)
     {
-        
+
         $this->setSocailAuthConfigs();
 
         try {
             try {
                 if ($provider != 'twitter') {
                     $data = Socialite::driver($provider)->stateless()->user(); /* @phpstan-ignore-line */
-                }
-                else {
+                } else {
                     $data = Socialite::driver($provider)->user();
                 }
             } catch (Exception $e) {
@@ -128,7 +243,6 @@ class LoginController extends Controller
             Auth::login($user, true);
 
             return redirect()->intended($this->redirectPath());
-
         } catch (Exception $e) {
 
             return redirect()->route('login')->with(['message' => $e->getMessage()]);
@@ -148,5 +262,4 @@ class LoginController extends Controller
     {
         return 'email';
     }
-
 }

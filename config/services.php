@@ -69,6 +69,17 @@ return [
         'include_granted_scopes' => true,
     ],
 
+
+
+    'whatsapp' => [
+        'driver'   => env('WHATSAPP_DRIVER', 'log'),
+        'user'     => env('WHATSAPP_USER', ''),
+        'password' => env('WHATSAPP_PASSWORD', ''),
+        'sender'   => env('WHATSAPP_SENDER', ''),
+    ],
+
+
+
     'sentry' => [
         'enabled' => env('SENTRY_ENABLED', false)
     ],
@@ -77,4 +88,3 @@ return [
         'rest_api_key' => 'YOUR-REST-API-KEY-HERE',
     ],
 ];
-
