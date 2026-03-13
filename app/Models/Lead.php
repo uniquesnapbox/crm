@@ -141,9 +141,29 @@ class Lead extends BaseModel
         return $this->belongsTo(LeadCategory::class, 'category_id');
     }
 
+    public function leadAgent(): BelongsTo
+    {
+        return $this->belongsTo(LeadAgent::class, 'agent_id');
+    }
+
+    public function leadStatus(): BelongsTo
+    {
+        return $this->belongsTo(LeadStatus::class, 'status_id');
+    }
+
     public function note(): BelongsTo
     {
         return $this->belongsTo(LeadNote::class, 'lead_id');
+    }
+
+    public function followUps(): HasMany
+    {
+        return $this->hasMany(LeadFollowUp::class, 'lead_id')->orderByDesc('next_follow_up_date');
+    }
+
+    public function latestFollowUp(): HasOne
+    {
+        return $this->hasOne(LeadFollowUp::class, 'lead_id')->latestOfMany('next_follow_up_date');
     }
 
     public function client(): BelongsTo
@@ -167,7 +187,9 @@ class Lead extends BaseModel
         }
 
         // Initialize lead query
-        $leadsQuery = Lead::select('*')->orderBy('client_name');
+        $leadsQuery = Lead::select('*')
+            ->whereNull('archived_at')
+            ->orderBy('client_name');
 
 
         // Apply contact ID filter if provided
@@ -177,6 +199,11 @@ class Lead extends BaseModel
 
         // Retrieve leads
         return $leadsQuery->get();
+    }
+
+    public function getIsConvertedAttribute(): bool
+    {
+        return !is_null($this->client_id) || !is_null($this->converted_at);
     }
 
 }

@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Company;
-use App\Models\DealFollowUp;
+use App\Models\LeadFollowUp;
 use App\Modules\WhatsApp\WhatsAppService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
@@ -41,7 +41,7 @@ class SendFollowupMessages extends Command
         $today = now($timezone)->toDateString();
         $hasSentAtColumn = Schema::hasColumn('lead_follow_up', 'whatsapp_sent_at');
 
-        $followups = DealFollowUp::with('lead.contact')
+        $followups = LeadFollowUp::with('lead')
             ->whereDate('next_follow_up_date', $today)
             ->whereHas('lead', function ($query) use ($companyId) {
                 $query->where('company_id', $companyId);
@@ -55,7 +55,7 @@ class SendFollowupMessages extends Command
         $whatsApp = app(WhatsAppService::class);
 
         foreach ($followups as $followup) {
-            $contact = optional($followup->lead)->contact;
+            $contact = $followup->lead;
 
             if (!$contact || empty($contact->mobile)) {
                 continue;

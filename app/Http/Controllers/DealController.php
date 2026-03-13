@@ -60,11 +60,15 @@ class DealController extends AccountBaseController
 
     public function index(DealsDataTable $dataTable)
     {
+        abort_403(!in_array('admin', user_roles()));
+
         $this->viewLeadPermission = $viewPermission = user()->permission('view_deals');
         $this->viewEmployeePermission = user()->permission('view_employees');
         $this->viewDealLeadPermission = user()->permission('view_lead');
 
         abort_403(!in_array($viewPermission, ['all', 'added', 'both', 'owned']));
+        $this->pageTitle = 'Archived Deals';
+        $this->isArchiveView = true;
 
         if (!request()->ajax()) {
             $this->totalDeals = Deal::all();

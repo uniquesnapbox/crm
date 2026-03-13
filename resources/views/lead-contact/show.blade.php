@@ -6,7 +6,7 @@
 
 @php
 $viewClientNote = user()->permission('view_lead_note');
-$viewDeals = user()->permission('view_deals');
+$viewLeadFollowUps = user()->permission('view_lead_follow_up');
 @endphp
 
 
@@ -22,12 +22,8 @@ $viewDeals = user()->permission('view_deals');
             </a>
             <x-tab :href="route('lead-contact.show', $leadContact->id)" :text="__('modules.lead.profile')" class="profile" />
 
-                @if ($viewDeals == 'all'
-                || ($viewDeals == 'added' && $leadContact->added_by == user()->id)
-                || ($viewDeals == 'owned' && $leadContact->added_by == user()->id)
-                || ($viewDeals == 'both' && $leadContact->added_by == user()->id)
-                )
-                <x-tab :href="route('lead-contact.show', $leadContact->id).'?tab=deal'" :text="__('modules.leadContact.deal')" class="deal" ajax="false"/>
+                @if (in_array($viewLeadFollowUps, ['all', 'added', 'both', 'owned']))
+                <x-tab :href="route('lead-contact.show', $leadContact->id).'?tab=follow-up'" :text="__('modules.lead.followUp')" class="follow-up" ajax="false"/>
             @endif
 
             @if ($viewClientNote == 'all' || $viewClientNote == 'both' || $viewClientNote == 'added' || $viewClientNote == 'owned')

@@ -34,7 +34,7 @@
     @endif
 
     <!-- NAV ITEM - HR COLLAPASE MENU -->
-    @if (!in_array('client', user_roles()) && (in_array('leads', user_modules())) && (($sidebarUserPermissions['view_lead'] != 5 && $sidebarUserPermissions['view_lead'] != 'none') || ($sidebarUserPermissions['view_deals'] != 5 && $sidebarUserPermissions['view_deals'] != 'none')))
+    @if (!in_array('client', user_roles()) && in_array('leads', user_modules()) && ($sidebarUserPermissions['view_lead'] != 5 && $sidebarUserPermissions['view_lead'] != 'none'))
         <x-menu-item icon="person" :text="__('app.menu.lead')">
             <x-slot name="iconPath">
                 <path
@@ -49,11 +49,6 @@
             <div class="accordionItemContent">
                 <x-sub-menu-item :link="route('calendar.index')" :text="__('app.menu.calendar')" />
             </div>
-            @if ($sidebarUserPermissions['view_deals'] != 5 && $sidebarUserPermissions['view_deals'] != 'none')
-                <div class="accordionItemContent ">
-                    <x-sub-menu-item :link="route('deals.index')" :text="__('app.deal')" />
-                </div>
-            @endif
         </x-menu-item>
     @endif
 
@@ -356,10 +351,6 @@
                 @if (isset($sidebarUserPermissions['view_expense_report']) && $sidebarUserPermissions['view_expense_report'] == 4 && $sidebarUserPermissions['view_expense_report'] != 'none' && in_array('expenses', user_modules()))
                     <x-sub-menu-item :link="route('expense-report.index')"
                                      :text="__('app.menu.expenseReport')" />
-                @endif
-                @if (isset($sidebarUserPermissions['view_lead_report']) && $sidebarUserPermissions['view_lead_report'] == 4 && $sidebarUserPermissions['view_lead_report'] != 'none' && in_array('leads', user_modules()))
-                    <x-sub-menu-item :link="route('lead-report.index')"
-                                     :text="__('app.menu.dealReport')" />
                 @endif
                 @if (isset($sidebarUserPermissions['view_sales_report']) && $sidebarUserPermissions['view_sales_report'] == 4 && $sidebarUserPermissions['view_sales_report'] != 'none' && in_array('invoices', user_modules()))
                     <x-sub-menu-item :link="route('sales-report.index')"

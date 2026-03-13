@@ -75,7 +75,7 @@ class LeadContactDataTable extends BaseDataTable
             }
 
             if ($row->client_id == null || $row->client_id == '') {
-                $action .= '<a class="dropdown-item" href="' . route('clients.create') . '?lead=' . $row->id . '">
+                $action .= '<a class="dropdown-item" href="' . route('lead-contact.show', [$row->id]) . '">
                                 <i class="fa fa-user mr-2"></i>
                                 ' . trans('modules.lead.changeToClient') . '
                             </a>';
@@ -163,6 +163,7 @@ class LeadContactDataTable extends BaseDataTable
                 'lead_sources.type as source',
             )
             ->leftJoin('lead_sources', 'lead_sources.id', 'leads.source_id');
+        $leadContact = $leadContact->whereNull('leads.archived_at');
         if ($this->request()->type != 'all' && $this->request()->type != '') {
 
             if ($this->request()->type == 'lead') {

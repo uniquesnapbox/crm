@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Task;
-use App\Models\DealFollowUp;
+use App\Models\LeadFollowUp;
 use Illuminate\Http\Request;
 
 class CalendarController extends AccountBaseController
@@ -38,10 +38,10 @@ class CalendarController extends AccountBaseController
 
         if ($user->hasRole('admin')) {
             $tasks = Task::whereNotNull('due_date')->get();
-            $followups = DealFollowUp::whereNotNull('next_follow_up_date')->get();
+            $followups = LeadFollowUp::with('lead')->whereNotNull('next_follow_up_date')->get();
         } else {
             $tasks = Task::where('assigned_to', $user->id)->get();
-            $followups = DealFollowUp::where('created_by', $user->id)->get();
+            $followups = LeadFollowUp::with('lead')->where('added_by', $user->id)->get();
         }
 
         $events = [];

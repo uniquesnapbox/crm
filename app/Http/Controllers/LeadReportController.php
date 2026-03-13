@@ -15,7 +15,7 @@ class LeadReportController extends AccountBaseController
     public function __construct()
     {
         parent::__construct();
-        $this->pageTitle = 'app.menu.dealReport';
+        $this->pageTitle = 'Archived Deals Report';
     }
 
     /**
@@ -26,6 +26,8 @@ class LeadReportController extends AccountBaseController
 
     public function index(LeadReportDataTable $dataTable)
     {
+        abort_403(!in_array('admin', user_roles()));
+
         if (!request()->ajax()) {
             $this->fromDate = now($this->company->timezone)->startOfMonth();
             $this->toDate = now($this->company->timezone);

@@ -3,8 +3,8 @@
 namespace App\Traits;
 
 use App\Models\DashboardWidget;
-use App\Models\Deal;
 use App\Models\Leave;
+use App\Models\LeadFollowUp;
 use App\Models\Payment;
 use App\Models\ProjectActivity;
 use App\Models\ProjectTimeLog;
@@ -91,20 +91,32 @@ trait OverviewDashboard
             ->get();
 
 
-        $currentDate = now()->timezone($this->company->timezone)->toDateTimeString();
+        $today = now($this->company->timezone)->startOfDay();
+        $todayEnd = $today->copy()->endOfDay();
 
-        $this->pendingLeadFollowUps = Deal::with('followup', 'leadAgent', 'leadAgent.user', 'leadAgent.user.employeeDetail', 'leadAgent.user.employeeDetail.designation')
-            ->selectRaw('deals.id,leads.company_name, leads.client_name as client_name, deals.agent_id, ( select lead_follow_up.next_follow_up_date from lead_follow_up where lead_follow_up.deal_id = deals.id and DATE(lead_follow_up.next_follow_up_date) < "' . $currentDate . '" ORDER BY lead_follow_up.created_at DESC Limit 1) as follow_up_date_past,
-            ( select lead_follow.next_follow_up_date from lead_follow_up as lead_follow where lead_follow.deal_id = deals.id and status = "incomplete" ORDER BY lead_follow.created_at DESC Limit 1) as follow_up_date_next'
-            )
-            ->leftJoin('leads', 'leads.id', 'deals.lead_id')
-            ->where('deals.next_follow_up', 'yes')
-            ->groupBy('deals.id')
+        $followUpBaseQuery = LeadFollowUp::with(['lead', 'lead.addedBy'])
+            ->whereHas('lead', function ($query) {
+                $query->where('company_id', company()->id)->whereNull('archived_at');
+            })
+            ->where('status', 'pending');
+
+        $this->todaysFollowUpsCount = (clone $followUpBaseQuery)
+            ->whereBetween('next_follow_up_date', [$today->copy()->setTimezone('UTC'), $todayEnd->copy()->setTimezone('UTC')])
+            ->count();
+
+        $this->upcomingFollowUpsCount = (clone $followUpBaseQuery)
+            ->where('next_follow_up_date', '>', $todayEnd->copy()->setTimezone('UTC'))
+            ->count();
+
+        $this->overdueFollowUpsCount = (clone $followUpBaseQuery)
+            ->where('next_follow_up_date', '<', $today->copy()->setTimezone('UTC'))
+            ->count();
+
+        $this->pendingLeadFollowUps = (clone $followUpBaseQuery)
+            ->where('next_follow_up_date', '<=', now($this->company->timezone)->setTimezone('UTC'))
+            ->orderBy('next_follow_up_date')
+            ->limit(15)
             ->get();
-
-        $this->pendingLeadFollowUps = $this->pendingLeadFollowUps->filter(function ($value, $key) {
-            return $value->follow_up_date_past != null && $value->follow_up_date_next == null && $value->followup->status != 'completed';
-        });
 
         $this->projectActivities = ProjectActivity::with('project')
             ->join('projects', 'projects.id', '=', 'project_activity.project_id')

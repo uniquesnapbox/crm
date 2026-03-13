@@ -445,9 +445,13 @@ Route::group(['middleware' => 'auth', 'prefix' => 'account'], function () {
     Route::post('deals/follow-up-update', [DealController::class, 'updateFollow'])->name('deals.follow_up_update');
     Route::post('deals/follow-up-delete/{id}', [DealController::class, 'deleteFollow'])->name('deals.follow_up_delete');
 
-    // Change status
-    Route::post('deals/change-stage', [DealController::class, 'changeStage'])->name('deals.change_stage');
-    Route::post('deals/apply-quick-action', [DealController::class, 'applyQuickAction'])->name('deals.apply_quick_action');
+    // Disabled deal stage flow while lead-first workflow is active.
+    Route::post('deals/change-stage', function () {
+        abort(404);
+    })->name('deals.change_stage');
+    Route::post('deals/apply-quick-action', function () {
+        abort(404);
+    })->name('deals.apply_quick_action');
 
     Route::get('deals/gdpr-consent', [DealController::class, 'consent'])->name('deals.gdpr_consent');
     Route::post('deals/save-deal-consent/{deal}', [DealController::class, 'saveLeadConsent'])->name('deals.save_lead_consent');
@@ -467,25 +471,64 @@ Route::group(['middleware' => 'auth', 'prefix' => 'account'], function () {
     Route::post('deal-notes/apply-quick-action', [DealNoteController::class, 'applyQuickAction'])->name('deal-notes.apply_quick_action');
     Route::resource('deal-notes', DealNoteController::class);
 
-    // deal board routes
-    Route::post('leadboards/collapseColumn', [LeadBoardController::class, 'collapseColumn'])->name('leadboards.collapse_column');
-    Route::post('leadboards/updateIndex', [LeadBoardController::class, 'updateIndex'])->name('leadboards.update_index');
-    Route::get('leadboards/loadMore', [LeadBoardController::class, 'loadMore'])->name('leadboards.load_more');
-    Route::resource('leadboards', LeadBoardController::class);
+    // Disabled deal board routes while lead-first workflow is active.
+    Route::post('leadboards/collapseColumn', function () {
+        abort(404);
+    })->name('leadboards.collapse_column');
+    Route::post('leadboards/updateIndex', function () {
+        abort(404);
+    })->name('leadboards.update_index');
+    Route::get('leadboards/loadMore', function () {
+        abort(404);
+    })->name('leadboards.load_more');
+    Route::get('leadboards', function () {
+        abort(404);
+    })->name('leadboards.index');
+    Route::get('leadboards/create', function () {
+        abort(404);
+    })->name('leadboards.create');
+    Route::post('leadboards', function () {
+        abort(404);
+    })->name('leadboards.store');
+    Route::get('leadboards/{leadboard}', function () {
+        abort(404);
+    })->name('leadboards.show');
+    Route::get('leadboards/{leadboard}/edit', function () {
+        abort(404);
+    })->name('leadboards.edit');
+    Route::match(['put', 'patch'], 'leadboards/{leadboard}', function () {
+        abort(404);
+    })->name('leadboards.update');
+    Route::delete('leadboards/{leadboard}', function () {
+        abort(404);
+    })->name('leadboards.destroy');
 
     Route::post('lead-form/sortFields', [LeadCustomFormController::class, 'sortFields'])->name('lead-form.sortFields');
     Route::resource('lead-form', LeadCustomFormController::class);
 
     Route::group(['prefix' => 'deals'], function () {
-        Route::get('import', [DealController::class, 'importLead'])->name('deals.import');
-        Route::post('import', [DealController::class, 'importStore'])->name('deals.import.store');
-        Route::post('import/process', [DealController::class, 'importProcess'])->name('deals.import.process');
+        Route::get('import', function () {
+            abort(404);
+        })->name('deals.import');
+        Route::post('import', function () {
+            abort(404);
+        })->name('deals.import.store');
+        Route::post('import/process', function () {
+            abort(404);
+        })->name('deals.import.process');
     });
 
     Route::group(['prefix' => 'lead-contact'], function () {
         Route::get('import', [LeadContactController::class, 'importLead'])->name('lead-contact.import');
         Route::post('import', [LeadContactController::class, 'importStore'])->name('lead-contact.import.store');
         Route::post('import/process', [LeadContactController::class, 'importProcess'])->name('lead-contact.import.process');
+        Route::get('{lead}/follow-up/create', [LeadContactController::class, 'followUpCreate'])->name('lead-contact.follow_up');
+        Route::post('follow-up-store', [LeadContactController::class, 'followUpStore'])->name('lead-contact.follow_up_store');
+        Route::get('follow-up-edit/{id}', [LeadContactController::class, 'editFollow'])->name('lead-contact.follow_up_edit');
+        Route::post('follow-up-update', [LeadContactController::class, 'updateFollow'])->name('lead-contact.follow_up_update');
+        Route::post('follow-up-delete/{id}', [LeadContactController::class, 'deleteFollow'])->name('lead-contact.follow_up_delete');
+        Route::post('change-follow-up-status', [LeadContactController::class, 'changeFollowUpStatus'])->name('lead-contact.change_follow_up_status');
+        Route::post('{lead}/convert-to-client', [LeadContactController::class, 'convertToClient'])->name('lead-contact.convert_to_client');
     });
 
     // deals route
@@ -493,10 +536,31 @@ Route::group(['middleware' => 'auth', 'prefix' => 'account'], function () {
     Route::resource('lead-contact', LeadContactController::class);
     Route::post('lead-contact/apply-quick-action', [LeadContactController::class, 'applyQuickAction'])->name('lead-contact.apply_quick_action');
 
-    Route::get('deals/get-stage/{id}', [DealController::class, 'getStages'])->name('deals.get-stage');
-    Route::get('deals/get-deals/{id}', [DealController::class, 'getDeals'])->name('deals.get-deals');
-    Route::get('deals/get-agent/{id}', [DealController::class, 'getAgents'])->name('deals.get_agents');
-    Route::resource('deals', DealController::class);
+    Route::get('deals/get-stage/{id}', function () {
+        abort(404);
+    })->name('deals.get-stage');
+    Route::get('deals/get-deals/{id}', function () {
+        abort(404);
+    })->name('deals.get-deals');
+    Route::get('deals/get-agent/{id}', function () {
+        abort(404);
+    })->name('deals.get_agents');
+    Route::get('deals/create', function () {
+        abort(404);
+    })->name('deals.create');
+    Route::post('deals', function () {
+        abort(404);
+    })->name('deals.store');
+    Route::get('deals/{deal}/edit', function () {
+        abort(404);
+    })->name('deals.edit');
+    Route::match(['put', 'patch'], 'deals/{deal}', function () {
+        abort(404);
+    })->name('deals.update');
+    Route::delete('deals/{deal}', function () {
+        abort(404);
+    })->name('deals.destroy');
+    Route::resource('deals', DealController::class)->only(['index', 'show']);
 
     // leaves files routes
     Route::get('leave-files/download/{id}', [LeaveFileController::class, 'download'])->name('leave-files.download');

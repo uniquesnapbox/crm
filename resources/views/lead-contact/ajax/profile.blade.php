@@ -16,6 +16,13 @@
             @endphp
 
             <div class="col-12 px-0 pb-3 d-flex flex-wrap">
+                @if (!$leadContact->client_id)
+                    <button type="button" class="btn btn-primary rounded f-14 p-2 mr-2 mb-2 convert-lead-to-client"
+                        data-url="{{ route('lead-contact.convert_to_client', $leadContact->id) }}">
+                        <i class="fa fa-user-check mr-1"></i>@lang('modules.lead.changeToClient')
+                    </button>
+                @endif
+
                 @if ($callUrl)
                     <x-forms.link-secondary class="mr-2 mb-2" :link="$callUrl" icon="phone">Call</x-forms.link-secondary>
                 @else
@@ -63,14 +70,20 @@
                                 </a>
                         @endif
                         @if ($leadContact->client_id == null || $leadContact->client_id == '')
-                            <a class="dropdown-item" href="{{route('clients.create') . '?lead=' . $leadContact->id }}">
+                            <a class="dropdown-item convert-lead-to-client" href="javascript:;"
+                               data-url="{{ route('lead-contact.convert_to_client', $leadContact->id) }}">
                                 @lang('modules.lead.changeToClient')
+                            </a>
+                            <a class="dropdown-item convert-lead-to-client" href="javascript:;"
+                               data-url="{{ route('lead-contact.convert_to_client', $leadContact->id) }}"
+                               data-archive="1">
+                                @lang('modules.lead.changeToClient') &amp; Archive
                             </a>
                         @endif
                     </div>
                 </div>
             </x-slot>
-            <x-cards.data-row :label="__('app.name')" :value="$leadContact->client_name_salutation ?? '--'" />
+            <x-cards.data-row :label="__('app.name')" :value="$leadContact->client_name ?? '--'" />
 
             <x-cards.data-row :label="__('app.email')" :value="$leadContact->client_email ?? '--'" />
 
@@ -114,3 +127,42 @@
     <!--  USER CARDS END -->
 </div>
 <!-- ROW END -->
+<script>
+    $('body').off('click.convertLead').on('click.convertLead', '.convert-lead-to-client', function() {
+        const url = $(this).data('url');
+        const archive = $(this).data('archive') ? 1 : 0;
+
+        Swal.fire({
+            title: "@lang('modules.lead.changeToClient')",
+            text: "This will create a client from the current lead.",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: "@lang('modules.lead.changeToClient')",
+            cancelButtonText: "@lang('app.cancel')",
+            customClass: {
+                confirmButton: 'btn btn-primary mr-3',
+                cancelButton: 'btn btn-secondary'
+            },
+            buttonsStyling: false
+        }).then((result) => {
+            if (!result.isConfirmed) {
+                return;
+            }
+
+            $.easyAjax({
+                url: url,
+                type: 'POST',
+                blockUI: true,
+                data: {
+                    _token: "{{ csrf_token() }}",
+                    archive: archive
+                },
+                success: function(response) {
+                    if (response.status === 'success' && response.redirectUrl) {
+                        window.location.href = response.redirectUrl;
+                    }
+                }
+            });
+        });
+    });
+</script>

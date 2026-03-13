@@ -3,7 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\EmailNotificationSetting;
-use App\Models\DealFollowUp;
+use App\Models\LeadFollowUp;
 
 class AutoFollowUpReminder extends BaseNotification
 {
@@ -16,7 +16,7 @@ class AutoFollowUpReminder extends BaseNotification
     private $leadFollowup;
     private $emailSetting;
 
-    public function __construct(DealFollowUp $leadFollowup)
+    public function __construct(LeadFollowUp $leadFollowup)
     {
         $this->leadFollowup = $leadFollowup;
         $this->company = $leadFollowup->lead->company;
@@ -49,7 +49,7 @@ class AutoFollowUpReminder extends BaseNotification
     public function toMail($notifiable)
     {
         $build = parent::build();
-        $url = route('deals.show', $this->leadFollowup->lead->id) . '?tab=follow-up';
+        $url = route('lead-contact.show', $this->leadFollowup->lead->id) . '?tab=follow-up';
 
         $url = getDomainSpecificUrl($url, $this->company);
 

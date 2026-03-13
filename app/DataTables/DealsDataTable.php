@@ -62,7 +62,7 @@ class DealsDataTable extends BaseDataTable
 
         $datatables = datatables()->eloquent($query);
         $datatables->addIndexColumn();
-        $datatables->addColumn('check', fn($row) => $this->checkBox($row));
+        $datatables->addColumn('check', fn($row) => $this->isArchiveView() ? '' : $this->checkBox($row));
         $datatables->addColumn('export_deal_watcher', fn($row) => $row->dealWatcher->name ?? '--');
         $datatables->addColumn('action', function ($row) {
             $action = '<div class="task_view">
@@ -76,31 +76,31 @@ class DealsDataTable extends BaseDataTable
 
             $action .= '<a href="' . route('deals.show', [$row->id]) . '" class="dropdown-item"><i class="fa fa-eye mr-2"></i>' . __('app.view') . '</a>';
 
-            if (
+            if (!$this->isArchiveView() && (
                 $this->editLeadPermission == 'all'
                 || ($this->editLeadPermission == 'added' && user()->id == $row->added_by)
                 || ($this->editLeadPermission == 'owned' && ((!is_null($row->agent_id) && !is_null($row->leadAgent) && user()->id == $row->leadAgent->user->id) || (!is_null($row->deal_watcher) && user()->id == $row->deal_watcher)))
                 || ($this->editLeadPermission == 'both' && (((!is_null($row->agent_id) && !is_null($row->leadAgent) && user()->id == $row->leadAgent->user->id) || (!is_null($row->deal_watcher) && user()->id == $row->deal_watcher)) || user()->id == $row->added_by))
-            ) {
+            )) {
                 $action .= '<a class="dropdown-item openRightModal" href="' . route('deals.edit', [$row->id]) . '">
                                 <i class="fa fa-edit mr-2"></i>
                                 ' . trans('app.edit') . '
                             </a>';
             }
 
-            if (
+            if (!$this->isArchiveView() && (
                 $this->deleteLeadPermission == 'all'
                 || ($this->deleteLeadPermission == 'added' && user()->id == $row->added_by)
                 || ($this->deleteLeadPermission == 'owned' && ((!is_null($row->agent_id) && !is_null($row->leadAgent) && user()->id == $row->leadAgent->user->id) || (!is_null($row->deal_watcher) && user()->id == $row->deal_watcher)))
                 || ($this->deleteLeadPermission == 'both' && (((!is_null($row->agent_id) && !is_null($row->leadAgent) && user()->id == $row->leadAgent->user->id) || (!is_null($row->deal_watcher) && user()->id == $row->deal_watcher)) || user()->id == $row->added_by))
-            ) {
+            )) {
                 $action .= '<a class="dropdown-item delete-table-row" href="javascript:;" data-id="' . $row->id . '">
                         <i class="fa fa-trash mr-2"></i>
                         ' . trans('app.delete') . '
                     </a>';
             }
 
-            if (($this->addFollowUpPermission == 'all' || ($this->addFollowUpPermission == 'added' && user()->id == $row->added_by)) && $row->next_follow_up == 'yes') {
+            if (!$this->isArchiveView() && (($this->addFollowUpPermission == 'all' || ($this->addFollowUpPermission == 'added' && user()->id == $row->added_by)) && $row->next_follow_up == 'yes')) {
                 $action .= '<a onclick="followUp(' . $row->id . ')" class="dropdown-item" href="javascript:;">
                                 <i class="fa fa-thumbs-up mr-2"></i>
                                 ' . trans('modules.lead.addFollowUp') . '
@@ -133,7 +133,7 @@ class DealsDataTable extends BaseDataTable
                 });
             }
 
-            if ($this->changeLeadStatusPermission == 'all') {
+            if (!$this->isArchiveView() && $this->changeLeadStatusPermission == 'all') {
 
                 $statusLi = '--';
 
@@ -482,6 +482,11 @@ class DealsDataTable extends BaseDataTable
 
         return array_merge($data, CustomFieldGroup::customFieldsDataMerge(new Deal()), $action);
 
+    }
+
+    private function isArchiveView(): bool
+    {
+        return request()->routeIs('deals.index');
     }
 
 }

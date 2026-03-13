@@ -2,10 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\DataTables\DealsDataTable;
+use App\DataTables\LeadFollowupDataTable;
 use App\DataTables\LeadContactDataTable;
 use App\DataTables\LeadNotesDataTable;
-use App\Enums\Salutation;
 use App\Helper\Reply;
 use App\Http\Requests\Admin\Employee\ImportProcessRequest;
 use App\Http\Requests\Admin\Employee\ImportRequest;
@@ -13,18 +12,22 @@ use App\Http\Requests\Lead\StoreRequest;
 use App\Http\Requests\Lead\UpdateRequest;
 use App\Imports\LeadImport;
 use App\Jobs\ImportLeadJob;
+use App\Models\ClientNote;
 use App\Models\LeadAgent;
 use App\Models\LeadCategory;
 use App\Models\Lead;
 use App\Models\LeadCustomForm;
-use App\Models\LeadPipeline;
+use App\Models\LeadFollowUp;
 use App\Models\LeadSource;
-use App\Models\PipelineStage;
 use App\Models\LeadStatus;
 use App\Models\Product;
+use App\Models\Role;
 use App\Models\User;
 use App\Traits\ImportExcel;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class LeadContactController extends AccountBaseController
 {
@@ -60,7 +63,7 @@ class LeadContactController extends AccountBaseController
 
     public function show($id)
     {
-        $this->leadContact = Lead::findOrFail($id)->withCustomFields();
+        $this->leadContact = Lead::with(['leadSource', 'category', 'addedBy', 'followUps', 'latestFollowUp'])->findOrFail($id)->withCustomFields();
 
         $this->viewPermission = user()->permission('view_lead');
 
@@ -83,8 +86,8 @@ class LeadContactController extends AccountBaseController
         $tab = request('tab');
 
         switch ($tab) {
-        case 'deal':
-            return $this->deals();
+        case 'follow-up':
+            return $this->followUps();
         case 'notes':
             return $this->notes();
         default:
@@ -105,9 +108,9 @@ class LeadContactController extends AccountBaseController
     public function notes()
     {
         $dataTable = new LeadNotesDataTable();
-        $viewPermission = user()->permission('view_deals');
+        $viewPermission = user()->permission('view_lead_note');
 
-        abort_403(!($viewPermission == 'all' || $viewPermission == 'added' || $viewPermission == 'both'));
+        abort_403(!in_array($viewPermission, ['all', 'added', 'both', 'owned']));
 
         $tab = request('tab');
         $this->activeTab = $tab ?: 'profile';
@@ -117,26 +120,17 @@ class LeadContactController extends AccountBaseController
         return $dataTable->render('lead-contact.show', $this->data);
     }
 
-    public function deals()
+    public function followUps()
     {
-        $viewPermission = user()->permission('view_deals');
+        $viewPermission = user()->permission('view_lead_follow_up');
 
         abort_403(!in_array($viewPermission, ['all', 'added', 'both', 'owned']));
 
         $tab = request('tab');
-        $this->pipelines = LeadPipeline::all();
-
-        $defaultPipeline = $this->pipelines->filter(function ($value, $key) {
-            return $value->default == 1;
-        })->first();
-
-        $this->stages = PipelineStage::where('lead_pipeline_id', $defaultPipeline->id)->get();
-
         $this->activeTab = $tab ?: 'profile';
-        $this->view = 'lead-contact.ajax.deal';
-        $dataTable = new DealsDataTable();
+        $this->view = 'lead-contact.ajax.follow-up';
 
-        return $dataTable->render('lead-contact.show', $this->data);
+        return (new LeadFollowupDataTable())->render('lead-contact.show', $this->data);
     }
 
     /**
@@ -381,6 +375,257 @@ class LeadContactController extends AccountBaseController
         Lead::whereIn('id', explode(',', $request->row_ids))->delete();
 
         return Reply::success(__('messages.deleteSuccess'));
+    }
+
+    public function followUpCreate($leadId)
+    {
+        $this->addFollowUpPermission = user()->permission('add_lead_follow_up');
+        abort_403(!in_array($this->addFollowUpPermission, ['all', 'added']));
+
+        $this->leadContact = Lead::findOrFail($leadId);
+        $this->leadId = $leadId;
+
+        return view('lead-contact.followups.create', $this->data);
+    }
+
+    public function followUpStore(Request $request)
+    {
+        $this->addFollowUpPermission = user()->permission('add_lead_follow_up');
+        abort_403(!in_array($this->addFollowUpPermission, ['all', 'added']));
+
+        $lead = Lead::findOrFail($request->lead_id);
+
+        $request->validate([
+            'lead_id' => 'required|exists:leads,id',
+            'next_follow_up_date' => 'required|date_format:"' . company()->date_format . '"',
+            'start_time' => 'required',
+            'remind_time' => 'nullable|required_if:send_reminder,yes|integer|min:1',
+            'remind_type' => 'nullable|in:minute,hour,day',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
+        ]);
+
+        $followUp = new LeadFollowUp();
+        $followUp->lead_id = $lead->id;
+        $followUp->remark = trim_editor($request->remark);
+        $followUp->next_follow_up_date = Carbon::createFromFormat(
+            company()->date_format . ' ' . company()->time_format,
+            $request->next_follow_up_date . ' ' . $request->start_time,
+            company()->timezone
+        )->setTimezone('UTC');
+        $followUp->send_reminder = $request->send_reminder === 'yes' ? 'yes' : 'no';
+        $followUp->remind_time = $request->send_reminder === 'yes' ? $request->remind_time : null;
+        $followUp->remind_type = $request->send_reminder === 'yes' ? $request->remind_type : null;
+        $followUp->status = 'pending';
+        $followUp->latitude = $request->latitude;
+        $followUp->longitude = $request->longitude;
+        $followUp->added_by = user()->id;
+        $followUp->last_updated_by = user()->id;
+        $followUp->save();
+
+        $lead->next_follow_up = 'yes';
+        $lead->save();
+
+        return Reply::success(__('messages.recordSaved'));
+    }
+
+    public function editFollow($id)
+    {
+        $this->editFollowUpPermission = user()->permission('edit_lead_follow_up');
+        $this->follow = LeadFollowUp::with('lead')->findOrFail($id);
+
+        abort_403(!($this->editFollowUpPermission == 'all'
+            || ($this->editFollowUpPermission == 'added' && $this->follow->added_by == user()->id)
+            || ($this->editFollowUpPermission == 'owned' && optional($this->follow->lead)->added_by == user()->id)
+            || ($this->editFollowUpPermission == 'both' && ($this->follow->added_by == user()->id || optional($this->follow->lead)->added_by == user()->id))
+        ));
+
+        return view('lead-contact.followups.edit', $this->data);
+    }
+
+    public function updateFollow(Request $request)
+    {
+        $this->editFollowUpPermission = user()->permission('edit_lead_follow_up');
+        $followUp = LeadFollowUp::with('lead')->findOrFail($request->id);
+
+        abort_403(!($this->editFollowUpPermission == 'all'
+            || ($this->editFollowUpPermission == 'added' && $followUp->added_by == user()->id)
+            || ($this->editFollowUpPermission == 'owned' && optional($followUp->lead)->added_by == user()->id)
+            || ($this->editFollowUpPermission == 'both' && ($followUp->added_by == user()->id || optional($followUp->lead)->added_by == user()->id))
+        ));
+
+        $request->validate([
+            'next_follow_up_date' => 'required|date_format:"' . company()->date_format . '"',
+            'start_time' => 'required',
+            'remind_time' => 'nullable|required_if:send_reminder,yes|integer|min:1',
+            'remind_type' => 'nullable|in:minute,hour,day',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
+            'status' => 'required|in:pending,canceled,completed',
+        ]);
+
+        $followUp->remark = trim_editor($request->remark);
+        $followUp->next_follow_up_date = Carbon::createFromFormat(
+            company()->date_format . ' ' . company()->time_format,
+            $request->next_follow_up_date . ' ' . $request->start_time,
+            company()->timezone
+        )->setTimezone('UTC');
+        $followUp->send_reminder = $request->send_reminder === 'yes' ? 'yes' : 'no';
+        $followUp->remind_time = $request->send_reminder === 'yes' ? $request->remind_time : null;
+        $followUp->remind_type = $request->send_reminder === 'yes' ? $request->remind_type : null;
+        $followUp->status = $request->status;
+        $followUp->latitude = $request->latitude;
+        $followUp->longitude = $request->longitude;
+        $followUp->last_updated_by = user()->id;
+        $followUp->save();
+        $this->syncLeadFollowUpFlag($followUp->lead_id);
+
+        return Reply::success(__('messages.updateSuccess'));
+    }
+
+    public function deleteFollow($id)
+    {
+        $this->deleteFollowUpPermission = user()->permission('delete_lead_follow_up');
+        $followUp = LeadFollowUp::with('lead')->findOrFail($id);
+
+        abort_403(!($this->deleteFollowUpPermission == 'all'
+            || ($this->deleteFollowUpPermission == 'added' && $followUp->added_by == user()->id)
+            || ($this->deleteFollowUpPermission == 'owned' && optional($followUp->lead)->added_by == user()->id)
+            || ($this->deleteFollowUpPermission == 'both' && ($followUp->added_by == user()->id || optional($followUp->lead)->added_by == user()->id))
+        ));
+
+        $leadId = $followUp->lead_id;
+        $followUp->delete();
+
+        $this->syncLeadFollowUpFlag($leadId);
+
+        return Reply::success(__('messages.deleteSuccess'));
+    }
+
+    public function changeFollowUpStatus(Request $request)
+    {
+        $this->editFollowUpPermission = user()->permission('edit_lead_follow_up');
+        $followUp = LeadFollowUp::with('lead')->findOrFail($request->id);
+
+        abort_403(!($this->editFollowUpPermission == 'all'
+            || ($this->editFollowUpPermission == 'added' && $followUp->added_by == user()->id)
+            || ($this->editFollowUpPermission == 'owned' && optional($followUp->lead)->added_by == user()->id)
+            || ($this->editFollowUpPermission == 'both' && ($followUp->added_by == user()->id || optional($followUp->lead)->added_by == user()->id))
+        ));
+
+        $followUp->status = $request->status;
+        $followUp->last_updated_by = user()->id;
+        $followUp->save();
+
+        $this->syncLeadFollowUpFlag($followUp->lead_id);
+
+        return Reply::success(__('messages.leadStatusChangeSuccess'));
+    }
+
+    public function convertToClient(Request $request, $id)
+    {
+        $lead = Lead::findOrFail($id);
+        $this->addClientPermission = user()->permission('add_clients');
+        abort_403(!in_array($this->addClientPermission, User::ALL_ADDED_BOTH));
+
+        if ($lead->client_id) {
+            return Reply::successWithData(__('messages.recordSaved'), ['redirectUrl' => route('clients.show', $lead->client_id)]);
+        }
+
+        $clientUser = null;
+
+        DB::transaction(function () use ($lead, $request, &$clientUser) {
+            $clientUser = null;
+
+            if (!empty($lead->client_email)) {
+                $clientUser = User::withoutGlobalScope(\App\Scopes\ActiveScope::class)
+                    ->where('company_id', company()->id)
+                    ->where('email', $lead->client_email)
+                    ->whereHas('roles', fn($query) => $query->where('name', 'client'))
+                    ->first();
+            }
+
+            if (!$clientUser) {
+                $email = null;
+
+                if (!empty($lead->client_email)) {
+                    $emailExists = User::withoutGlobalScope(\App\Scopes\ActiveScope::class)
+                        ->where('company_id', company()->id)
+                        ->where('email', $lead->client_email)
+                        ->exists();
+                    $email = $emailExists ? null : $lead->client_email;
+                }
+
+                $country = collect(countries())->first(function ($item) use ($lead) {
+                    return strtolower($item->nicename) === strtolower((string) $lead->country);
+                });
+
+                $clientUser = User::create([
+                    'company_id' => company()->id,
+                    'name' => $lead->client_name,
+                    'email' => $email,
+                    'password' => bcrypt(Str::random(24)),
+                    'mobile' => $lead->mobile,
+                    'country_id' => $country?->id,
+                    'country_phonecode' => $country?->phonecode,
+                    'locale' => user()->locale ?? 'en',
+                    'status' => 'active',
+                    'login' => 'disable',
+                    'email_notifications' => 0,
+                    'added_by' => user()->id,
+                ]);
+
+                $role = Role::where('name', 'client')->where('company_id', company()->id)->first()
+                    ?? Role::where('name', 'client')->first();
+
+                if ($role) {
+                    $clientUser->attachRole($role->id);
+                    $clientUser->assignUserRolePermission($role->id);
+                }
+
+                $clientUser->clientDetails()->create([
+                    'company_id' => company()->id,
+                    'company_name' => $lead->company_name,
+                    'address' => $lead->address,
+                    'office' => $lead->office,
+                    'website' => $lead->website,
+                    'note' => $lead->note,
+                    'category_id' => $lead->category_id,
+                    'added_by' => user()->id,
+                    'user_id' => $clientUser->id,
+                ]);
+
+                if (!empty(trim(strip_tags((string) $lead->note)))) {
+                    ClientNote::create([
+                        'title' => 'Lead Conversion Note',
+                        'client_id' => $clientUser->id,
+                        'details' => trim_editor($lead->note),
+                    ]);
+                }
+            }
+
+            $lead->client_id = $clientUser->id;
+            $lead->converted_at = now();
+
+            if ($request->boolean('archive')) {
+                $lead->archived_at = now();
+            }
+
+            $lead->save();
+        });
+
+        return Reply::successWithData(__('messages.recordSaved'), ['redirectUrl' => route('clients.show', $clientUser->id)]);
+    }
+
+    private function syncLeadFollowUpFlag(int $leadId): void
+    {
+        $hasPendingFollowUps = LeadFollowUp::where('lead_id', $leadId)
+            ->where('status', 'pending')
+            ->exists();
+
+        Lead::whereKey($leadId)->update([
+            'next_follow_up' => $hasPendingFollowUps ? 'yes' : 'no',
+        ]);
     }
 
     public function importLead()
