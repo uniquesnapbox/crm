@@ -118,8 +118,13 @@ use App\Http\Controllers\ProjectTemplateMemberController;
 use App\Http\Controllers\ProjectTemplateSubTaskController;
 use App\Http\Controllers\EmployeeShiftChangeRequestController;
 use App\Http\Controllers\LeadContactController;
+use App\Http\Controllers\LiveTrackingController;
 use App\Http\Controllers\PipelineController;
 use App\Models\AttendanceSetting;
+
+Route::group(['middleware' => 'auth', 'prefix' => 'admin'], function () {
+    Route::get('live-tracking', [LiveTrackingController::class, 'index'])->name('admin.live-tracking');
+});
 
 Route::group(['middleware' => 'auth', 'prefix' => 'account'], function () {
     Route::post('image/upload', [ImageController::class, 'store'])->name('image.store');

@@ -180,6 +180,7 @@ return array(
         'timeLogs' => 'Timesheet',
         'tasks' => 'Tasks',
         'attendance' => 'Attendance',
+        'liveTracking' => 'Live Tracking',
         'estimates' => 'Estimates',
         'expenses' => 'Expenses',
         'leaves' => 'Leaves',
