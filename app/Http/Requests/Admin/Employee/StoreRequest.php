@@ -4,6 +4,7 @@ namespace App\Http\Requests\Admin\Employee;
 
 use App\Http\Requests\CoreRequest;
 use App\Traits\CustomFieldsRequestTrait;
+use Illuminate\Validation\Rule;
 
 class StoreRequest extends CoreRequest
 {
@@ -30,7 +31,12 @@ class StoreRequest extends CoreRequest
         $rules = [
             'employee_id' => 'required|unique:employee_details,employee_id,null,id,company_id,' . company()->id.'|max:100',
             'name' => 'required|max:50',
-            'email' => 'required|email:rfc,strict|unique:users,email,null,id,company_id,' . company()->id.'|max:100',
+            'email' => [
+                'required',
+                'email:rfc,strict',
+                'max:100',
+                Rule::unique('users', 'email')->where('company_id', company()->id),
+            ],
             'password' => 'required|min:8|max:50',
             'slack_username' => 'nullable|unique:employee_details,slack_username,null,id,company_id,' . company()->id.'|max:30',
             'hourly_rate' => 'nullable|numeric',
@@ -53,6 +59,13 @@ class StoreRequest extends CoreRequest
         $rules = $this->customFieldRules($rules);
 
         return $rules;
+    }
+
+    public function messages()
+    {
+        return [
+            'email.unique' => __('messages.employeeEmailAlreadyExists'),
+        ];
     }
 
     public function attributes()

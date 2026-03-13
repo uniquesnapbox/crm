@@ -6,6 +6,7 @@ use App\Models\Company;
 use App\Models\PushNotificationSetting;
 use Barryvdh\LaravelIdeHelper\IdeHelperServiceProvider;
 use Carbon\CarbonInterval;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -41,7 +42,18 @@ class AppServiceProvider extends ServiceProvider
         }
 
         Schema::defaultStringLength(191);
-        View::share('pushSetting', PushNotificationSetting::first());
+        $pushSetting = null;
+
+        try {
+            if (Schema::hasTable('push_notification_settings')) {
+                $pushSetting = DB::table('push_notification_settings')->first();
+            }
+        }
+        // @codingStandardsIgnoreLine
+        catch (\Exception $e) {
+        }
+
+        View::share('pushSetting', $pushSetting);
         View::share('pageTitle', 'USB CRM');
 
         if (app()->environment('development')) {
