@@ -72,10 +72,13 @@ return [
 
 
     'whatsapp' => [
-        'driver'   => env('WHATSAPP_DRIVER', 'log'),
-        'user'     => env('WHATSAPP_USER', ''),
-        'password' => env('WHATSAPP_PASSWORD', ''),
-        'sender'   => env('WHATSAPP_SENDER', ''),
+        'driver'       => env('WHATSAPP_DRIVER', 'log'),
+        'api_url'      => env('WHATSAPP_API_URL', 'https://bhashsms.com/api/sendmsgutil.php'),
+        'user'         => env('WHATSAPP_API_USER', ''),
+        'password'     => env('WHATSAPP_API_PASS', ''),
+        'sender'       => env('WHATSAPP_API_SENDER', ''),
+        'timeout'      => env('WHATSAPP_API_TIMEOUT', 25),
+        'otp_template' => env('WHATSAPP_OTP_TEMPLATE_NAME', 'auth_uniq'),
     ],
 
 
