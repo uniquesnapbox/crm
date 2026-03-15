@@ -58,12 +58,26 @@ class CalendarController extends AccountBaseController
             }
 
             $followUpAt = $followup->next_follow_up_date?->timezone(company()->timezone);
+            $today = now(company()->timezone)->startOfDay();
+            $followUpDay = $followUpAt?->copy()->startOfDay();
+
+            $color = '#0ea5a4';
+
+            if ($followUpDay && $followUpDay->lt($today)) {
+                $color = '#dc2626';
+            }
+            elseif ($followUpDay && $followUpDay->equalTo($today)) {
+                $color = '#f97316';
+            }
+            elseif ($followUpDay) {
+                $color = '#2563eb';
+            }
 
             $events[] = [
                 'id' => 'fup-' . $followup->id,
                 'title' => $followup->lead->client_name,
                 'start' => $followUpAt?->toIso8601String(),
-                'color' => '#F97316',
+                'color' => $color,
                 'allDay' => false,
                 'extendedProps' => [
                     'type' => 'followup',
@@ -71,8 +85,12 @@ class CalendarController extends AccountBaseController
                     'followup_id' => $followup->id,
                     'followup_date' => $followUpAt?->format(company()->date_format),
                     'reminder_time' => $followUpAt?->format(company()->time_format),
+                    'note' => trim(strip_tags((string) $followup->remark)) ?: '--',
                     'latitude' => $followup->latitude,
                     'longitude' => $followup->longitude,
+                    'maps_url' => ($followup->latitude && $followup->longitude)
+                        ? 'https://www.google.com/maps/search/?api=1&query=' . $followup->latitude . ',' . $followup->longitude
+                        : null,
                     'redirect_url' => route('lead-contact.show', [$followup->lead_id]) . '?tab=follow-up',
                 ],
             ];
