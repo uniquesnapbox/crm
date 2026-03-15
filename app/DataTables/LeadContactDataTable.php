@@ -11,6 +11,7 @@ use App\Models\Lead;
 use Yajra\DataTables\Html\Button;
 use Yajra\DataTables\Html\Column;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class LeadContactDataTable extends BaseDataTable
 {
@@ -163,6 +164,22 @@ class LeadContactDataTable extends BaseDataTable
             )
             ->leftJoin('lead_sources', 'lead_sources.id', 'leads.source_id');
         $leadContact = $leadContact->whereNull('leads.archived_at');
+
+        if (!in_array('admin', user_roles())) {
+            $leadContact = $leadContact->where(function ($query) {
+                $query->where('leads.added_by', user()->id);
+
+                if (Schema::hasColumn('leads', 'agent_id')) {
+                    $query->orWhereExists(function ($assignedQuery) {
+                        $assignedQuery->select(DB::raw(1))
+                            ->from('lead_agents')
+                            ->whereColumn('lead_agents.id', 'leads.agent_id')
+                            ->where('lead_agents.user_id', user()->id);
+                    });
+                }
+            });
+        }
+
         if ($this->request()->type != 'all' && $this->request()->type != '') {
 
             if ($this->request()->type == 'lead') {

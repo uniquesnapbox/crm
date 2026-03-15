@@ -27,6 +27,7 @@ use App\Traits\ImportExcel;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class LeadContactController extends AccountBaseController
@@ -49,7 +50,7 @@ class LeadContactController extends AccountBaseController
     {
         $this->viewLeadPermission = $viewPermission = user()->permission('view_lead');
 
-        abort_403(!in_array($viewPermission, ['all']));
+        abort_403(!in_array($viewPermission, ['all', 'added', 'owned', 'both']));
 
         if (!request()->ajax()) {
             $this->categories = LeadCategory::get();
@@ -67,7 +68,7 @@ class LeadContactController extends AccountBaseController
 
         $this->viewPermission = user()->permission('view_lead');
 
-        abort_403(!($this->viewPermission == 'all'));
+        abort_403(!($this->viewPermission == 'all' && $this->isAdminUser()) && !$this->canAccessLead($this->leadContact));
 
         $this->pageTitle = $this->leadContact->client_name; // removed salutation
 
@@ -264,6 +265,8 @@ class LeadContactController extends AccountBaseController
 
         $this->editPermission = user()->permission('edit_lead');
 
+        abort_403(!$this->canAccessLead($this->leadContact));
+
         abort_403(!($this->editPermission == 'all'
             || ($this->editPermission == 'added' && $this->leadContact->added_by == user()->id)
             || ($this->editPermission == 'owned' && $this->leadContact->added_by == user()->id)
@@ -308,6 +311,8 @@ class LeadContactController extends AccountBaseController
     {
         $leadContact = Lead::findOrFail($id);
         $this->editPermission = user()->permission('edit_lead');
+
+        abort_403(!$this->canAccessLead($leadContact));
 
         abort_403(!($this->editPermission == 'all'
             || ($this->editPermission == 'added' && $leadContact->added_by == user()->id)
@@ -357,6 +362,8 @@ class LeadContactController extends AccountBaseController
         $leadContact = Lead::findOrFail($id);
         $this->deletePermission = user()->permission('delete_lead');
 
+        abort_403(!$this->canAccessLead($leadContact));
+
         abort_403(!($this->deletePermission == 'all'
             || ($this->deletePermission == 'added' && $leadContact->added_by == user()->id)
             || ($this->deletePermission == 'owned' && $leadContact->added_by == user()->id)
@@ -372,7 +379,22 @@ class LeadContactController extends AccountBaseController
 
     public function applyQuickAction(Request $request)
     {
-        Lead::whereIn('id', explode(',', $request->row_ids))->delete();
+        $leadIds = array_filter(explode(',', $request->row_ids));
+        $query = Lead::whereIn('id', $leadIds);
+
+        if (!$this->isAdminUser()) {
+            $query->where(function ($builder) {
+                $builder->where('added_by', user()->id);
+
+                if (Schema::hasColumn('leads', 'agent_id')) {
+                    $builder->orWhereHas('leadAgent', function ($agentQuery) {
+                        $agentQuery->where('user_id', user()->id);
+                    });
+                }
+            });
+        }
+
+        $query->delete();
 
         return Reply::success(__('messages.deleteSuccess'));
     }
@@ -383,6 +405,7 @@ class LeadContactController extends AccountBaseController
         abort_403(!in_array($this->addFollowUpPermission, ['all', 'added']));
 
         $this->leadContact = Lead::findOrFail($leadId);
+        abort_403(!$this->canAccessLead($this->leadContact));
         $this->leadId = $leadId;
 
         return view('lead-contact.followups.create', $this->data);
@@ -394,6 +417,7 @@ class LeadContactController extends AccountBaseController
         abort_403(!in_array($this->addFollowUpPermission, ['all', 'added']));
 
         $lead = Lead::findOrFail($request->lead_id);
+        abort_403(!$this->canAccessLead($lead));
 
         $request->validate([
             'lead_id' => 'required|exists:leads,id',
@@ -526,6 +550,7 @@ class LeadContactController extends AccountBaseController
     {
         $lead = Lead::findOrFail($id);
         $this->addClientPermission = user()->permission('add_clients');
+        abort_403(!$this->canAccessLead($lead));
         abort_403(!in_array($this->addClientPermission, User::ALL_ADDED_BOTH));
 
         if ($lead->client_id) {
@@ -626,6 +651,28 @@ class LeadContactController extends AccountBaseController
         Lead::whereKey($leadId)->update([
             'next_follow_up' => $hasPendingFollowUps ? 'yes' : 'no',
         ]);
+    }
+
+    private function isAdminUser(): bool
+    {
+        return in_array('admin', user_roles());
+    }
+
+    private function canAccessLead(Lead $lead): bool
+    {
+        if ($this->isAdminUser()) {
+            return true;
+        }
+
+        if ((int) $lead->added_by === (int) user()->id) {
+            return true;
+        }
+
+        if (!Schema::hasColumn('leads', 'agent_id')) {
+            return false;
+        }
+
+        return (int) optional($lead->leadAgent)->user_id === (int) user()->id;
     }
 
     public function importLead()
