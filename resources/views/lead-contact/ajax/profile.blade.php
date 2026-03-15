@@ -62,9 +62,9 @@
                         @if (
                             $deleteLeadPermission == 'all'
                             || ($deleteLeadPermission == 'added' && user()->id == $leadContact->added_by)
-                            || ($deleteLeadPermission == 'owned' && user()->id == $leadContact->added_by)
-                            || ($deleteLeadPermission == 'both' && user()->id == $leadContact->added_by
-                                    || user()->id == $leadContact->added_by))
+                            || ($deleteLeadPermission == 'owned' && user()->id == $leadContact->assigned_to)
+                            || ($deleteLeadPermission == 'both' && (user()->id == $leadContact->added_by
+                                    || user()->id == $leadContact->assigned_to)))
                             <a class="dropdown-item delete-table-row" href="javascript:;" data-id="{{ $leadContact->id }}">
                                     @lang('app.delete')
                                 </a>
@@ -93,6 +93,16 @@
                         @lang('app.addedBy')</p>
                     <p class="mb-0 text-dark-grey f-14 ">
                         <x-employee :user="$leadContact->addedBy" />
+                    </p>
+                </div>
+            @endif
+
+            @if(!is_null($leadContact->assigned_to))
+                <div class="col-12 px-0 pb-3 d-block d-lg-flex d-md-flex">
+                    <p class="mb-0 text-lightest f-14 w-30 d-inline-block text-capitalize">
+                        @lang('modules.tasks.assignTo')</p>
+                    <p class="mb-0 text-dark-grey f-14 ">
+                        <x-employee :user="$leadContact->assignedTo" />
                     </p>
                 </div>
             @endif

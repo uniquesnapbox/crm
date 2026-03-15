@@ -13,7 +13,6 @@ use App\Http\Requests\Lead\UpdateRequest;
 use App\Imports\LeadImport;
 use App\Jobs\ImportLeadJob;
 use App\Models\ClientNote;
-use App\Models\LeadAgent;
 use App\Models\LeadCategory;
 use App\Models\Lead;
 use App\Models\LeadCustomForm;
@@ -27,7 +26,6 @@ use App\Traits\ImportExcel;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class LeadContactController extends AccountBaseController
@@ -64,7 +62,7 @@ class LeadContactController extends AccountBaseController
 
     public function show($id)
     {
-        $this->leadContact = Lead::with(['leadSource', 'category', 'addedBy', 'followUps', 'latestFollowUp'])->findOrFail($id)->withCustomFields();
+        $this->leadContact = Lead::with(['leadSource', 'category', 'addedBy', 'assignedTo', 'followUps', 'latestFollowUp'])->findOrFail($id)->withCustomFields();
 
         $this->viewPermission = user()->permission('view_lead');
 
@@ -146,23 +144,12 @@ class LeadContactController extends AccountBaseController
         $this->addPermission = user()->permission('add_lead');
         abort_403(!in_array($this->addPermission, ['all', 'added']));
 
-        if ($this->addPermission == 'all') {
+        if ($this->shouldLoadLeadEmployees()) {
             $this->employees = User::allEmployees();
         }
 
         $defaultStatus = LeadStatus::where('default', '1')->first();
         $this->columnId = ((request('column_id') != '') ? request('column_id') : $defaultStatus->id);
-        $this->leadAgents = LeadAgent::with('user')->whereHas('user', function ($q) {
-            $q->where('status', 'active');
-        })->get();
-
-        $this->leadAgentArray = $this->leadAgents->pluck('user_id')->toArray();
-
-        if ((in_array(user()->id, $this->leadAgentArray))) {
-            $this->myAgentId = $this->leadAgents->filter(function ($value, $key) {
-                return $value->user_id == user()->id;
-            })->first()->id;
-        }
 
         $leadContact = new Lead();
 
@@ -223,6 +210,7 @@ class LeadContactController extends AccountBaseController
         $leadContact->country = $request->country;
         $leadContact->mobile = $request->mobile;
         $leadContact->added_by = $request->added_by ?? user()->id; // save added_by, fallback to current user
+        $leadContact->assigned_to = $this->resolvedAssignedTo($request);
         $leadContact->save();
 
         // To add custom fields data
@@ -261,7 +249,7 @@ class LeadContactController extends AccountBaseController
      */
     public function edit($id)
     {
-        $this->leadContact = Lead::with('leadSource', 'category')->findOrFail($id)->withCustomFields();
+        $this->leadContact = Lead::with('leadSource', 'category', 'assignedTo')->findOrFail($id)->withCustomFields();
 
         $this->editPermission = user()->permission('edit_lead');
 
@@ -269,14 +257,14 @@ class LeadContactController extends AccountBaseController
 
         abort_403(!($this->editPermission == 'all'
             || ($this->editPermission == 'added' && $this->leadContact->added_by == user()->id)
-            || ($this->editPermission == 'owned' && $this->leadContact->added_by == user()->id)
-            || ($this->editPermission == 'both' && $this->leadContact->added_by == user()->id)
+            || ($this->editPermission == 'owned' && $this->leadContact->assigned_to == user()->id)
+            || ($this->editPermission == 'both' && ($this->leadContact->added_by == user()->id || $this->leadContact->assigned_to == user()->id))
             || user()->id == $this->leadContact->added_by)
         );
 
-        $this->leadAgents = LeadAgent::with('user')->whereHas('user', function ($q) {
-            $q->where('status', 'active');
-        })->get();
+        if ($this->shouldLoadLeadEmployees()) {
+            $this->employees = User::allEmployees();
+        }
 
         if ($this->leadContact->getCustomFieldGroupsWithFields()) {
             $this->fields = $this->leadContact->getCustomFieldGroupsWithFields()->fields;
@@ -316,9 +304,10 @@ class LeadContactController extends AccountBaseController
 
         abort_403(!($this->editPermission == 'all'
             || ($this->editPermission == 'added' && $leadContact->added_by == user()->id)
-            || ($this->editPermission == 'owned' && $leadContact->added_by == user()->id)
-            || ($this->editPermission == 'both' && $leadContact->added_by == user()->id)
-            || user()->id == $leadContact->added_by)
+            || ($this->editPermission == 'owned' && $leadContact->assigned_to == user()->id)
+            || ($this->editPermission == 'both' && ($leadContact->added_by == user()->id || $leadContact->assigned_to == user()->id))
+            || user()->id == $leadContact->added_by
+            || user()->id == $leadContact->assigned_to)
         );
 
         // salutation removed
@@ -336,6 +325,7 @@ class LeadContactController extends AccountBaseController
         $leadContact->country = $request->country;
         $leadContact->mobile = $request->mobile;
         $leadContact->added_by = $request->added_by ?? $leadContact->added_by; // update added_by if provided
+        $leadContact->assigned_to = $this->resolvedAssignedTo($request, $leadContact);
         $leadContact->save();
 
         // To add custom fields data
@@ -366,9 +356,10 @@ class LeadContactController extends AccountBaseController
 
         abort_403(!($this->deletePermission == 'all'
             || ($this->deletePermission == 'added' && $leadContact->added_by == user()->id)
-            || ($this->deletePermission == 'owned' && $leadContact->added_by == user()->id)
-            || ($this->deletePermission == 'both' && $leadContact->added_by == user()->id)
-            || user()->id == $leadContact->added_by)
+            || ($this->deletePermission == 'owned' && $leadContact->assigned_to == user()->id)
+            || ($this->deletePermission == 'both' && ($leadContact->added_by == user()->id || $leadContact->assigned_to == user()->id))
+            || user()->id == $leadContact->added_by
+            || user()->id == $leadContact->assigned_to)
         );
 
         Lead::destroy($id);
@@ -384,13 +375,8 @@ class LeadContactController extends AccountBaseController
 
         if (!$this->isAdminUser()) {
             $query->where(function ($builder) {
-                $builder->where('added_by', user()->id);
-
-                if (Schema::hasColumn('leads', 'agent_id')) {
-                    $builder->orWhereHas('leadAgent', function ($agentQuery) {
-                        $agentQuery->where('user_id', user()->id);
-                    });
-                }
+                $builder->where('added_by', user()->id)
+                    ->orWhere('assigned_to', user()->id);
             });
         }
 
@@ -457,11 +443,12 @@ class LeadContactController extends AccountBaseController
     {
         $this->editFollowUpPermission = user()->permission('edit_lead_follow_up');
         $this->follow = LeadFollowUp::with('lead')->findOrFail($id);
+        abort_403(!$this->canAccessLead(optional($this->follow->lead)));
 
         abort_403(!($this->editFollowUpPermission == 'all'
             || ($this->editFollowUpPermission == 'added' && $this->follow->added_by == user()->id)
-            || ($this->editFollowUpPermission == 'owned' && optional($this->follow->lead)->added_by == user()->id)
-            || ($this->editFollowUpPermission == 'both' && ($this->follow->added_by == user()->id || optional($this->follow->lead)->added_by == user()->id))
+            || ($this->editFollowUpPermission == 'owned' && $this->canAccessLead(optional($this->follow->lead)))
+            || ($this->editFollowUpPermission == 'both' && ($this->follow->added_by == user()->id || $this->canAccessLead(optional($this->follow->lead))))
         ));
 
         return view('lead-contact.followups.edit', $this->data);
@@ -471,11 +458,12 @@ class LeadContactController extends AccountBaseController
     {
         $this->editFollowUpPermission = user()->permission('edit_lead_follow_up');
         $followUp = LeadFollowUp::with('lead')->findOrFail($request->id);
+        abort_403(!$this->canAccessLead(optional($followUp->lead)));
 
         abort_403(!($this->editFollowUpPermission == 'all'
             || ($this->editFollowUpPermission == 'added' && $followUp->added_by == user()->id)
-            || ($this->editFollowUpPermission == 'owned' && optional($followUp->lead)->added_by == user()->id)
-            || ($this->editFollowUpPermission == 'both' && ($followUp->added_by == user()->id || optional($followUp->lead)->added_by == user()->id))
+            || ($this->editFollowUpPermission == 'owned' && $this->canAccessLead(optional($followUp->lead)))
+            || ($this->editFollowUpPermission == 'both' && ($followUp->added_by == user()->id || $this->canAccessLead(optional($followUp->lead))))
         ));
 
         $request->validate([
@@ -511,11 +499,12 @@ class LeadContactController extends AccountBaseController
     {
         $this->deleteFollowUpPermission = user()->permission('delete_lead_follow_up');
         $followUp = LeadFollowUp::with('lead')->findOrFail($id);
+        abort_403(!$this->canAccessLead(optional($followUp->lead)));
 
         abort_403(!($this->deleteFollowUpPermission == 'all'
             || ($this->deleteFollowUpPermission == 'added' && $followUp->added_by == user()->id)
-            || ($this->deleteFollowUpPermission == 'owned' && optional($followUp->lead)->added_by == user()->id)
-            || ($this->deleteFollowUpPermission == 'both' && ($followUp->added_by == user()->id || optional($followUp->lead)->added_by == user()->id))
+            || ($this->deleteFollowUpPermission == 'owned' && $this->canAccessLead(optional($followUp->lead)))
+            || ($this->deleteFollowUpPermission == 'both' && ($followUp->added_by == user()->id || $this->canAccessLead(optional($followUp->lead))))
         ));
 
         $leadId = $followUp->lead_id;
@@ -530,11 +519,12 @@ class LeadContactController extends AccountBaseController
     {
         $this->editFollowUpPermission = user()->permission('edit_lead_follow_up');
         $followUp = LeadFollowUp::with('lead')->findOrFail($request->id);
+        abort_403(!$this->canAccessLead(optional($followUp->lead)));
 
         abort_403(!($this->editFollowUpPermission == 'all'
             || ($this->editFollowUpPermission == 'added' && $followUp->added_by == user()->id)
-            || ($this->editFollowUpPermission == 'owned' && optional($followUp->lead)->added_by == user()->id)
-            || ($this->editFollowUpPermission == 'both' && ($followUp->added_by == user()->id || optional($followUp->lead)->added_by == user()->id))
+            || ($this->editFollowUpPermission == 'owned' && $this->canAccessLead(optional($followUp->lead)))
+            || ($this->editFollowUpPermission == 'both' && ($followUp->added_by == user()->id || $this->canAccessLead(optional($followUp->lead))))
         ));
 
         $followUp->status = $request->status;
@@ -658,8 +648,12 @@ class LeadContactController extends AccountBaseController
         return in_array('admin', user_roles());
     }
 
-    private function canAccessLead(Lead $lead): bool
+    private function canAccessLead(?Lead $lead): bool
     {
+        if (!$lead) {
+            return false;
+        }
+
         if ($this->isAdminUser()) {
             return true;
         }
@@ -668,11 +662,28 @@ class LeadContactController extends AccountBaseController
             return true;
         }
 
-        if (!Schema::hasColumn('leads', 'agent_id')) {
-            return false;
+        return (int) $lead->assigned_to === (int) user()->id;
+    }
+
+    private function canManageLeadAssignment(): bool
+    {
+        return $this->isAdminUser()
+            || user()->permission('add_lead') === 'all'
+            || user()->permission('edit_lead') === 'all';
+    }
+
+    private function shouldLoadLeadEmployees(): bool
+    {
+        return user()->permission('add_lead') === 'all' || $this->canManageLeadAssignment();
+    }
+
+    private function resolvedAssignedTo(Request $request, ?Lead $lead = null): ?int
+    {
+        if (!$this->canManageLeadAssignment()) {
+            return $lead?->assigned_to;
         }
 
-        return (int) optional($lead->leadAgent)->user_id === (int) user()->id;
+        return $request->filled('assigned_to') ? (int) $request->assigned_to : null;
     }
 
     public function importLead()

@@ -89,9 +89,11 @@ $addLeadCustomFormPermission = user()->permission('manage_lead_custom_forms');
             var source_id = $('#filter_source_id').val();
             var date_filter_on = $('#date_filter_on').val();
             var filter_added_by = $('#filter_addedBy').val();
+            var filter_assigned_to = $('#filter_assigned_to').val();
 
             data['startDate'] = startDate;
             data['filter_addedBy'] = filter_added_by;
+            data['filter_assignedTo'] = filter_assigned_to;
             data['endDate'] = endDate;
             data['searchText'] = searchText;
             data['type'] = type;

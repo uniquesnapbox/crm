@@ -11,7 +11,6 @@ use App\Models\Lead;
 use Yajra\DataTables\Html\Button;
 use Yajra\DataTables\Html\Column;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 class LeadContactDataTable extends BaseDataTable
 {
@@ -66,7 +65,11 @@ class LeadContactDataTable extends BaseDataTable
 
             if (
                 $this->editLeadPermission == 'all'
-                || ($this->editLeadPermission == 'added' && user()->id == $row->added_by) || user()->id == $row->added_by)
+                || ($this->editLeadPermission == 'added' && user()->id == $row->added_by)
+                || ($this->editLeadPermission == 'owned' && user()->id == $row->assigned_to)
+                || ($this->editLeadPermission == 'both' && (user()->id == $row->added_by || user()->id == $row->assigned_to))
+                || user()->id == $row->added_by
+                || user()->id == $row->assigned_to)
 
             {
                 $action .= '<a class="dropdown-item openRightModal" href="' . route('lead-contact.edit', [$row->id]) . '">
@@ -85,9 +88,8 @@ class LeadContactDataTable extends BaseDataTable
             if (
                 $this->deleteLeadPermission == 'all'
                 || ($this->deleteLeadPermission == 'added' && user()->id == $row->added_by)
-                || ($this->deleteLeadPermission == 'owned' && !is_null($row->agent_id) && user()->id == $row->leadAgent->user->id)
-                || ($this->deleteLeadPermission == 'both' && ((!is_null($row->agent_id) && user()->id == $row->leadAgent->user->id)
-                        || user()->id == $row->added_by))
+                || ($this->deleteLeadPermission == 'owned' && user()->id == $row->assigned_to)
+                || ($this->deleteLeadPermission == 'both' && (user()->id == $row->assigned_to || user()->id == $row->added_by))
             ) {
                 $action .= '<a class="dropdown-item delete-table-row" href="javascript:;" data-id="' . $row->id . '">
                         <i class="fa fa-trash mr-2"></i>
@@ -106,6 +108,7 @@ class LeadContactDataTable extends BaseDataTable
         $datatables->addColumn('lead_value', fn($row) => currency_format($row->value, $row->currency_id));
         $datatables->addColumn('name', fn($row) => $row->client_name);
         $datatables->addColumn('added_by', fn($row) => $row->addedBy->name ?? '--');
+        $datatables->addColumn('assigned_to', fn($row) => $row->assignedTo->name ?? '--');
         $datatables->addColumn('email', fn($row) => $row->client_email);
         $datatables->addColumn('category_name', fn($row) => $row->category?->category_name);
 
@@ -149,10 +152,11 @@ class LeadContactDataTable extends BaseDataTable
      */
     public function query(Lead $model)
     {
-        $leadContact = $model->with(['category'])
+        $leadContact = $model->with(['category', 'assignedTo'])
             ->select(
                 'leads.id',
                 'leads.added_by',
+                'leads.assigned_to',
                 'leads.client_id',
                 'leads.category_id',
                 'leads.client_name',
@@ -167,16 +171,8 @@ class LeadContactDataTable extends BaseDataTable
 
         if (!in_array('admin', user_roles())) {
             $leadContact = $leadContact->where(function ($query) {
-                $query->where('leads.added_by', user()->id);
-
-                if (Schema::hasColumn('leads', 'agent_id')) {
-                    $query->orWhereExists(function ($assignedQuery) {
-                        $assignedQuery->select(DB::raw(1))
-                            ->from('lead_agents')
-                            ->whereColumn('lead_agents.id', 'leads.agent_id')
-                            ->where('lead_agents.user_id', user()->id);
-                    });
-                }
+                $query->where('leads.added_by', user()->id)
+                    ->orWhere('leads.assigned_to', user()->id);
             });
         }
 
@@ -222,6 +218,10 @@ class LeadContactDataTable extends BaseDataTable
 
         if ($this->viewLeadPermission == 'all' && $this->request()->filter_addedBy != 'all' && $this->request()->filter_addedBy != '') {
             $leadContact = $leadContact->where('leads.added_by', $this->request()->filter_addedBy);
+        }
+
+        if ($this->request()->filter_assignedTo != 'all' && $this->request()->filter_assignedTo != '') {
+            $leadContact = $leadContact->where('leads.assigned_to', $this->request()->filter_assignedTo);
         }
         
         if ($this->request()->searchText != '') {
@@ -289,6 +289,7 @@ class LeadContactDataTable extends BaseDataTable
             __('modules.lead.email') => ['data' => 'email', 'name' => 'leads.client_email', 'title' => __('modules.lead.email')],
             __('modules.lead.leadCategory') => ['data' => 'category_name', 'name' => 'category_name', 'exportable' => true, 'visible' => false, 'title' => __('modules.lead.leadCategory')],
             __('app.addedBy') => ['data' => 'added_by', 'name' => 'added_by', 'exportable' => true, 'title' => __('app.addedBy')],
+            __('modules.tasks.assignTo') => ['data' => 'assigned_to', 'name' => 'assigned_to', 'exportable' => true, 'title' => __('modules.tasks.assignTo')],
             __('app.createdOn') => ['data' => 'created_at', 'name' => 'leads.created_at', 'title' => __('app.createdOn')],
         ];
 

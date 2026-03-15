@@ -2,14 +2,11 @@
 
 namespace App\Models;
 
-use App\Enums\Salutation;
 use App\Scopes\ActiveScope;
 use App\Traits\CustomFieldsTrait;
 use App\Traits\HasCompany;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Notifications\Notifiable;
@@ -22,7 +19,6 @@ use Illuminate\Notifications\Notifiable;
  * @property int|null $source_id
  * @property int|null $status_id
  * @property int $column_priority
- * @property int|null $agent_id
  * @property string|null $company_name
  * @property string|null $website
  * @property string|null $address
@@ -52,7 +48,6 @@ use Illuminate\Notifications\Notifiable;
  * @property-read mixed $extras
  * @property-read mixed $icon
  * @property-read mixed $image_url
- * @property-read \App\Models\LeadAgent|null $leadAgent
  * @property-read \App\Models\LeadSource|null $leadSource
  * @property-read \App\Models\LeadStatus|null $leadStatus
  * @property-read \Illuminate\Notifications\DatabaseNotificationCollection|\Illuminate\Notifications\DatabaseNotification[] $notifications
@@ -63,7 +58,6 @@ use Illuminate\Notifications\Notifiable;
  * @method static \Illuminate\Database\Eloquent\Builder|Lead query()
  * @method static \Illuminate\Database\Eloquent\Builder|Lead whereAddedBy($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Lead whereAddress($value)
- * @method static \Illuminate\Database\Eloquent\Builder|Lead whereAgentId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Lead whereCategoryId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Lead whereCell($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Lead whereClientEmail($value)
@@ -141,11 +135,6 @@ class Lead extends BaseModel
         return $this->belongsTo(LeadCategory::class, 'category_id');
     }
 
-    public function leadAgent(): BelongsTo
-    {
-        return $this->belongsTo(LeadAgent::class, 'agent_id');
-    }
-
     public function leadStatus(): BelongsTo
     {
         return $this->belongsTo(LeadStatus::class, 'status_id');
@@ -174,6 +163,11 @@ class Lead extends BaseModel
     public function addedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'added_by')->withoutGlobalScope(ActiveScope::class);
+    }
+
+    public function assignedTo(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_to')->withoutGlobalScope(ActiveScope::class);
     }
 
     public static function allLeads($contactId = null)

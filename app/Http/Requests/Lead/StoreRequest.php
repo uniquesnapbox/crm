@@ -32,6 +32,7 @@ class StoreRequest extends CoreRequest
         $rules['client_name'] = 'required';
         $rules['mobile'] = 'required';
         $rules['client_email'] = 'nullable|email:rfc,strict|unique:leads,client_email,null,id,company_id,' . company()->id;
+        $rules['assigned_to'] = 'nullable|exists:users,id';
 
         return $this->customFieldRules($rules);
 

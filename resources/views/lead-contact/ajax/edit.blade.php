@@ -5,6 +5,7 @@ $addLeadSourcesPermission = user()->permission('add_lead_sources');
 $addLeadCategoryPermission = user()->permission('add_lead_category');
 $addProductPermission = user()->permission('add_product');
 $addPermission = user()->permission('add_lead'); // For Added By field
+$assignLeadPermission = in_array('admin', user_roles()) || user()->permission('add_lead') == 'all' || user()->permission('edit_lead') == 'all';
 @endphp
 
 <link rel="stylesheet" href="{{ asset('vendor/css/dropzone.min.css') }}">
@@ -63,6 +64,18 @@ $addPermission = user()->permission('add_lead'); // For Added By field
                                 <option value="">--</option>
                                 @foreach ($employees as $item)
                                     <x-user-option :user="$item" :selected="$leadContact->added_by == $item->id" />
+                                @endforeach
+                            </x-forms.select>
+                        </div>
+                    @endif
+
+                    @if ($assignLeadPermission)
+                        <div class="col-lg-4 col-md-6">
+                            <x-forms.select fieldId="assigned_to" :fieldLabel="__('modules.tasks.assignTo')"
+                                fieldName="assigned_to" search="true">
+                                <option value="">--</option>
+                                @foreach ($employees as $item)
+                                    <x-user-option :user="$item" :selected="$leadContact->assigned_to == $item->id" />
                                 @endforeach
                             </x-forms.select>
                         </div>

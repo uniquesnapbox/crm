@@ -182,15 +182,15 @@ class LeadFollowupDataTable extends BaseDataTable
     {
         return $this->editLeadFollowUpPermission == 'all'
             || ($this->editLeadFollowUpPermission == 'added' && user()->id == $row->added_by)
-            || ($this->editLeadFollowUpPermission == 'owned' && optional($row->lead)->added_by == user()->id)
-            || ($this->editLeadFollowUpPermission == 'both' && (user()->id == $row->added_by || optional($row->lead)->added_by == user()->id));
+            || ($this->editLeadFollowUpPermission == 'owned' && optional($row->lead)->assigned_to == user()->id)
+            || ($this->editLeadFollowUpPermission == 'both' && (user()->id == $row->added_by || optional($row->lead)->added_by == user()->id || optional($row->lead)->assigned_to == user()->id));
     }
 
     private function canDeleteFollowUp($row): bool
     {
         return $this->deleteLeadFollowUpPermission == 'all'
             || ($this->deleteLeadFollowUpPermission == 'added' && user()->id == $row->added_by)
-            || ($this->deleteLeadFollowUpPermission == 'owned' && optional($row->lead)->added_by == user()->id)
-            || ($this->deleteLeadFollowUpPermission == 'both' && (user()->id == $row->added_by || optional($row->lead)->added_by == user()->id));
+            || ($this->deleteLeadFollowUpPermission == 'owned' && optional($row->lead)->assigned_to == user()->id)
+            || ($this->deleteLeadFollowUpPermission == 'both' && (user()->id == $row->added_by || optional($row->lead)->added_by == user()->id || optional($row->lead)->assigned_to == user()->id));
     }
 }
