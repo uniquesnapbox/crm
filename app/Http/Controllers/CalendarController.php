@@ -12,7 +12,12 @@ class CalendarController extends AccountBaseController
     {
         parent::__construct();
         $this->pageTitle = 'app.menu.calendar';
-        // you can add middleware if necessary
+        $this->activeMenu = 'calendar';
+        $this->middleware(function ($request, $next) {
+            abort_403(!in_array('tasks', $this->user->modules) && !in_array('leads', $this->user->modules));
+
+            return $next($request);
+        });
     }
 
     /**
@@ -22,11 +27,7 @@ class CalendarController extends AccountBaseController
      */
     public function index()
     {
-        $pageTitle = 'Calendar';
-
-        return view('events.calendar', [
-            'pageTitle' => $pageTitle,
-        ]);
+        return view('events.calendar', $this->data);
     }
 
     /**
