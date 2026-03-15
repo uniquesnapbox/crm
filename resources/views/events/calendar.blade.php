@@ -45,13 +45,8 @@
                 url: "{{ route('crm.calendar.events') }}",
             },
             eventClick: function(arg) {
-                // you can handle clicks differently based on type
-                if (arg.event.extendedProps.type == 'task') {
-                    var url = "{{ route('tasks.show', ':id') }}";
-                    url = url.replace(':id', arg.event.id);
-                    window.location.href = url;
-                } else if (arg.event.extendedProps.type == 'followup') {
-                    // maybe open lead followup detail if route exists
+                if (arg.event.extendedProps.type === 'followup' && arg.event.extendedProps.redirect_url) {
+                    window.location.href = arg.event.extendedProps.redirect_url;
                 }
             }
         });

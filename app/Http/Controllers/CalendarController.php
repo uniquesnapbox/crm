@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Task;
 use App\Models\LeadFollowUp;
 use Illuminate\Http\Request;
 
@@ -14,7 +13,7 @@ class CalendarController extends AccountBaseController
         $this->pageTitle = 'app.menu.calendar';
         $this->activeMenu = 'calendar';
         $this->middleware(function ($request, $next) {
-            abort_403(!in_array('tasks', $this->user->modules) && !in_array('leads', $this->user->modules));
+            abort_403(!in_array('leads', $this->user->modules));
 
             return $next($request);
         });
@@ -31,39 +30,51 @@ class CalendarController extends AccountBaseController
     }
 
     /**
-     * Return combined tasks and followups in FullCalendar format.
+     * Return lead follow-ups in FullCalendar format.
      */
     public function events(Request $request)
     {
         $user = auth()->user();
 
         if ($user->hasRole('admin')) {
-            $tasks = Task::whereNotNull('due_date')->get();
-            $followups = LeadFollowUp::with('lead')->whereNotNull('next_follow_up_date')->get();
-        } else {
-            $tasks = Task::where('assigned_to', $user->id)->get();
-            $followups = LeadFollowUp::with('lead')->where('added_by', $user->id)->get();
+            $followups = LeadFollowUp::with('lead')
+                ->whereNotNull('lead_id')
+                ->whereNotNull('next_follow_up_date')
+                ->get();
+        }
+        else {
+            $followups = LeadFollowUp::with('lead')
+                ->where('added_by', $user->id)
+                ->whereNotNull('lead_id')
+                ->whereNotNull('next_follow_up_date')
+                ->get();
         }
 
         $events = [];
 
-        foreach ($tasks as $task) {
-            $events[] = [
-                'id'   => $task->id,
-                'title' => 'Task: ' . $task->heading,
-                'start' => $task->due_date ? $task->due_date->format('Y-m-d') : $task->start_date->format('Y-m-d'),
-                'color' => '#0B0B7A',
-                'type' => 'task'
-            ];
-        }
-
         foreach ($followups as $followup) {
+            if (!$followup->lead) {
+                continue;
+            }
+
+            $followUpAt = $followup->next_follow_up_date?->timezone(company()->timezone);
+
             $events[] = [
-                'id'   => 'fup-' . $followup->id,
-                'title' => 'Follow-up: ' . optional($followup->lead)->client_name,
-                'start' => $followup->next_follow_up_date ? $followup->next_follow_up_date->format('Y-m-d') : null,
+                'id' => 'fup-' . $followup->id,
+                'title' => $followup->lead->client_name,
+                'start' => $followUpAt?->toIso8601String(),
                 'color' => '#F97316',
-                'type' => 'followup'
+                'allDay' => false,
+                'extendedProps' => [
+                    'type' => 'followup',
+                    'lead_id' => $followup->lead_id,
+                    'followup_id' => $followup->id,
+                    'followup_date' => $followUpAt?->format(company()->date_format),
+                    'reminder_time' => $followUpAt?->format(company()->time_format),
+                    'latitude' => $followup->latitude,
+                    'longitude' => $followup->longitude,
+                    'redirect_url' => route('lead-contact.show', [$followup->lead_id]) . '?tab=follow-up',
+                ],
             ];
         }
 
