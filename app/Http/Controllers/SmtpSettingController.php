@@ -7,6 +7,8 @@ use App\Http\Requests\SmtpSetting\UpdateSmtpSetting;
 use App\Models\EmailNotificationSetting;
 use App\Models\SmtpSetting;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use App\Notifications\TestEmail;
 
@@ -36,7 +38,7 @@ class SmtpSettingController extends AccountBaseController
         // save all email notification settings
         $this->saveEmailNotificationSettings($request);
 
-        $smtp = SmtpSetting::first();
+        $smtp = SmtpSetting::findOrFail($id);
 
         $data = $request->all();
 
@@ -44,7 +46,22 @@ class SmtpSettingController extends AccountBaseController
             $data['mail_encryption'] = null;
         }
 
-        $smtp->update($data);
+        DB::table($smtp->getTable())
+            ->where('id', $smtp->id)
+            ->update([
+                'mail_driver' => $data['mail_driver'],
+                'mail_host' => $data['mail_host'],
+                'mail_port' => $data['mail_port'],
+                'mail_username' => $data['mail_username'],
+                'mail_password' => Crypt::encryptString($data['mail_password']),
+                'mail_from_name' => $data['mail_from_name'],
+                'mail_from_email' => $data['mail_from_email'],
+                'mail_encryption' => $data['mail_encryption'],
+                'mail_connection' => $data['mail_connection'] ?? 'sync',
+                'updated_at' => now(),
+            ]);
+
+        $smtp = SmtpSetting::findOrFail($id);
         $response = $smtp->verifySmtp();
         session(['smtp_setting' => $smtp]);
         session()->forget('email_notification_setting');
