@@ -108,7 +108,7 @@
                            :fieldLabel="__('modules.emailSettings.mailPassword')"/>
             <x-forms.input-group>
                 <input type="password" name="mail_password" id="mail_password"
-                       value="{{ $smtpSetting->mail_password }}"
+                       value="{{ $smtpPassword ?? '' }}"
                        placeholder="@lang('modules.emailSettings.mailPassword')"
                        class="form-control height-35 f-14 field"/>
                 <x-slot name="preappend">

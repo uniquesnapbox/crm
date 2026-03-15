@@ -11,6 +11,15 @@ use App\Models\SmtpSetting;
 
 class NotificationSettingController extends AccountBaseController
 {
+    private function resolveSmtpPassword(SmtpSetting $smtpSetting): string
+    {
+        try {
+            return (string) ($smtpSetting->mail_password ?? '');
+        } catch (\Throwable $e) {
+            return '';
+        }
+    }
+
 
     public function __construct()
     {
@@ -30,10 +39,26 @@ class NotificationSettingController extends AccountBaseController
 
         $this->emailSettings = EmailNotificationSetting::all();
 
-
-        $this->slackSettings = SlackSetting::first();
-        $this->pushSettings = PushNotificationSetting::first();
-        $this->pusherSettings = PusherSetting::first();
+        $this->slackSettings = SlackSetting::first() ?: new SlackSetting([
+            'status' => 'inactive',
+            'slack_webhook' => null,
+            'slack_logo_url' => null,
+        ]);
+        $this->pushSettings = PushNotificationSetting::first() ?: new PushNotificationSetting([
+            'status' => 'inactive',
+            'onesignal_app_id' => null,
+            'onesignal_rest_api_key' => null,
+        ]);
+        $this->pusherSettings = PusherSetting::first() ?: new PusherSetting([
+            'status' => 0,
+            'pusher_app_id' => null,
+            'pusher_app_key' => null,
+            'pusher_app_secret' => null,
+            'pusher_cluster' => null,
+            'force_tls' => 0,
+            'taskboard' => 0,
+            'messages' => 0,
+        ]);
 
         switch ($tab) {
         case 'slack-setting':
@@ -61,7 +86,8 @@ class NotificationSettingController extends AccountBaseController
                     return $value->send_email == 'yes';
             })->count();
 
-            $this->smtpSetting = SmtpSetting::first();
+            $this->smtpSetting = SmtpSetting::first() ?: new SmtpSetting();
+            $this->smtpPassword = $this->resolveSmtpPassword($this->smtpSetting);
             $this->view = 'notification-settings.ajax.email-setting';
             break;
         }
