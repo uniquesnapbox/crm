@@ -4,6 +4,30 @@
     <link rel="stylesheet" href="{{ asset('vendor/full-calendar/main.min.css') }}">
     <style>
         #calendar { max-width: 100%; margin: 0 auto; }
+        .calendar-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 16px;
+            padding: 10px 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            background: #fff;
+        }
+        .calendar-legend-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #4b5563;
+        }
+        .calendar-legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 999px;
+            display: inline-block;
+        }
         .follow-up-tooltip {
             text-align: left;
             max-width: 320px;
@@ -25,6 +49,20 @@
         </div>
 
         <x-cards.data>
+            <div class="calendar-legend">
+                <div class="calendar-legend-item">
+                    <span class="calendar-legend-dot" style="background:#dc2626;"></span>
+                    <span>Overdue</span>
+                </div>
+                <div class="calendar-legend-item">
+                    <span class="calendar-legend-dot" style="background:#f97316;"></span>
+                    <span>Today</span>
+                </div>
+                <div class="calendar-legend-item">
+                    <span class="calendar-legend-dot" style="background:#2563eb;"></span>
+                    <span>Upcoming</span>
+                </div>
+            </div>
             <div id="calendar"></div>
         </x-cards.data>
     </div>
