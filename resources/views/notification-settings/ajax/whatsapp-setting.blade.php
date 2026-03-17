@@ -19,13 +19,42 @@
 
                 <div class="col-lg-6 col-md-6">
                     <x-forms.text :fieldLabel="'Default Country Code'" fieldName="default_country_code" fieldId="default_country_code"
-                        :fieldValue="$whatsappSettings->default_country_code" />
+                        :fieldValue="$whatsappSettings->default_country_code" fieldRequired="true" />
                 </div>
 
                 <div class="col-lg-6 col-md-6">
                     <x-forms.text :fieldLabel="'Test Number'" fieldName="test_number" fieldId="test_number"
                         :fieldValue="$whatsappSettings->test_number" />
                 </div>
+            </div>
+
+            <div class="mt-4 p-3 bg-light rounded">
+                <div class="d-flex flex-wrap align-items-center mb-2">
+                    <span class="f-14 text-dark-grey mr-2">Last WhatsApp send status:</span>
+                    @php
+                        $status = $whatsappSettings->last_send_status;
+                        $statusClass = $status === 'success' ? 'badge badge-success' : ($status === 'failed' ? 'badge badge-danger' : 'badge badge-secondary');
+                    @endphp
+                    <span class="{{ $statusClass }}">{{ $status ? ucfirst($status) : 'Not sent yet' }}</span>
+                </div>
+
+                @if (!empty($whatsappSettings->last_error_message))
+                    <div class="f-13 text-danger mb-2">
+                        <strong>Last error message:</strong> {{ $whatsappSettings->last_error_message }}
+                    </div>
+                @endif
+
+                @if (!empty($whatsappSettings->last_http_status))
+                    <div class="f-13 text-dark-grey mb-1">
+                        <strong>Last HTTP status:</strong> {{ $whatsappSettings->last_http_status }}
+                    </div>
+                @endif
+
+                @if (!empty($whatsappSettings->last_sent_at))
+                    <div class="f-13 text-dark-grey">
+                        <strong>Last attempt:</strong> {{ $whatsappSettings->last_sent_at->timezone(company()->timezone)->format(company()->date_format . ' ' . company()->time_format) }}
+                    </div>
+                @endif
             </div>
         </div>
     </div>

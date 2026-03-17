@@ -3,7 +3,9 @@
 namespace App\Channels;
 
 use App\Models\WhatsappNotificationSetting;
+use App\Services\WhatsApp\WascriptException;
 use App\Services\WhatsApp\WascriptService;
+use Illuminate\Support\Facades\Log;
 
 class WascriptChannel
 {
@@ -35,6 +37,18 @@ class WascriptChannel
             return null;
         }
 
-        return $this->service->sendText($phone, $payload['message'], $setting);
+        try {
+            return $this->service->sendText($phone, $payload['message'], $setting);
+        } catch (WascriptException $exception) {
+            Log::warning('Wascript notification delivery failed.', [
+                'company_id' => $setting->company_id,
+                'phone' => $phone,
+                'message' => $exception->getMessage(),
+                'http_status' => $exception->httpStatus(),
+                'response_body' => $exception->responseBody(),
+            ]);
+
+            return null;
+        }
     }
 }

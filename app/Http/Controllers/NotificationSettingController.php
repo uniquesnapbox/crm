@@ -66,6 +66,11 @@ class NotificationSettingController extends AccountBaseController
             'api_token' => null,
             'default_country_code' => null,
             'test_number' => null,
+            'last_send_status' => null,
+            'last_error_message' => null,
+            'last_http_status' => null,
+            'last_response_body' => null,
+            'last_sent_at' => null,
         ]);
 
         switch ($tab) {

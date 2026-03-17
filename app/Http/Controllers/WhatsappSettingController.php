@@ -6,6 +6,7 @@ use App\Helper\Reply;
 use App\Http\Requests\WhatsappSetting\UpdateRequest;
 use App\Models\EmailNotificationSetting;
 use App\Models\WhatsappNotificationSetting;
+use App\Services\WhatsApp\WascriptException;
 use App\Services\WhatsApp\WascriptService;
 
 class WhatsappSettingController extends AccountBaseController
@@ -51,11 +52,15 @@ class WhatsappSettingController extends AccountBaseController
             return Reply::error('Please configure WhatsApp API settings and test number first.');
         }
 
-        $this->wascriptService->sendText(
-            $setting->test_number,
-            'This is a test WhatsApp notification from CRM',
-            $setting
-        );
+        try {
+            $this->wascriptService->sendText(
+                $setting->test_number,
+                'This is a test WhatsApp notification from CRM',
+                $setting
+            );
+        } catch (WascriptException $exception) {
+            return Reply::error($exception->getMessage());
+        }
 
         return Reply::success('Test WhatsApp notification sent.');
     }
