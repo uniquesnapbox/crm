@@ -1,0 +1,140 @@
+diff --git a/app/Models/User.php b/app/Models/User.php
+index 87be92e..2b8dbe8 100755
+--- a/app/Models/User.php
++++ b/app/Models/User.php
+@@ -26,6 +26,7 @@ use Illuminate\Support\Facades\DB;
+ use Illuminate\Support\Str;
+ use Laravel\Fortify\TwoFactorAuthenticatable;
+ use Laravel\Fortify\TwoFactorAuthenticationProvider;
++use Laravel\Sanctum\HasApiTokens;
+ use Trebol\Entrust\Traits\EntrustUserTrait;
+ use Yajra\DataTables\Html\Editor\Fields\BelongsTo;
+ 
+@@ -221,7 +222,7 @@ use Yajra\DataTables\Html\Editor\Fields\BelongsTo;
+ class User extends BaseModel implements AuthenticatableContract, AuthorizableContract, CanResetPasswordContract
+ {
+ 
+-    use Notifiable, EntrustUserTrait, Authenticatable, Authorizable, CanResetPassword, HasFactory, TwoFactorAuthenticatable;
++    use HasApiTokens, Notifiable, EntrustUserTrait, Authenticatable, Authorizable, CanResetPassword, HasFactory, TwoFactorAuthenticatable;
+     use HasCompany;
+     use HasMaskImage;
+ 
+diff --git a/app/Traits/EmployeeDashboard.php b/app/Traits/EmployeeDashboard.php
+index 25cae5b..0917cc6 100755
+--- a/app/Traits/EmployeeDashboard.php
++++ b/app/Traits/EmployeeDashboard.php
+@@ -17,6 +17,7 @@ use Carbon\CarbonPeriod;
+ use App\Models\LeadAgent;
+ use App\Models\Attendance;
+ use App\Models\Appreciation;
++use App\Models\EmployeeLocation;
+ use Illuminate\Contracts\Foundation\Application;
+ use Illuminate\Contracts\View\Factory;
+ use Illuminate\Contracts\View\View;
+@@ -34,6 +35,7 @@ use App\Models\EmployeeShiftSchedule;
+ use App\Http\Requests\ClockIn\ClockInRequest;
+ use App\Models\Company;
+ use App\Models\EmployeeShift;
++use App\Services\Attendance\AttendanceGeofenceService;
+ 
+ /**
+  *
+@@ -631,9 +633,24 @@ trait EmployeeDashboard
+             }
+         }
+ 
+-        // Check user by location
+-        if (attendance_setting()->radius_check == 'yes') {
+-            $checkRadius = $this->isWithinRadius($request);
++        $currentLatitude = $request->currentLatitude;
++        $currentLongitude = $request->currentLongitude;
++        $geofenceService = app(AttendanceGeofenceService::class);
++
++        if (($currentLatitude == '' || $currentLongitude == '') && $geofenceService->shouldApplyOfficeGeofence($this->user)) {
++            return Reply::error(__('messages.notAnValidLocation'));
++        }
++
++        if ($currentLatitude != '' && $currentLongitude != '') {
++            try {
++                $checkRadius = $geofenceService->validateClockInLocation(
++                    $this->user,
++                    (float)$currentLatitude,
++                    (float)$currentLongitude
++                );
++            } catch (\RuntimeException $exception) {
++                return Reply::error($exception->getMessage());
++            }
+ 
+             if (!$checkRadius) {
+                 return Reply::error(__('messages.notAnValidLocation'));
+@@ -701,9 +718,6 @@ trait EmployeeDashboard
+                 $attendance->half_day = 'yes';
+             }
+ 
+-            $currentLatitude = $request->currentLatitude;
+-            $currentLongitude = $request->currentLongitude;
+-
+             if ($currentLatitude != '' && $currentLongitude != '') {
+                 $attendance->latitude = $currentLatitude;
+                 $attendance->longitude = $currentLongitude;
+@@ -723,6 +737,16 @@ trait EmployeeDashboard
+ 
+             $attendance->save();
+ 
++            if ($currentLatitude != '' && $currentLongitude != '') {
++                EmployeeLocation::create([
++                    'company_id' => $this->user->company_id,
++                    'employee_id' => $this->user->id,
++                    'latitude' => $currentLatitude,
++                    'longitude' => $currentLongitude,
++                    'timestamp' => $now,
++                ]);
++            }
++
+             return Reply::successWithData(__('messages.attendanceSaveSuccess'), ['time' => $now->format('h:i A'), 'ip' => $attendance->clock_in_ip, 'working_from' => $attendance->working_from]);
+         }
+ 
+diff --git a/routes/api.php b/routes/api.php
+index b72ed91..952d251 100755
+--- a/routes/api.php
++++ b/routes/api.php
+@@ -1,5 +1,6 @@
+ <?php
+ 
++use App\Http\Controllers\Api\AttendanceApiController;
+ use Illuminate\Http\Request;
+ use Illuminate\Support\Facades\Route;
+ 
+@@ -17,3 +18,9 @@ use Illuminate\Support\Facades\Route;
+ ApiRoute::group(['namespace' => 'App\Http\Controllers'], function () {
+     ApiRoute::get('purchased-module', ['as' => 'api.purchasedModule', 'uses' => 'HomeController@installedModule']);
+ });
++
++Route::middleware('auth:sanctum')->group(function () {
++    Route::post('/attendance/clock-in', [AttendanceApiController::class, 'clockIn']);
++    Route::post('/attendance/clock-out', [AttendanceApiController::class, 'clockOut']);
++    Route::post('/attendance/location-update', [AttendanceApiController::class, 'locationUpdate']);
++});
+diff --git a/routes/web.php b/routes/web.php
+index 229d325..013ce73 100755
+--- a/routes/web.php
++++ b/routes/web.php
+@@ -41,6 +41,7 @@ use App\Http\Controllers\QuickbookController;
+ use App\Http\Controllers\TaskBoardController;
+ use App\Http\Controllers\TaskLabelController;
+ use App\Http\Controllers\AttendanceController;
++use App\Http\Controllers\LiveTrackingController;
+ use App\Http\Controllers\ClientNoteController;
+ use App\Http\Controllers\CreditNoteController;
+ use App\Http\Controllers\DepartmentController;
+@@ -121,6 +122,10 @@ use App\Http\Controllers\LeadContactController;
+ use App\Http\Controllers\PipelineController;
+ use App\Models\AttendanceSetting;
+ 
++Route::middleware('auth')->group(function () {
++    Route::get('/admin/live-tracking', [LiveTrackingController::class, 'index'])->name('admin.live_tracking');
++});
++
+ Route::group(['middleware' => 'auth', 'prefix' => 'account'], function () {
+     Route::post('image/upload', [ImageController::class, 'store'])->name('image.store');
+ 

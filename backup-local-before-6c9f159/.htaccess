@@ -1,0 +1,7 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Serve the Laravel public directory from the project root under Apache.
+    RewriteCond %{REQUEST_URI} !^/crm/public/
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
