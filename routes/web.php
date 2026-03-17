@@ -880,3 +880,5 @@ Route::group(['middleware' => 'auth', 'prefix' => 'account'], function () {
 if (file_exists(app_path('Modules/WhatsApp/routes.php'))) {
     require app_path('Modules/WhatsApp/routes.php');
 }
+
+require base_path('routes/document-workflow.php');

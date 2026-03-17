@@ -2,10 +2,14 @@
 
 namespace App\Services\Documents;
 
+use App\Models\DocumentWorkflow;
+
 class DocumentNumberService
 {
-    public function nextNumber(): ?string
+    public function nextNumber(): string
     {
-        return null;
+        $nextId = (DocumentWorkflow::withTrashed()->max('id') ?? 0) + 1;
+
+        return 'DOC-' . str_pad((string) $nextId, 5, '0', STR_PAD_LEFT);
     }
 }

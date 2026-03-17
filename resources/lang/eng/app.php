@@ -236,6 +236,7 @@ return array(
         'employeeModule' => 'Employee Module Settings',
         'adminModule' => 'Admin Module Settings',
         'documents' => 'Documents',
+        'documentTemplates' => 'Document Templates',
         'attendanceReport' => 'Attendance Report',
         'projectSettings' => 'Project Settings',
         'financeSettings' => 'Finance Settings',

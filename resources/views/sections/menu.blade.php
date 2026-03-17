@@ -121,6 +121,10 @@
                 @if (in_array('contracts', user_modules()) && $sidebarUserPermissions['view_contract'] != 5 && $sidebarUserPermissions['view_contract'] != 'none')
                     <x-sub-menu-item :link="route('contracts.index')" :text="__('app.menu.contracts')" />
                 @endif
+                @if (!in_array('client', user_roles()))
+                    <x-sub-menu-item :link="route('documents.index')" :text="__('app.menu.documents')" />
+                    <x-sub-menu-item :link="route('document-templates.index')" :text="__('app.menu.documentTemplates')" />
+                @endif
                 @if (in_array('projects', user_modules()) && $sidebarUserPermissions['view_projects'] != 5 && $sidebarUserPermissions['view_projects'] != 'none')
                     <x-sub-menu-item :link="route('projects.index')" :text="__('app.menu.projects')" />
                 @endif
