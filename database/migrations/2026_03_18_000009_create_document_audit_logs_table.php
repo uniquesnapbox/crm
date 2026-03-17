@@ -9,12 +9,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('document_audit_logs', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('company_id')->nullable();
-            $table->unsignedBigInteger('document_workflow_id');
+            $table->increments('id');
+            $table->unsignedInteger('company_id')->nullable();
+            $table->unsignedInteger('document_workflow_id');
             $table->string('action');
             $table->string('actor_type')->nullable();
-            $table->unsignedBigInteger('actor_id')->nullable();
+            $table->unsignedInteger('actor_id')->nullable();
             $table->string('actor_name')->nullable();
             $table->longText('meta_json')->nullable();
             $table->string('ip_address')->nullable();

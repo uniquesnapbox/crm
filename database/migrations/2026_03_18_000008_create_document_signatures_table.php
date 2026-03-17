@@ -9,10 +9,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('document_signatures', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('company_id')->nullable();
-            $table->unsignedBigInteger('document_workflow_id');
-            $table->unsignedBigInteger('recipient_id')->nullable();
+            $table->increments('id');
+            $table->unsignedInteger('company_id')->nullable();
+            $table->unsignedInteger('document_workflow_id');
+            $table->unsignedInteger('recipient_id')->nullable();
             $table->string('signer_name');
             $table->string('signer_email')->nullable();
             $table->string('signature_type');

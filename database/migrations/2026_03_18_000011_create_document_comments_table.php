@@ -9,12 +9,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('document_comments', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('company_id')->nullable();
-            $table->unsignedBigInteger('document_workflow_id');
+            $table->increments('id');
+            $table->unsignedInteger('company_id')->nullable();
+            $table->unsignedInteger('document_workflow_id');
             $table->longText('comment');
             $table->string('visibility')->default('internal');
-            $table->unsignedBigInteger('added_by')->nullable();
+            $table->unsignedInteger('added_by')->nullable();
             $table->timestamps();
 
             $table->index(['document_workflow_id', 'visibility'], 'document_comments_workflow_visibility_index');

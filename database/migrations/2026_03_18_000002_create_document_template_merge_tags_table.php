@@ -9,9 +9,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('document_template_merge_tags', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('company_id')->nullable();
-            $table->unsignedBigInteger('template_id');
+            $table->increments('id');
+            $table->unsignedInteger('company_id')->nullable();
+            $table->unsignedInteger('template_id');
             $table->string('tag_key');
             $table->string('tag_label');
             $table->string('source_type');

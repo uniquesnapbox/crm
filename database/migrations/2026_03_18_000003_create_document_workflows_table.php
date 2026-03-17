@@ -9,9 +9,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('document_workflows', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('company_id')->nullable();
-            $table->unsignedBigInteger('template_id')->nullable();
+            $table->increments('id');
+            $table->unsignedInteger('company_id')->nullable();
+            $table->unsignedInteger('template_id')->nullable();
             $table->string('document_number')->nullable();
             $table->string('original_document_number')->nullable();
             $table->string('title');
@@ -19,10 +19,10 @@ return new class extends Migration
             $table->string('category')->nullable();
             $table->string('document_type');
             $table->string('module_context')->nullable();
-            $table->unsignedBigInteger('context_id')->nullable();
-            $table->unsignedBigInteger('owner_id')->nullable();
-            $table->unsignedBigInteger('client_id')->nullable();
-            $table->unsignedBigInteger('project_id')->nullable();
+            $table->unsignedInteger('context_id')->nullable();
+            $table->unsignedInteger('owner_id')->nullable();
+            $table->unsignedInteger('client_id')->nullable();
+            $table->unsignedInteger('project_id')->nullable();
             $table->string('status')->default('draft');
             $table->string('approval_status')->default('not_required');
             $table->string('signature_status')->default('not_required');
@@ -32,8 +32,8 @@ return new class extends Migration
             $table->timestamp('expires_at')->nullable();
             $table->timestamp('sent_at')->nullable();
             $table->timestamp('completed_at')->nullable();
-            $table->unsignedBigInteger('created_by')->nullable();
-            $table->unsignedBigInteger('last_updated_by')->nullable();
+            $table->unsignedInteger('created_by')->nullable();
+            $table->unsignedInteger('last_updated_by')->nullable();
             $table->timestamps();
             $table->softDeletes();
 

@@ -9,16 +9,16 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('document_files', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('company_id')->nullable();
-            $table->unsignedBigInteger('document_workflow_id');
+            $table->increments('id');
+            $table->unsignedInteger('company_id')->nullable();
+            $table->unsignedInteger('document_workflow_id');
             $table->string('file_name');
             $table->string('hash_name')->nullable();
             $table->string('file_path');
             $table->string('file_type');
             $table->string('mime_type')->nullable();
             $table->unsignedBigInteger('file_size')->nullable();
-            $table->unsignedBigInteger('uploaded_by')->nullable();
+            $table->unsignedInteger('uploaded_by')->nullable();
             $table->timestamps();
 
             $table->index(['document_workflow_id', 'file_type'], 'document_files_workflow_file_type_index');

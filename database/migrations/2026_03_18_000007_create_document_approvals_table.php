@@ -9,15 +9,15 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('document_approvals', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('company_id')->nullable();
-            $table->unsignedBigInteger('document_workflow_id');
-            $table->unsignedBigInteger('recipient_id');
+            $table->increments('id');
+            $table->unsignedInteger('company_id')->nullable();
+            $table->unsignedInteger('document_workflow_id');
+            $table->unsignedInteger('recipient_id');
             $table->unsignedInteger('step_no');
             $table->string('status')->default('pending');
             $table->string('action')->nullable();
             $table->text('comments')->nullable();
-            $table->unsignedBigInteger('acted_by')->nullable();
+            $table->unsignedInteger('acted_by')->nullable();
             $table->timestamp('acted_at')->nullable();
             $table->timestamps();
 

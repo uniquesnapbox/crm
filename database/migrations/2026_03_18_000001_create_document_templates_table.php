@@ -9,8 +9,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('document_templates', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('company_id')->nullable();
+            $table->increments('id');
+            $table->unsignedInteger('company_id')->nullable();
             $table->string('name');
             $table->string('slug');
             $table->string('category');
@@ -22,8 +22,8 @@ return new class extends Migration
             $table->boolean('requires_signature')->default(false);
             $table->boolean('is_active')->default(true);
             $table->unsignedInteger('version')->default(1);
-            $table->unsignedBigInteger('created_by')->nullable();
-            $table->unsignedBigInteger('last_updated_by')->nullable();
+            $table->unsignedInteger('created_by')->nullable();
+            $table->unsignedInteger('last_updated_by')->nullable();
             $table->timestamps();
             $table->softDeletes();
 

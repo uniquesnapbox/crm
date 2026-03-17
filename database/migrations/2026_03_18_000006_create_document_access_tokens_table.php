@@ -9,10 +9,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('document_access_tokens', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('company_id')->nullable();
-            $table->unsignedBigInteger('document_workflow_id');
-            $table->unsignedBigInteger('recipient_id')->nullable();
+            $table->increments('id');
+            $table->unsignedInteger('company_id')->nullable();
+            $table->unsignedInteger('document_workflow_id');
+            $table->unsignedInteger('recipient_id')->nullable();
             $table->string('token')->unique();
             $table->string('purpose')->default('public_action');
             $table->timestamp('expires_at')->nullable();

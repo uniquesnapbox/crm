@@ -9,9 +9,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('document_workflow_data', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('company_id')->nullable();
-            $table->unsignedBigInteger('document_workflow_id');
+            $table->increments('id');
+            $table->unsignedInteger('company_id')->nullable();
+            $table->unsignedInteger('document_workflow_id');
             $table->longText('data_json')->nullable();
             $table->timestamps();
 
