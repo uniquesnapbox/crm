@@ -18,7 +18,17 @@ class LeadController extends Controller
                 'category:id,category_name',
                 'addedBy:id,name,email',
                 'assignedTo:id,name,email',
-                'latestFollowUp:id,lead_id,remark,next_follow_up_date,status,latitude,longitude',
+                'latestFollowUp' => function ($query) {
+                    $query->select([
+                        'lead_follow_up.id',
+                        'lead_follow_up.lead_id',
+                        'lead_follow_up.remark',
+                        'lead_follow_up.next_follow_up_date',
+                        'lead_follow_up.status',
+                        'lead_follow_up.latitude',
+                        'lead_follow_up.longitude',
+                    ]);
+                },
             ])
             ->whereNull('archived_at')
             ->orderByDesc('id');
