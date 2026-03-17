@@ -9,10 +9,12 @@ class AttendanceResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $attendanceDate = $this->date ?? $this->clock_in_date ?? optional($this->clock_in_time)->toDateString();
+
         return [
             'id' => $this->id,
-            'date' => optional($this->date)->toDateString(),
-            'status' => $this->status,
+            'date' => $attendanceDate,
+            'status' => $this->status ?? null,
             'clock_in_time' => optional($this->clock_in_time)->toIso8601String(),
             'clock_out_time' => optional($this->clock_out_time)->toIso8601String(),
             'working_from' => $this->working_from,
