@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\Integration\EmployeeController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -20,3 +21,8 @@ ApiRoute::group(['namespace' => 'App\Http\Controllers'], function () {
 });
 
 Route::post('login', [AuthController::class, 'login'])->name('api.login');
+
+Route::prefix('integrations')->middleware('integration.token')->group(function () {
+    Route::get('employees', [EmployeeController::class, 'index']);
+    Route::get('employees/{employee}', [EmployeeController::class, 'show']);
+});
