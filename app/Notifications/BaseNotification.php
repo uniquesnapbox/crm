@@ -4,6 +4,7 @@ namespace App\Notifications;
 
 use App\Models\GlobalSetting;
 use App\Models\SmtpSetting;
+use App\Models\WhatsappNotificationSetting;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -139,6 +140,21 @@ class BaseNotification extends Notification implements ShouldQueue
 
         // Check if the notifiable a non-empty Slack username
         return (!is_null($notifiable->employeeDetail->slack_username) && ($notifiable->employeeDetail->slack_username != ''));
+    }
+
+    protected function canSendWhatsApp($notifiable, $emailSetting): bool
+    {
+        if (!$emailSetting || $emailSetting->send_whatsapp !== 'yes') {
+            return false;
+        }
+
+        $setting = WhatsappNotificationSetting::where('company_id', $notifiable->company_id)->first();
+
+        if (!$setting || $setting->status !== 'active' || empty($setting->api_token)) {
+            return false;
+        }
+
+        return method_exists($notifiable, 'routeNotificationForWascript') && !empty($notifiable->routeNotificationForWascript());
     }
 
 }

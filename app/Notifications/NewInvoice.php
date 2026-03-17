@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Channels\WascriptChannel;
 use App\Models\Invoice;
 use App\Models\EmailNotificationSetting;
 use App\Http\Controllers\InvoiceController;
@@ -44,6 +45,10 @@ class NewInvoice extends BaseNotification
 
         if ($this->emailSetting->send_slack == 'yes' && $this->company->slackSetting->status == 'active') {
             $this->slackUserNameCheck($notifiable) ? array_push($via, 'slack') : null;
+        }
+
+        if ($this->canSendWhatsApp($notifiable, $this->emailSetting)) {
+            array_push($via, WascriptChannel::class);
         }
 
         return $via;
@@ -106,6 +111,15 @@ class NewInvoice extends BaseNotification
         return $this->slackBuild($notifiable)
             ->content(__('email.hello') . ' ' . $notifiable->name . ' ' . __('email.invoice.subject'));
 
+    }
+
+    public function toWascript($notifiable): array
+    {
+        return [
+            'message' => __('email.invoice.subject') . "\n"
+                . __('modules.invoices.invoice') . ': ' . $this->invoice->invoice_number . "\n"
+                . $this->modifyUrl(url()->temporarySignedRoute('front.invoice', now()->addDays(GlobalSetting::SIGNED_ROUTE_EXPIRY), $this->invoice->hash)),
+        ];
     }
 
 }

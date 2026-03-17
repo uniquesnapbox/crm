@@ -15,6 +15,7 @@ use Illuminate\Support\Carbon;
  * @property string $send_email
  * @property string $send_slack
  * @property string $send_push
+ * @property string $send_whatsapp
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property string|null $slug
@@ -43,6 +44,14 @@ class EmailNotificationSetting extends BaseModel
     use HasCompany;
 
     protected $guarded = ['id'];
+
+    public const WHATSAPP_NOTIFICATION_SLUGS = [
+        'lead-notification',
+        'follow-up-reminder',
+        'new-support-ticket-request',
+        'invoice-createupdate-notification',
+        'order-createupdate-notification',
+    ];
 
     const NOTIFICATIONS = [
         [

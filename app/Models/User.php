@@ -337,6 +337,15 @@ class User extends BaseModel implements AuthenticatableContract, AuthorizableCon
         return $this->onesignal_player_id;
     }
 
+    public function routeNotificationForWascript($notification = null)
+    {
+        if (!is_null($this->mobile) && !is_null($this->country_phonecode)) {
+            return '+' . $this->country_phonecode . $this->mobile;
+        }
+
+        return $this->mobile;
+    }
+
     public function routeNotificationForTwilio()
     {
         if (!is_null($this->mobile) && !is_null($this->country_phonecode)) {

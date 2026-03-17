@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Channels\WascriptChannel;
 use App\Http\Controllers\InvoiceController;
 use App\Models\EmailNotificationSetting;
 use App\Models\GlobalSetting;
@@ -39,6 +40,10 @@ class InvoiceUpdated extends BaseNotification
 
         if ($this->emailSetting->send_push == 'yes') {
             array_push($via, OneSignalChannel::class);
+        }
+
+        if ($this->canSendWhatsApp($notifiable, $this->emailSetting)) {
+            array_push($via, WascriptChannel::class);
         }
 
         return $via;
@@ -104,6 +109,15 @@ class InvoiceUpdated extends BaseNotification
         return OneSignalMessage::create()
             ->setSubject(__('email.invoice.updateSubject'))
             ->setBody(__('email.invoice.updateText'));
+    }
+
+    public function toWascript($notifiable): array
+    {
+        return [
+            'message' => __('email.invoice.updateSubject') . "\n"
+                . __('modules.invoices.invoice') . ': ' . $this->invoice->invoice_number . "\n"
+                . $this->modifyUrl(url()->temporarySignedRoute('front.invoice', now()->addDays(GlobalSetting::SIGNED_ROUTE_EXPIRY), $this->invoice->hash)),
+        ];
     }
 
 }

@@ -34,6 +34,12 @@
                                 ajax="false">@lang('app.menu.pusherSettings')<i
                                 id="pusher-setting-tab" class="fa fa-circle ml-1 {{ $pusherSettings->status == 1 ? 'text-light-green' : 'text-red' }}"></i>
                             </a>
+                            <a class="nav-item nav-link f-15 whatsapp-setting"
+                                href="{{ route('notifications.index') }}?tab=whatsapp-setting" role="tab"
+                                aria-controls="nav-ticketTypes" aria-selected="true"
+                                ajax="false">WhatsApp API<i
+                                class="fa fa-circle ml-1 {{ $whatsappSettings->status == 'active' ? 'text-light-green' : 'text-red' }}"></i>
+                            </a>
                         </div>
                     </nav>
                 </div>
@@ -89,6 +95,10 @@
 
         $(document).on('change', '#push_status', function() {
             $('.push_details').toggleClass('d-none');
+        });
+
+        $(document).on('change', '#whatsapp_status', function() {
+            $('.whatsapp_details').toggleClass('d-none');
         });
     </script>
 @endpush

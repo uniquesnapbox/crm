@@ -8,6 +8,7 @@ use App\Models\PusherSetting;
 use App\Models\PushNotificationSetting;
 use App\Models\SlackSetting;
 use App\Models\SmtpSetting;
+use App\Models\WhatsappNotificationSetting;
 
 class NotificationSettingController extends AccountBaseController
 {
@@ -59,6 +60,13 @@ class NotificationSettingController extends AccountBaseController
             'taskboard' => 0,
             'messages' => 0,
         ]);
+        $this->whatsappSettings = WhatsappNotificationSetting::first() ?: new WhatsappNotificationSetting([
+            'status' => 'inactive',
+            'base_url' => 'https://api-whatsapp.wascript.com.br',
+            'api_token' => null,
+            'default_country_code' => null,
+            'test_number' => null,
+        ]);
 
         switch ($tab) {
         case 'slack-setting':
@@ -79,6 +87,18 @@ class NotificationSettingController extends AccountBaseController
 
         case 'pusher-setting':
             $this->view = 'notification-settings.ajax.pusher-setting';
+            break;
+
+        case 'whatsapp-setting':
+            $this->whatsappEventSettings = $this->emailSettings
+                ->whereIn('slug', EmailNotificationSetting::WHATSAPP_NOTIFICATION_SLUGS)
+                ->values();
+            $this->checkedAll = $this->whatsappEventSettings->count() > 0
+                && $this->whatsappEventSettings->count() === $this->whatsappEventSettings->filter(function ($value) {
+                    return $value->send_whatsapp == 'yes';
+                })->count();
+
+            $this->view = 'notification-settings.ajax.whatsapp-setting';
             break;
 
         default:
