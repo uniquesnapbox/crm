@@ -127,7 +127,9 @@ Route::post('mobile-login', [AuthController::class, 'login'])
     ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class])
     ->name('mobile.login');
 
-Route::group(['middleware' => 'auth', 'prefix' => 'account'], function () {
+// Allow both web-session users and Sanctum token (used by Flutter app) to access the same routes.
+// Order matters: Sanctum will attempt token auth first, then fall back to the web guard.
+Route::group(['middleware' => 'auth:sanctum,web', 'prefix' => 'account'], function () {
     Route::get('live-tracking', [LiveTrackingController::class, 'index'])->name('account.live-tracking');
     Route::get('admin/live-tracking', function () {
         return redirect()->route('account.live-tracking');
