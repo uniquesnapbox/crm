@@ -62,6 +62,13 @@
                     </div>
                 @endif
 
+                @if (!empty($whatsappSettings->last_response_body))
+                    <div class="f-13 text-dark-grey mb-1">
+                        <strong>Raw API response body:</strong>
+                        <pre class="mt-1 mb-0 p-2 bg-white border rounded text-wrap">{{ $whatsappSettings->last_response_body }}</pre>
+                    </div>
+                @endif
+
                 @if (!empty($whatsappSettings->last_delivery_status))
                     <div class="f-13 text-dark-grey mb-1">
                         <strong>Delivery interpretation:</strong>
