@@ -34,8 +34,8 @@ class WhatsappSettingController extends AccountBaseController
         $setting->status = $request->has('whatsapp_status') ? 'active' : 'inactive';
         $setting->base_url = $request->base_url;
         $setting->api_token = $request->api_token;
-        $setting->default_country_code = $request->default_country_code;
-        $setting->test_number = $request->test_number;
+        $setting->default_country_code = preg_replace('/\D+/', '', (string) $request->default_country_code);
+        $setting->test_number = preg_replace('/\D+/', '', (string) $request->test_number);
         $setting->save();
 
         session()->forget('whatsapp_setting');
@@ -53,7 +53,7 @@ class WhatsappSettingController extends AccountBaseController
         }
 
         try {
-            $this->wascriptService->sendText(
+            $response = $this->wascriptService->sendText(
                 $setting->test_number,
                 'This is a test WhatsApp notification from CRM',
                 $setting
@@ -62,7 +62,15 @@ class WhatsappSettingController extends AccountBaseController
             return Reply::error($exception->getMessage());
         }
 
-        return Reply::success('Test WhatsApp notification sent.');
+        $meta = $response['_crm'] ?? [];
+        $deliveryStatus = $meta['delivery_status'] ?? 'accepted';
+        $responseMessage = $meta['response_message'] ?? 'No response message returned.';
+        $normalizedPhone = $meta['normalized_phone'] ?? null;
+        $deliveryLabel = $deliveryStatus === 'sent'
+            ? 'Message sent confirmation received.'
+            : 'Request accepted by API, but handset delivery is not confirmed.';
+
+        return Reply::success('WhatsApp test completed. ' . $deliveryLabel . ' API message: ' . $responseMessage . ($normalizedPhone ? ' Final number: ' . $normalizedPhone : ''));
     }
 
     private function saveWhatsAppNotificationSettings($request): void

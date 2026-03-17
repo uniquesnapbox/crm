@@ -13,4 +13,14 @@ class WhatsappNotificationSetting extends BaseModel
     protected $casts = [
         'last_sent_at' => 'datetime',
     ];
+
+    public function getDeliveryStatusLabelAttribute(): string
+    {
+        return match ($this->last_delivery_status) {
+            'sent' => 'Sent confirmed',
+            'accepted' => 'Accepted only',
+            'failed' => 'Failed',
+            default => 'Not sent yet',
+        };
+    }
 }

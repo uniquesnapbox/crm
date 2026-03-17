@@ -33,9 +33,9 @@
                     <span class="f-14 text-dark-grey mr-2">Last WhatsApp send status:</span>
                     @php
                         $status = $whatsappSettings->last_send_status;
-                        $statusClass = $status === 'success' ? 'badge badge-success' : ($status === 'failed' ? 'badge badge-danger' : 'badge badge-secondary');
+                        $statusClass = $status === 'sent' ? 'badge badge-success' : ($status === 'accepted' ? 'badge badge-warning' : ($status === 'failed' ? 'badge badge-danger' : 'badge badge-secondary'));
                     @endphp
-                    <span class="{{ $statusClass }}">{{ $status ? ucfirst($status) : 'Not sent yet' }}</span>
+                    <span class="{{ $statusClass }}">{{ $whatsappSettings->delivery_status_label }}</span>
                 </div>
 
                 @if (!empty($whatsappSettings->last_error_message))
@@ -47,6 +47,31 @@
                 @if (!empty($whatsappSettings->last_http_status))
                     <div class="f-13 text-dark-grey mb-1">
                         <strong>Last HTTP status:</strong> {{ $whatsappSettings->last_http_status }}
+                    </div>
+                @endif
+
+                @if (!empty($whatsappSettings->last_normalized_phone))
+                    <div class="f-13 text-dark-grey mb-1">
+                        <strong>Final normalized phone:</strong> {{ $whatsappSettings->last_normalized_phone }}
+                    </div>
+                @endif
+
+                @if (!empty($whatsappSettings->last_response_message))
+                    <div class="f-13 text-dark-grey mb-1">
+                        <strong>Exact API response message:</strong> {{ $whatsappSettings->last_response_message }}
+                    </div>
+                @endif
+
+                @if (!empty($whatsappSettings->last_delivery_status))
+                    <div class="f-13 text-dark-grey mb-1">
+                        <strong>Delivery interpretation:</strong>
+                        @if ($whatsappSettings->last_delivery_status === 'sent')
+                            Sent confirmed by API response.
+                        @elseif ($whatsappSettings->last_delivery_status === 'accepted')
+                            Request accepted by API only. Handset delivery is not confirmed.
+                        @elseif ($whatsappSettings->last_delivery_status === 'failed')
+                            Request failed.
+                        @endif
                     </div>
                 @endif
 
@@ -105,6 +130,9 @@
         $.easyAjax({
             url: "{{ route('whatsapp_settings.send_test_notification') }}",
             type: "GET",
+            success: function () {
+                window.location.reload();
+            }
         })
     });
 

@@ -15,9 +15,9 @@ class WascriptService
 
         if ($normalizedPhone === '') {
             $message = 'WhatsApp phone number is invalid. Please use a valid number with country code.';
-            $this->recordFailure($setting, null, ['phone' => $normalizedPhone], null, $message);
+            $this->recordFailure($setting, null, ['phone' => $normalizedPhone], null, $message, null, $normalizedPhone);
 
-            throw new WascriptException($message);
+            throw new WascriptException($message, null, null, $normalizedPhone);
         }
 
         $baseUrl = rtrim((string) $setting->base_url, '/');
@@ -25,9 +25,9 @@ class WascriptService
 
         if ($baseUrl === '' || $token === '') {
             $message = 'WhatsApp API configuration is incomplete.';
-            $this->recordFailure($setting, null, ['phone' => $normalizedPhone], null, $message);
+            $this->recordFailure($setting, null, ['phone' => $normalizedPhone], null, $message, null, $normalizedPhone);
 
-            throw new WascriptException($message);
+            throw new WascriptException($message, null, null, $normalizedPhone);
         }
 
         $payload = [
@@ -43,9 +43,9 @@ class WascriptService
                 ->post('/api/enviar-texto/' . $token, $payload);
         } catch (ConnectionException $exception) {
             $readableMessage = 'WhatsApp request failed. Please check the Wascript server connection.';
-            $this->recordFailure($setting, null, $payload, null, $readableMessage, $exception->getMessage());
+            $this->recordFailure($setting, null, $payload, null, $readableMessage, $exception->getMessage(), $normalizedPhone);
 
-            throw new WascriptException($readableMessage);
+            throw new WascriptException($readableMessage, null, null, $normalizedPhone);
         }
 
         $responseBody = $response->json();
@@ -53,21 +53,29 @@ class WascriptService
 
         if ($response->failed()) {
             $readableMessage = $this->resolveReadableError($responseData, $response->status());
-            $this->recordFailure($setting, $response->status(), $payload, $responseData, $readableMessage);
+            $this->recordFailure($setting, $response->status(), $payload, $responseData, $readableMessage, null, $normalizedPhone);
 
-            throw new WascriptException($readableMessage, $response->status(), $responseData);
+            throw new WascriptException($readableMessage, $response->status(), $responseData, $normalizedPhone);
         }
 
-        if (array_key_exists('success', $responseData) && $responseData['success'] === false) {
+        if (($responseData['success'] ?? null) !== true) {
             $readableMessage = $this->resolveReadableError($responseData, $response->status());
-            $this->recordFailure($setting, $response->status(), $payload, $responseData, $readableMessage);
+            $this->recordFailure($setting, $response->status(), $payload, $responseData, $readableMessage, null, $normalizedPhone);
 
-            throw new WascriptException($readableMessage, $response->status(), $responseData);
+            throw new WascriptException($readableMessage, $response->status(), $responseData, $normalizedPhone);
         }
 
-        $this->recordSuccess($setting, $response->status(), $payload, $responseData);
+        $deliveryStatus = $this->resolveDeliveryStatus($responseData);
+        $responseMessage = $this->extractResponseMessage($responseData);
+        $this->recordSuccess($setting, $response->status(), $payload, $responseData, $normalizedPhone, $responseMessage, $deliveryStatus);
 
-        return $responseData ?: ['success' => true];
+        return array_merge($responseData ?: ['success' => true], [
+            '_crm' => [
+                'normalized_phone' => $normalizedPhone,
+                'response_message' => $responseMessage,
+                'delivery_status' => $deliveryStatus,
+            ],
+        ]);
     }
 
     public function normalizePhone(?string $phone, ?string $defaultCountryCode = null): string
@@ -75,12 +83,8 @@ class WascriptService
         $digits = preg_replace('/\D+/', '', (string) $phone);
         $countryCode = preg_replace('/\D+/', '', (string) $defaultCountryCode);
 
-        if ($digits === '') {
+        if ($digits === '' || $countryCode === '') {
             return '';
-        }
-
-        if ($countryCode === '') {
-            return $digits;
         }
 
         $localNumber = ltrim($digits, '0');
@@ -98,7 +102,7 @@ class WascriptService
 
     private function resolveReadableError(array $responseData, ?int $httpStatus = null): string
     {
-        $message = trim((string) ($responseData['message'] ?? $responseData['error'] ?? ''));
+        $message = $this->extractResponseMessage($responseData);
         $normalizedMessage = mb_strtolower($message);
 
         if ($normalizedMessage !== '') {
@@ -128,16 +132,22 @@ class WascriptService
         WhatsappNotificationSetting $setting,
         ?int $httpStatus,
         array $payload,
-        array $responseData
+        array $responseData,
+        string $normalizedPhone,
+        ?string $responseMessage,
+        string $deliveryStatus
     ): void {
         $this->logAttempt('info', $setting, $payload, $httpStatus, $responseData);
 
         $setting->forceFill([
-            'last_send_status' => 'success',
+            'last_send_status' => $deliveryStatus,
             'last_error_message' => null,
             'last_http_status' => $httpStatus,
             'last_response_body' => $this->encodeResponse($responseData),
             'last_sent_at' => now(),
+            'last_normalized_phone' => $normalizedPhone,
+            'last_response_message' => $responseMessage,
+            'last_delivery_status' => $deliveryStatus,
         ])->save();
     }
 
@@ -147,7 +157,8 @@ class WascriptService
         array $payload,
         mixed $responseData,
         string $readableMessage,
-        ?string $transportMessage = null
+        ?string $transportMessage = null,
+        ?string $normalizedPhone = null
     ): void {
         $context = [
             'readable_error' => $readableMessage,
@@ -165,6 +176,9 @@ class WascriptService
             'last_http_status' => $httpStatus,
             'last_response_body' => $this->encodeResponse($responseData),
             'last_sent_at' => now(),
+            'last_normalized_phone' => $normalizedPhone,
+            'last_response_message' => $this->extractResponseMessage($responseData),
+            'last_delivery_status' => 'failed',
         ])->save();
     }
 
@@ -196,5 +210,46 @@ class WascriptService
         }
 
         return json_encode($responseData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    private function extractResponseMessage(mixed $responseData): ?string
+    {
+        if (is_array($responseData)) {
+            $message = $responseData['message'] ?? $responseData['error'] ?? $responseData['detail'] ?? null;
+
+            return $message !== null ? trim((string) $message) : null;
+        }
+
+        if (is_string($responseData)) {
+            return trim($responseData);
+        }
+
+        return null;
+    }
+
+    private function resolveDeliveryStatus(array $responseData): string
+    {
+        $status = mb_strtolower((string) ($responseData['status'] ?? $responseData['delivery_status'] ?? ''));
+
+        if (in_array($status, ['sent', 'delivered', 'enviado', 'entregue'], true)) {
+            return 'sent';
+        }
+
+        if (
+            array_key_exists('delivered', $responseData) && $responseData['delivered'] === true
+            || array_key_exists('sent', $responseData) && $responseData['sent'] === true
+        ) {
+            return 'sent';
+        }
+
+        if (
+            array_key_exists('queue_id', $responseData)
+            || array_key_exists('message_id', $responseData)
+            || array_key_exists('id', $responseData)
+        ) {
+            return 'accepted';
+        }
+
+        return 'accepted';
     }
 }

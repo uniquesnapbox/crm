@@ -71,6 +71,9 @@ class NotificationSettingController extends AccountBaseController
             'last_http_status' => null,
             'last_response_body' => null,
             'last_sent_at' => null,
+            'last_normalized_phone' => null,
+            'last_response_message' => null,
+            'last_delivery_status' => null,
         ]);
 
         switch ($tab) {
