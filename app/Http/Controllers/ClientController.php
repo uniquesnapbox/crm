@@ -326,7 +326,8 @@ class ClientController extends AccountBaseController
             $data['password'] = bcrypt($request->password);
         }
 
-        $data['country_id'] = $request->country;
+        $indiaCountry = collect(countries())->firstWhere('iso', 'IN');
+        $data['country_id'] = $request->country ?: ($user->country_id ?: optional($indiaCountry)->id);
 
         if ($request->has('sendMail')) {
             $user->email_notifications = $request->sendMail == 'yes' ? 1 : 0;
@@ -357,6 +358,11 @@ class ClientController extends AccountBaseController
             $data['note'] = trim_editor($request->note);
             $data['locale'] = $request->locale;
             $fields = $request->only($user->clientDetails->getFillable());
+            $fields['note'] = trim_editor($request->note);
+
+            if ($request->has('assigned_to')) {
+                $fields['added_by'] = $request->filled('assigned_to') ? (int) $request->assigned_to : null;
+            }
 
             if ($request->has('company_logo_delete') && $request->company_logo_delete == 'yes') {
                 Files::deleteFile($user->clientDetails->company_logo, 'client-logo');
@@ -373,6 +379,11 @@ class ClientController extends AccountBaseController
 
         }
         else {
+            if ($request->has('assigned_to')) {
+                $data['added_by'] = $request->filled('assigned_to') ? (int) $request->assigned_to : null;
+            }
+
+            $data['note'] = trim_editor($request->note);
             $user->clientDetails()->create($data);
         }
 
