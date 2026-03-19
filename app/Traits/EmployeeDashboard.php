@@ -631,9 +631,12 @@ trait EmployeeDashboard
             }
         }
 
+        $employeeDetail = user()->employeeDetail;
+        $enforceGeofence = $this->shouldEnforceGeofence($employeeDetail);
+
         // Check user by location
-        if (attendance_setting()->radius_check == 'yes') {
-            $checkRadius = $this->isWithinRadius($request);
+        if ($enforceGeofence) {
+            $checkRadius = $this->isWithinRadius($request, $employeeDetail);
 
             if (!$checkRadius) {
                 return Reply::error(__('messages.notAnValidLocation'));
@@ -761,17 +764,60 @@ trait EmployeeDashboard
      *
      * @return boolean
      */
-    private function isWithinRadius($request)
+    private function shouldEnforceGeofence(?EmployeeDetails $employeeDetail): bool
+    {
+        if (is_null($employeeDetail)) {
+            return attendance_setting()->radius_check == 'yes';
+        }
+
+        if ($employeeDetail->employee_type === 'sales_staff') {
+            return false;
+        }
+
+        if ($employeeDetail->employee_type === 'office_staff') {
+            return true;
+        }
+
+        return attendance_setting()->radius_check == 'yes';
+    }
+
+    private function isWithinRadius($request, ?EmployeeDetails $employeeDetail = null)
     {
         $radius = attendance_setting()->radius;
         $currentLatitude = $request->currentLatitude;
         $currentLongitude = $request->currentLongitude;
-        $location = CompanyAddress::find($request->location);
+        $targetLatitude = null;
+        $targetLongitude = null;
 
-        $latFrom = deg2rad($location->latitude);
+        if (empty($currentLatitude) || empty($currentLongitude)) {
+            return false;
+        }
+
+        if (
+            !is_null($employeeDetail)
+            && $employeeDetail->employee_type === 'office_staff'
+            && !empty($employeeDetail->office_latitude)
+            && !empty($employeeDetail->office_longitude)
+        ) {
+            $targetLatitude = (float) $employeeDetail->office_latitude;
+            $targetLongitude = (float) $employeeDetail->office_longitude;
+            $radius = !empty($employeeDetail->allowed_radius) ? (int) $employeeDetail->allowed_radius : $radius;
+        }
+        else {
+            $location = CompanyAddress::find($request->location);
+
+            if (is_null($location) || empty($location->latitude) || empty($location->longitude)) {
+                return false;
+            }
+
+            $targetLatitude = (float) $location->latitude;
+            $targetLongitude = (float) $location->longitude;
+        }
+
+        $latFrom = deg2rad($targetLatitude);
         $latTo = deg2rad($currentLatitude);
 
-        $lonFrom = deg2rad($location->longitude);
+        $lonFrom = deg2rad($targetLongitude);
         $lonTo = deg2rad($currentLongitude);
 
         $theta = $lonFrom - $lonTo;

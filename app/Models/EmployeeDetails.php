@@ -98,6 +98,12 @@ class EmployeeDetails extends BaseModel
         'date_of_birth' => 'datetime',
         'calendar_view	' => 'array',
         'marital_status' => MaritalStatus::class,
+        'latitude' => 'float',
+        'longitude' => 'float',
+        'office_latitude' => 'float',
+        'office_longitude' => 'float',
+        'allowed_radius' => 'integer',
+        'notice_period' => 'integer',
     ];
 
     protected $with = ['designation', 'company', 'department'];
