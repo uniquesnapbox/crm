@@ -3,8 +3,11 @@
         return strtoupper($country->iso ?? '') === 'IN';
     });
 
+    $clientDetails = $client->clientDetails;
     $defaultCountryId = old('country', $client->country_id ?: optional($indiaCountry)->id);
     $defaultPhoneCode = old('country_phonecode', $client->country_phonecode ?: optional($indiaCountry)->phonecode ?: 91);
+    $lastContactDate = optional($clientDetails)->last_contact_date;
+    $nextFollowupDate = optional($clientDetails)->next_followup_date;
 @endphp
 
 <style>
@@ -116,7 +119,7 @@
                                 <x-forms.textarea fieldName="address" fieldId="address" fieldRequired="true"
                                                   :fieldLabel="__('modules.accountSettings.companyAddress')"
                                                   :fieldPlaceholder="__('placeholders.address')"
-                                                  :fieldValue="$client->clientDetails->address" />
+                                                  :fieldValue="optional($clientDetails)->address" />
                             </div>
                         </div>
                     </div>
@@ -126,7 +129,7 @@
                             <div class="col-lg-4 col-md-6">
                                 <x-forms.text fieldId="company_name" :fieldLabel="__('modules.client.companyName')"
                                               fieldName="company_name"
-                                              :fieldValue="$client->clientDetails->company_name"
+                                              :fieldValue="optional($clientDetails)->company_name"
                                               :fieldPlaceholder="__('placeholders.company')" />
                             </div>
 
@@ -134,13 +137,13 @@
                                 <x-forms.text fieldId="office" :fieldLabel="__('modules.client.officePhoneNumber')"
                                               fieldName="office"
                                               :fieldPlaceholder="__('placeholders.mobileWithPlus')"
-                                              :fieldValue="$client->clientDetails->office" />
+                                              :fieldValue="optional($clientDetails)->office" />
                             </div>
 
                             <div class="col-lg-4 col-md-6">
                                 <x-forms.text fieldId="website" :fieldLabel="__('modules.client.website')"
                                               fieldName="website"
-                                              :fieldValue="$client->clientDetails->website"
+                                              :fieldValue="optional($clientDetails)->website"
                                               :fieldPlaceholder="__('placeholders.website')" />
                             </div>
 
@@ -149,7 +152,7 @@
                                               class="mr-0 mr-lg-2 mr-md-2"
                                               :fieldLabel="__('modules.contracts.companyLogo')"
                                               fieldName="company_logo"
-                                              :fieldValue="($client->clientDetails->company_logo ? $client->clientDetails->image_url : null)"
+                                              :fieldValue="(optional($clientDetails)->company_logo ? optional($clientDetails)->image_url : null)"
                                               fieldId="company_logo"
                                               :popover="__('messages.fileFormat.ImageFile')" />
                             </div>
@@ -161,22 +164,24 @@
                             <div class="col-lg-4 col-md-6">
                                 <x-forms.select fieldId="client_type" fieldName="client_type" fieldLabel="Client Type">
                                     <option value="">--</option>
-                                    <option value="hot" @selected($client->clientDetails->client_type === 'hot')>Hot</option>
-                                    <option value="warm" @selected($client->clientDetails->client_type === 'warm')>Warm</option>
-                                    <option value="cold" @selected($client->clientDetails->client_type === 'cold')>Cold</option>
+                                    <option value="hot" @selected(optional($clientDetails)->client_type === 'hot')>Hot</option>
+                                    <option value="warm" @selected(optional($clientDetails)->client_type === 'warm')>Warm</option>
+                                    <option value="cold" @selected(optional($clientDetails)->client_type === 'cold')>Cold</option>
                                 </x-forms.select>
                             </div>
 
                             <div class="col-lg-4 col-md-6">
                                 <x-forms.datepicker fieldId="last_contact_date" fieldName="last_contact_date"
                                                     custom="true" fieldLabel="Last Contact Date"
-                                                    :fieldValue="optional($client->clientDetails->last_contact_date)->format(company()->date_format)" />
+                                                    fieldPlaceholder="Select last contact date"
+                                                    :fieldValue="($lastContactDate ? optional($lastContactDate)->format(company()->date_format) : '')" />
                             </div>
 
                             <div class="col-lg-4 col-md-6">
                                 <x-forms.datepicker fieldId="next_followup_date" fieldName="next_followup_date"
                                                     custom="true" fieldLabel="Next Follow-up Date"
-                                                    :fieldValue="optional($client->clientDetails->next_followup_date)->format(company()->date_format)" />
+                                                    fieldPlaceholder="Select next follow-up date"
+                                                    :fieldValue="($nextFollowupDate ? optional($nextFollowupDate)->format(company()->date_format) : '')" />
                             </div>
 
                             @if ($editPermission == 'all')
@@ -184,7 +189,7 @@
                                     <x-forms.select fieldId="assigned_to" fieldLabel="Assigned To" fieldName="assigned_to">
                                         <option value="">--</option>
                                         @foreach ($employees as $item)
-                                            <x-user-option :user="$item" :selected="$client->clientDetails->added_by == $item->id" />
+                                            <x-user-option :user="$item" :selected="optional($clientDetails)->added_by == $item->id" />
                                         @endforeach
                                     </x-forms.select>
                                 </div>
@@ -193,7 +198,7 @@
                             <div class="col-lg-12">
                                 <x-forms.textarea fieldId="note" fieldLabel="Notes" fieldName="note"
                                                   :fieldPlaceholder="__('modules.lead.remark')"
-                                                  :fieldValue="$client->clientDetails->note" />
+                                                  :fieldValue="optional($clientDetails)->note" />
                             </div>
                         </div>
                     </div>

@@ -155,11 +155,15 @@ class ClientController extends AccountBaseController
         $data = $request->all();
         unset($data['country']);
         $data['password'] = bcrypt($request->password);
-        $data['country_id'] = $request->country;
+        $indiaCountry = collect(countries())->firstWhere('iso', 'IN');
+        $data['country_id'] = $request->country ?: optional($indiaCountry)->id;
         $data['name'] = $request->name;
-        $data['email_notifications'] = $request->sendMail == 'yes' ? 1 : 0;
+        $data['email_notifications'] = $request->has('sendMail') ? ($request->sendMail == 'yes' ? 1 : 0) : 1;
+        $data['login'] = $request->has('login') ? $request->login : 'disable';
         $data['gender'] = $request->gender ?? null;
         $data['locale'] = $request->locale ?? 'en';
+        $data['note'] = trim_editor($request->note);
+        $assignedTo = $request->filled('assigned_to') ? (int) $request->assigned_to : null;
 
         if ($request->has('telegram_user_id')) {
             $data['telegram_user_id'] = $request->telegram_user_id;
@@ -175,6 +179,11 @@ class ClientController extends AccountBaseController
 
         $user = User::create($data);
         $user->clientDetails()->create($data);
+
+        if ($request->has('assigned_to')) {
+            $user->clientDetails()->update(['added_by' => $assignedTo]);
+        }
+
         $client_id = $user->id;
 
         $client_note = new ClientNote();
@@ -273,7 +282,18 @@ class ClientController extends AccountBaseController
         $this->client = User::withoutGlobalScope(ActiveScope::class)->with('clientDetails')->findOrFail($id);
         $this->editPermission = user()->permission('edit_clients');
 
-        abort_403(!($this->editPermission == 'all' || ($this->editPermission == 'added' && $this->client->clientDetails->added_by == user()->id) || ($this->editPermission == 'both' && $this->client->clientDetails->added_by == user()->id)));
+        if (is_null($this->client->clientDetails)) {
+            $this->client->clientDetails()->create([
+                'company_id' => company()->id,
+                'added_by' => user()->id,
+                'address' => null,
+            ]);
+            $this->client->load('clientDetails');
+        }
+
+        $clientAddedBy = optional($this->client->clientDetails)->added_by;
+
+        abort_403(!($this->editPermission == 'all' || ($this->editPermission == 'added' && $clientAddedBy == user()->id) || ($this->editPermission == 'both' && $clientAddedBy == user()->id)));
 
         $this->countries = countries();
         $this->categories = ClientCategory::all();
