@@ -434,8 +434,7 @@ class LeadContactController extends AccountBaseController
         $followUp->last_updated_by = user()->id;
         $followUp->save();
 
-        $lead->next_follow_up = 'yes';
-        $lead->save();
+        $this->syncLeadFollowUpFlag($lead->id);
 
         return Reply::success(__('messages.recordSaved'));
     }
