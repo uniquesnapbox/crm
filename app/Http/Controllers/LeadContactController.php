@@ -443,12 +443,12 @@ class LeadContactController extends AccountBaseController
     {
         $this->editFollowUpPermission = user()->permission('edit_lead_follow_up');
         $this->follow = LeadFollowUp::with('lead')->findOrFail($id);
-        abort_403(!$this->canAccessLead(optional($this->follow->lead)));
+        abort_403(!$this->canAccessLead($this->follow->lead));
 
         abort_403(!($this->editFollowUpPermission == 'all'
             || ($this->editFollowUpPermission == 'added' && $this->follow->added_by == user()->id)
-            || ($this->editFollowUpPermission == 'owned' && $this->canAccessLead(optional($this->follow->lead)))
-            || ($this->editFollowUpPermission == 'both' && ($this->follow->added_by == user()->id || $this->canAccessLead(optional($this->follow->lead))))
+            || ($this->editFollowUpPermission == 'owned' && $this->canAccessLead($this->follow->lead))
+            || ($this->editFollowUpPermission == 'both' && ($this->follow->added_by == user()->id || $this->canAccessLead($this->follow->lead)))
         ));
 
         return view('lead-contact.followups.edit', $this->data);
@@ -458,12 +458,12 @@ class LeadContactController extends AccountBaseController
     {
         $this->editFollowUpPermission = user()->permission('edit_lead_follow_up');
         $followUp = LeadFollowUp::with('lead')->findOrFail($request->id);
-        abort_403(!$this->canAccessLead(optional($followUp->lead)));
+        abort_403(!$this->canAccessLead($followUp->lead));
 
         abort_403(!($this->editFollowUpPermission == 'all'
             || ($this->editFollowUpPermission == 'added' && $followUp->added_by == user()->id)
-            || ($this->editFollowUpPermission == 'owned' && $this->canAccessLead(optional($followUp->lead)))
-            || ($this->editFollowUpPermission == 'both' && ($followUp->added_by == user()->id || $this->canAccessLead(optional($followUp->lead))))
+            || ($this->editFollowUpPermission == 'owned' && $this->canAccessLead($followUp->lead))
+            || ($this->editFollowUpPermission == 'both' && ($followUp->added_by == user()->id || $this->canAccessLead($followUp->lead)))
         ));
 
         $request->validate([
@@ -499,12 +499,12 @@ class LeadContactController extends AccountBaseController
     {
         $this->deleteFollowUpPermission = user()->permission('delete_lead_follow_up');
         $followUp = LeadFollowUp::with('lead')->findOrFail($id);
-        abort_403(!$this->canAccessLead(optional($followUp->lead)));
+        abort_403(!$this->canAccessLead($followUp->lead));
 
         abort_403(!($this->deleteFollowUpPermission == 'all'
             || ($this->deleteFollowUpPermission == 'added' && $followUp->added_by == user()->id)
-            || ($this->deleteFollowUpPermission == 'owned' && $this->canAccessLead(optional($followUp->lead)))
-            || ($this->deleteFollowUpPermission == 'both' && ($followUp->added_by == user()->id || $this->canAccessLead(optional($followUp->lead))))
+            || ($this->deleteFollowUpPermission == 'owned' && $this->canAccessLead($followUp->lead))
+            || ($this->deleteFollowUpPermission == 'both' && ($followUp->added_by == user()->id || $this->canAccessLead($followUp->lead)))
         ));
 
         $leadId = $followUp->lead_id;
@@ -519,12 +519,12 @@ class LeadContactController extends AccountBaseController
     {
         $this->editFollowUpPermission = user()->permission('edit_lead_follow_up');
         $followUp = LeadFollowUp::with('lead')->findOrFail($request->id);
-        abort_403(!$this->canAccessLead(optional($followUp->lead)));
+        abort_403(!$this->canAccessLead($followUp->lead));
 
         abort_403(!($this->editFollowUpPermission == 'all'
             || ($this->editFollowUpPermission == 'added' && $followUp->added_by == user()->id)
-            || ($this->editFollowUpPermission == 'owned' && $this->canAccessLead(optional($followUp->lead)))
-            || ($this->editFollowUpPermission == 'both' && ($followUp->added_by == user()->id || $this->canAccessLead(optional($followUp->lead))))
+            || ($this->editFollowUpPermission == 'owned' && $this->canAccessLead($followUp->lead))
+            || ($this->editFollowUpPermission == 'both' && ($followUp->added_by == user()->id || $this->canAccessLead($followUp->lead)))
         ));
 
         $followUp->status = $request->status;
