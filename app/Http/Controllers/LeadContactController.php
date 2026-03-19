@@ -26,6 +26,7 @@ use App\Traits\ImportExcel;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class LeadContactController extends AccountBaseController
@@ -634,6 +635,11 @@ class LeadContactController extends AccountBaseController
 
     private function syncLeadFollowUpFlag(int $leadId): void
     {
+        // Some restored databases may not include this legacy flag column.
+        if (!Schema::hasColumn('leads', 'next_follow_up')) {
+            return;
+        }
+
         $hasPendingFollowUps = LeadFollowUp::where('lead_id', $leadId)
             ->where('status', 'pending')
             ->exists();
