@@ -23,6 +23,8 @@ use Illuminate\Foundation\Auth\Access\Authorizable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 use Laravel\Fortify\TwoFactorAuthenticatable;
@@ -275,18 +277,46 @@ class User extends BaseModel implements AuthenticatableContract, AuthorizableCon
     public function getImageUrlAttribute()
     {
         $gravatarHash = !is_null($this->email) ? md5(strtolower(trim($this->email))) : md5($this->id);
+        $gravatarUrl = 'https://www.gravatar.com/avatar/' . $gravatarHash . '.png?s=200&d=mp';
 
-        return ($this->image) ? asset_url_local_s3('avatar/' . $this->image) : 'https://www.gravatar.com/avatar/' . $gravatarHash . '.png?s=200&d=mp';
+        if (!$this->image || !$this->hasAvatarFile()) {
+            return $gravatarUrl;
+        }
+
+        return asset_url_local_s3('avatar/' . $this->image);
     }
 
     public function maskedImageUrl(): Attribute
     {
         return Attribute::make(
             get: function () {
-                return ($this->image) ? $this->generateMaskedImageAppUrl('avatar/' . $this->image) : 'https://www.gravatar.com/avatar/' . md5($this->id) . '.png?s=200&d=mp';
+                if (!$this->image || !$this->hasAvatarFile()) {
+                    return 'https://www.gravatar.com/avatar/' . md5($this->id) . '.png?s=200&d=mp';
+                }
+
+                return $this->generateMaskedImageAppUrl('avatar/' . $this->image);
             },
         );
 
+    }
+
+    private function hasAvatarFile(): bool
+    {
+        $path = 'avatar/' . $this->image;
+        $disk = config('filesystems.default');
+        $cacheKey = 'avatar-file-exists-' . md5($disk . '|' . $path);
+
+        return Cache::remember($cacheKey, now()->addMinutes(30), function () use ($disk, $path) {
+            if (in_array($disk, StorageSetting::S3_COMPATIBLE_STORAGE)) {
+                try {
+                    return Storage::disk($disk)->exists($path);
+                } catch (\Throwable) {
+                    return false;
+                }
+            }
+
+            return File::exists(public_path('user-uploads/' . $path));
+        });
     }
 
     public function hasGravatar($email)
