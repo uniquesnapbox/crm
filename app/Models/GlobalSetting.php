@@ -7,6 +7,9 @@ use Carbon\Carbon;
 use GuzzleHttp\Client;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * App\Models\Company
@@ -414,7 +417,7 @@ class GlobalSetting extends BaseModel
             return null;
         }
 
-        return asset_url_local_s3('login-background/' . $this->login_background);
+        return $this->themeAssetUrl($this->login_background, 'login-background');
     }
 
     public function maskedDefaultLogo(): Attribute
@@ -464,7 +467,7 @@ class GlobalSetting extends BaseModel
                     return null;
                 }
 
-                return $this->generateMaskedImageAppUrl('login-background/' . $this->login_background);
+                return $this->maskedThemeAssetUrl($this->login_background, 'login-background');
             },
         );
 
@@ -478,7 +481,7 @@ class GlobalSetting extends BaseModel
                     return asset('favicon.png');
                 }
 
-                return $this->generateMaskedImageAppUrl('favicon/' . $this->favicon);
+                return $this->maskedThemeAssetUrl($this->favicon, 'favicon') ?: asset('favicon.png');
             },
         );
 
@@ -505,7 +508,86 @@ class GlobalSetting extends BaseModel
             return asset('favicon.png');
         }
 
-        return asset_url_local_s3('favicon/' . $this->favicon);
+        return $this->themeAssetUrl($this->favicon, 'favicon') ?: asset('favicon.png');
+    }
+
+    private function themeAssetUrl(?string $value, string $defaultFolder): ?string
+    {
+        $path = $this->resolveThemeAssetPath($value, $defaultFolder);
+
+        if (!$path) {
+            return null;
+        }
+
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return $path;
+        }
+
+        return asset_url_local_s3($path);
+    }
+
+    private function maskedThemeAssetUrl(?string $value, string $defaultFolder): ?string
+    {
+        $path = $this->resolveThemeAssetPath($value, $defaultFolder);
+
+        if (!$path) {
+            return null;
+        }
+
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return $path;
+        }
+
+        return $this->generateMaskedImageAppUrl($path);
+    }
+
+    private function resolveThemeAssetPath(?string $value, string $defaultFolder): ?string
+    {
+        if (!$value) {
+            return null;
+        }
+
+        $value = trim($value);
+
+        if (str_starts_with($value, 'http://') || str_starts_with($value, 'https://')) {
+            return $value;
+        }
+
+        $normalized = str_replace('\\', '/', ltrim($value, '/'));
+        $normalized = preg_replace('/^user-uploads\//', '', $normalized);
+        $baseName = basename($normalized);
+
+        $candidates = array_values(array_unique(array_filter([
+            $normalized,
+            trim($defaultFolder, '/') . '/' . $baseName,
+            $baseName,
+        ])));
+
+        foreach ($candidates as $candidate) {
+            if ($this->themeAssetExists($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private function themeAssetExists(string $path): bool
+    {
+        $disk = config('filesystems.default');
+        $cacheKey = 'theme-asset-exists-' . md5($disk . '|' . $path);
+
+        return Cache::remember($cacheKey, now()->addMinutes(30), function () use ($disk, $path) {
+            if (in_array($disk, StorageSetting::S3_COMPATIBLE_STORAGE)) {
+                try {
+                    return Storage::disk($disk)->exists($path);
+                } catch (\Throwable) {
+                    return false;
+                }
+            }
+
+            return File::exists(public_path('user-uploads/' . ltrim($path, '/')));
+        });
     }
 
     public static function checkListCompleted()

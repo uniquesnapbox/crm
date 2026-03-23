@@ -431,10 +431,13 @@ class LeadContactController extends AccountBaseController
         $lead = Lead::findOrFail($request->lead_id);
         abort_403(!$this->canAccessLead($lead));
 
+        $startTime = $this->normalizeCompanyTimeValue($request->start_time);
+        $request->merge(['start_time' => $startTime]);
+
         $request->validate([
             'lead_id' => 'required|exists:leads,id',
             'next_follow_up_date' => 'required|date_format:"' . company()->date_format . '"',
-            'start_time' => 'required',
+            'start_time' => 'required|date_format:"' . company()->time_format . '"',
             'remind_time' => 'nullable|required_if:send_reminder,yes|integer|min:1',
             'remind_type' => 'nullable|in:minute,hour,day',
             'latitude' => 'nullable|numeric',
@@ -446,7 +449,7 @@ class LeadContactController extends AccountBaseController
         $followUp->remark = trim_editor($request->remark);
         $followUp->next_follow_up_date = Carbon::createFromFormat(
             company()->date_format . ' ' . company()->time_format,
-            $request->next_follow_up_date . ' ' . $request->start_time,
+            $request->next_follow_up_date . ' ' . $startTime,
             company()->timezone
         )->setTimezone('UTC');
         $followUp->send_reminder = $request->send_reminder === 'yes' ? 'yes' : 'no';
@@ -485,6 +488,9 @@ class LeadContactController extends AccountBaseController
         $followUp = LeadFollowUp::with('lead')->findOrFail($request->id);
         abort_403(!$this->canAccessLead($followUp->lead));
 
+        $startTime = $this->normalizeCompanyTimeValue($request->start_time);
+        $request->merge(['start_time' => $startTime]);
+
         abort_403(!($this->editFollowUpPermission == 'all'
             || ($this->editFollowUpPermission == 'added' && $followUp->added_by == user()->id)
             || ($this->editFollowUpPermission == 'owned' && $this->canAccessLead($followUp->lead))
@@ -493,7 +499,7 @@ class LeadContactController extends AccountBaseController
 
         $request->validate([
             'next_follow_up_date' => 'required|date_format:"' . company()->date_format . '"',
-            'start_time' => 'required',
+            'start_time' => 'required|date_format:"' . company()->time_format . '"',
             'remind_time' => 'nullable|required_if:send_reminder,yes|integer|min:1',
             'remind_type' => 'nullable|in:minute,hour,day',
             'latitude' => 'nullable|numeric',
@@ -504,7 +510,7 @@ class LeadContactController extends AccountBaseController
         $followUp->remark = trim_editor($request->remark);
         $followUp->next_follow_up_date = Carbon::createFromFormat(
             company()->date_format . ' ' . company()->time_format,
-            $request->next_follow_up_date . ' ' . $request->start_time,
+            $request->next_follow_up_date . ' ' . $startTime,
             company()->timezone
         )->setTimezone('UTC');
         $followUp->send_reminder = $request->send_reminder === 'yes' ? 'yes' : 'no';
@@ -731,7 +737,7 @@ class LeadContactController extends AccountBaseController
         }
 
         $followUpTime = $request->filled('reminder_time')
-            ? $request->reminder_time
+            ? $this->normalizeCompanyTimeValue($request->reminder_time)
             : now(company()->timezone)->format(company()->time_format);
 
         return Carbon::createFromFormat(
@@ -767,6 +773,26 @@ class LeadContactController extends AccountBaseController
         $this->syncLeadFollowUpFlag($lead->id);
 
         return true;
+    }
+
+    private function normalizeCompanyTimeValue(?string $time): ?string
+    {
+        if (is_null($time)) {
+            return null;
+        }
+
+        $time = trim($time);
+        $companyTimeFormat = company()->time_format;
+
+        if ($companyTimeFormat === 'h:i a') {
+            return strtolower($time);
+        }
+
+        if ($companyTimeFormat === 'h:i A') {
+            return strtoupper($time);
+        }
+
+        return $time;
     }
 
     public function importLead()

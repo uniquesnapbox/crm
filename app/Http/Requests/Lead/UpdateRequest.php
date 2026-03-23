@@ -9,6 +9,15 @@ class UpdateRequest extends CoreRequest
 {
     use CustomFieldsRequestTrait;
 
+    protected function prepareForValidation()
+    {
+        if ($this->filled('reminder_time')) {
+            $this->merge([
+                'reminder_time' => $this->normalizeTimeInput($this->input('reminder_time')),
+            ]);
+        }
+    }
+
     /**
      * Determine if the user is authorized to make this request.
      *
@@ -59,6 +68,26 @@ class UpdateRequest extends CoreRequest
         $attributes['reminder_time'] = __('modules.timeLogs.startTime');
 
         return $attributes;
+    }
+
+    private function normalizeTimeInput($time)
+    {
+        if ($time === null) {
+            return null;
+        }
+
+        $time = trim((string) $time);
+        $companyTimeFormat = company()->time_format;
+
+        if ($companyTimeFormat === 'h:i a') {
+            return strtolower($time);
+        }
+
+        if ($companyTimeFormat === 'h:i A') {
+            return strtoupper($time);
+        }
+
+        return $time;
     }
 
 }
