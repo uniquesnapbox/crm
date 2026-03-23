@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Attendance;
 use App\Models\EmployeeLocation;
+use App\Models\User;
+use App\Services\WhatsAppOtpService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,6 +18,9 @@ class MobileAttendanceController extends Controller
     public function clockIn(Request $request)
     {
         $user = Auth::user();
+        if (!$this->isAllowed($user)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
         $request->validate([
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
@@ -59,12 +64,12 @@ class MobileAttendanceController extends Controller
                 'clock_in_at' => Carbon::parse($request->timestamp),
                 'clock_in_latitude' => $request->latitude,
                 'clock_in_longitude' => $request->longitude,
-                'clock_in_address' => $request->address,
+                'clock_in_address' => $request->address ?? ($request->latitude . ', ' . $request->longitude),
                 'clock_in_photo_path' => $photoPath,
                 'last_update_at' => Carbon::parse($request->timestamp),
                 'last_latitude' => $request->latitude,
                 'last_longitude' => $request->longitude,
-                'last_address' => $request->address,
+                'last_address' => $request->address ?? ($request->latitude . ', ' . $request->longitude),
                 'timestamp' => Carbon::parse($request->timestamp),
                 'is_active' => true,
             ]
@@ -81,6 +86,9 @@ class MobileAttendanceController extends Controller
     public function clockOut(Request $request)
     {
         $user = Auth::user();
+        if (!$this->isAllowed($user)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
         $request->validate([
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
@@ -107,7 +115,7 @@ class MobileAttendanceController extends Controller
             'clock_out_at' => Carbon::parse($request->timestamp),
             'clock_out_latitude' => $request->latitude,
             'clock_out_longitude' => $request->longitude,
-            'clock_out_address' => $request->address,
+            'clock_out_address' => $request->address ?? ($request->latitude . ', ' . $request->longitude),
             'clock_out_photo_path' => $photoPath,
             'is_active' => false,
         ]);
@@ -129,6 +137,9 @@ class MobileAttendanceController extends Controller
     public function liveUpdate(Request $request)
     {
         $user = Auth::user();
+        if (!$this->isAllowed($user)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
         $request->validate([
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
@@ -157,9 +168,69 @@ class MobileAttendanceController extends Controller
             'last_update_at' => Carbon::parse($request->timestamp),
             'last_latitude' => $request->latitude,
             'last_longitude' => $request->longitude,
-            'last_address' => $request->address,
+            'last_address' => $request->address ?? ($request->latitude . ', ' . $request->longitude),
         ]);
 
         return response()->json(['status' => 'ok']);
+    }
+
+    public function locationAlert(Request $request)
+    {
+        $user = Auth::user();
+        if (!$this->isAllowed($user)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $request->validate([
+            'reason' => 'required|string',
+            'timestamp' => 'nullable|date',
+        ]);
+
+        $ts = $request->timestamp
+            ? Carbon::parse($request->timestamp)
+            : Carbon::now();
+
+        // For now, log the alert; could be extended to notify admins (email/WhatsApp) via jobs.
+        \Log::warning('Location alert', [
+            'user_id' => $user->id,
+            'reason' => $request->reason,
+            'timestamp' => $ts->toIso8601String(),
+        ]);
+
+        // Notify employee and admins via WhatsApp (India numbers only, without 91)
+        $notifier = app(WhatsAppOtpService::class);
+        $targets = [];
+        if (!empty($user->mobile) && $user->country_phonecode === '91') {
+            $targets[] = $user->mobile;
+        }
+        $adminMobiles = User::whereHas('roles', function ($q) {
+                $q->where('name', 'admin');
+            })
+            ->where('status', 'active')
+            ->where('login', 'enable')
+            ->whereNotNull('mobile')
+            ->where('country_phonecode', '91')
+            ->pluck('mobile')
+            ->unique()
+            ->values()
+            ->all();
+        $targets = array_unique(array_merge($targets, $adminMobiles));
+
+        $msg = sprintf(
+            'Location OFF for %s at %s. Reason: %s',
+            $user->name,
+            $ts->format('d-M H:i'),
+            $request->reason
+        );
+        foreach ($targets as $mobile) {
+            $notifier->sendMessage($mobile, $msg);
+        }
+
+        return response()->json(['status' => 'ok']);
+    }
+
+    private function isAllowed($user): bool
+    {
+        return $user && ($user->hasRole('admin') || $user->hasRole('employee'));
     }
 }

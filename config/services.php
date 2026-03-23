@@ -73,7 +73,7 @@ return [
 
     'whatsapp' => [
         'driver'       => env('WHATSAPP_DRIVER', 'log'),
-        'api_url'      => env('WHATSAPP_API_URL', 'https://bhashsms.com/api/sendmsgutil.php'),
+        'api_url'      => env('WHATSAPP_API_URL', 'http://bhashsms.com/api/sendmsg.php'),
         'user'         => env('WHATSAPP_API_USER', ''),
         'password'     => env('WHATSAPP_API_PASS', ''),
         'sender'       => env('WHATSAPP_API_SENDER', ''),

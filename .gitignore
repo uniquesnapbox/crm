@@ -37,3 +37,5 @@ demo_db_copy.sql
 database/maxmind/
 .env.local
 .env.*.local
+database/schema/mysql-schema.dump
+database/schema/mysql-schema.dump.bak

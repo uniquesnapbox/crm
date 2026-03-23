@@ -89,7 +89,9 @@ class LoginController extends Controller
         ]);
 
         // Clean the number - digits only
-        $mobile = preg_replace('/[^0-9]/', '', $request->mobile);
+        $mobile  = preg_replace('/[^0-9]/', '', $request->mobile);
+        // India only as per gateway note (expects number without 91)
+        $country = '91';
 
         // Find active user with this mobile number
         $user = User::where('mobile', $mobile)
@@ -122,12 +124,12 @@ class LoginController extends Controller
 
         // Send OTP via WhatsApp
         $service = new WhatsAppOtpService();
-        $sent    = $service->sendOtp($mobile, $otp);
+        $sent    = $service->sendOtp($mobile, $otp); // gateway expects number without 91
 
         if (!$sent) {
             return response()->json([
                 'status'  => 'error',
-                'message' => 'Failed to send OTP. Please try again.',
+                'message' => 'Failed to send OTP. ' . ($service->getLastError() ?? 'Please try again.'),
             ], 500);
         }
 
@@ -144,7 +146,7 @@ class LoginController extends Controller
             'otp'    => 'required|string|size:6',
         ]);
 
-        $mobile = preg_replace('/[^0-9]/', '', $request->mobile);
+        $mobile  = preg_replace('/[^0-9]/', '', $request->mobile);
 
         // Find the OTP record
         $otpRecord = WhatsappOtp::where('mobile', $mobile)
