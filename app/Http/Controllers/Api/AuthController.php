@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\WhatsappOtp;
+use App\Services\WhatsAppOtpService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -48,4 +50,5 @@ class AuthController extends Controller
             'employee_id' => $user->employeeDetail?->id ?? $user->id,
         ]);
     }
+
 }

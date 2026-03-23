@@ -16,13 +16,11 @@ use function config;
 
 class AppServiceProvider extends ServiceProvider
 {
-
     /**
      * Register any application services.
      *
      * @return void
      */
-
     public function register()
     {
         Cashier::ignoreMigrations();
@@ -42,18 +40,18 @@ class AppServiceProvider extends ServiceProvider
         }
 
         Schema::defaultStringLength(191);
-        $pushSetting = null;
 
+        // Handle push notification setting safely
         try {
             if (Schema::hasTable('push_notification_settings')) {
-                $pushSetting = DB::table('push_notification_settings')->first();
+                View::share('pushSetting', DB::table('push_notification_settings')->first());
+            } else {
+                View::share('pushSetting', null);
             }
-        }
-        // @codingStandardsIgnoreLine
-        catch (\Exception $e) {
+        } catch (\Exception $e) {
+            View::share('pushSetting', null);
         }
 
-        View::share('pushSetting', $pushSetting);
         View::share('pageTitle', 'USB CRM');
 
         if (app()->environment('development')) {
@@ -71,7 +69,5 @@ class AppServiceProvider extends ServiceProvider
 
             return static::minutes($totalMinutes)->cascade()->forHumans(['short' => true, 'options' => 0]); /** @phpstan-ignore-line */
         });
-
     }
-
 }
