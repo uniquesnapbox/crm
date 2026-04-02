@@ -144,6 +144,7 @@ class LoginController extends Controller
         $request->validate([
             'mobile' => 'required|string',
             'otp'    => 'required|string|size:6',
+            'device_name' => ['nullable', 'string', 'max:255'],
         ]);
 
         $mobile  = preg_replace('/[^0-9]/', '', $request->mobile);
@@ -166,8 +167,10 @@ class LoginController extends Controller
         // Mark OTP as used
         $otpRecord->update(['used' => true]);
 
-        // Find the user
-        $user = User::where('mobile', $mobile)
+        // Find the user with employee details
+        $user = User::withoutGlobalScopes()
+            ->with(['roles:id,name', 'employeeDetail:user_id,id'])
+            ->where('mobile', $mobile)
             ->where('status', 'active')
             ->where('login', 'enable')
             ->first();
@@ -182,10 +185,19 @@ class LoginController extends Controller
         // Log in the user
         Auth::login($user);
 
+        // Generate API token for mobile app
+        $token = $user->createToken($request->device_name ?? 'flutter_crm_app')->plainTextToken;
+
         return response()->json([
-            'status'   => 'success',
-            'message'  => 'Login successful!',
-            'redirect' => route('dashboard'),
+            'token' => $token,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'roles' => $user->roles->pluck('name')->values(),
+            ],
+            'employee_id' => $user->employeeDetail?->id ?? $user->id,
+            'has_employee_profile' => $user->employeeDetail !== null,
         ]);
     }
 

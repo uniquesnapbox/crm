@@ -29,6 +29,7 @@ Route::post('whatsapp/send-otp', [LoginController::class, 'sendWhatsappOtp'])->n
 Route::post('whatsapp/verify-otp', [LoginController::class, 'verifyWhatsappOtp'])->name('api.whatsapp.verify_otp');
 
 Route::middleware('auth:sanctum')->group(function () {
+    Route::get('me', [AuthController::class, 'profile'])->name('api.profile');
     Route::get('lead-contacts', [LeadContactController::class, 'apiIndex'])->name('api.lead-contacts.index');
     Route::post('lead-contacts', [LeadContactController::class, 'store'])->name('api.lead-contacts.store');
     Route::patch('lead-contacts/{id}', [LeadContactController::class, 'update'])->name('api.lead-contacts.update');
