@@ -7,6 +7,7 @@ use App\Traits\HasCompany;
 use Carbon\Carbon;
 use Carbon\CarbonInterval;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -99,6 +100,10 @@ class Attendance extends BaseModel
         return $this->belongsTo(CompanyAddress::class, 'location_id');
     }
 
+    public function tracking(): HasOne
+    {
+        return $this->hasOne(EmployeeLocation::class, 'attendance_id');
+    }
     public function shift(): BelongsTo
     {
         return $this->belongsTo(EmployeeShift::class, 'employee_shift_id');

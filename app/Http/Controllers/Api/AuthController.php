@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\WhatsappOtp;
+use App\Services\WhatsAppOtpService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -48,4 +50,20 @@ class AuthController extends Controller
             'employee_id' => $user->employeeDetail?->id ?? $user->id,
         ]);
     }
+
+    public function profile(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        return response()->json([
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'roles' => $user->roles->pluck('name')->values(),
+            ],
+            'employee_id' => $user->employeeDetail?->id ?? $user->id,
+        ]);
+    }
+
 }

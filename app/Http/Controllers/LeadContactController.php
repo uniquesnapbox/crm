@@ -25,6 +25,7 @@ use App\Models\User;
 use App\Traits\ImportExcel;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -632,8 +633,79 @@ class LeadContactController extends AccountBaseController
         return Reply::successWithData(__('messages.recordSaved'), ['redirectUrl' => route('clients.show', $clientUser->id)]);
     }
 
+    /**
+     * Lightweight JSON list for mobile/API consumers.
+     * Auth: Sanctum token or session (handled by route middleware).
+     */
+    public function apiIndex(Request $request)
+    {
+        $perPage = min((int) $request->get('per_page', 20), 100);
+
+        $selectColumns = [
+            'id',
+            'client_name',
+            'client_email',
+            'mobile',
+            'source_id',
+            'status_id',
+            'category_id',
+            'assigned_to',
+            'added_by',
+            'note',
+            'created_at',
+        ];
+
+        // Include next_follow_up only if the column exists to avoid SQL errors on older schemas.
+        if (Schema::hasColumn('leads', 'next_follow_up')) {
+            $selectColumns[] = 'next_follow_up';
+        }
+
+        $query = Lead::query()
+            ->with([
+                'leadSource' => function ($q) {
+                    $q->select('id', DB::raw('type as name'));
+                },
+                'leadStatus' => function ($q) {
+                    $q->select('id', DB::raw('type as name'), 'label_color');
+                },
+                'category:id,category_name',
+            ])
+            ->select($selectColumns);
+
+        // Restrict visibility based on existing permissions.
+        $viewPermission = user()->permission('view_lead');
+        abort_403(!in_array($viewPermission, ['all', 'added', 'owned', 'both']));
+
+        if ($viewPermission === 'added') {
+            $query->where('added_by', user()->id);
+        } elseif ($viewPermission === 'owned') {
+            $query->where('assigned_to', user()->id);
+        } elseif ($viewPermission === 'both') {
+            $query->where(function ($q) {
+                $q->where('added_by', user()->id)->orWhere('assigned_to', user()->id);
+            });
+        }
+
+        // Simple search
+        if ($search = $request->get('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('client_name', 'like', "%{$search}%")
+                    ->orWhere('client_email', 'like', "%{$search}%")
+                    ->orWhere('mobile', 'like', "%{$search}%");
+            });
+        }
+
+        $leads = $query->paginate($perPage);
+
+        return response()->json($leads);
+    }
+
     private function syncLeadFollowUpFlag(int $leadId): void
     {
+        if (!Schema::hasColumn('leads', 'next_follow_up')) {
+            return;
+        }
+
         $hasPendingFollowUps = LeadFollowUp::where('lead_id', $leadId)
             ->where('status', 'pending')
             ->exists();
