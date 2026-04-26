@@ -163,9 +163,8 @@ class TaskReportDataTable extends BaseDataTable
 
         if ($startDate !== null && $endDate !== null) {
             $model->where(function ($q) use ($startDate, $endDate) {
-                $q->whereBetween(DB::raw('DATE(tasks.`due_date`)'), [$startDate, $endDate]);
-
-                $q->orWhereBetween(DB::raw('DATE(tasks.`start_date`)'), [$startDate, $endDate]);
+                $q->whereBetween('tasks.due_date', [$startDate, $endDate]);
+                $q->orWhereBetween('tasks.start_date', [$startDate, $endDate]);
             });
         }
 

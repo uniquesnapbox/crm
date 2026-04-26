@@ -43,14 +43,14 @@ trait HRDashboard
             return $value->status == '1';
         })->pluck('widget_name')->toArray();
 
-        $this->totalLeavesApproved = Leave::whereBetween(DB::raw('DATE(`leave_date`)'), [$startDate, $endDate])->where('status', 'approved')->count();
+        $this->totalLeavesApproved = Leave::whereBetween('leave_date', [$startDate, $endDate])->where('status', 'approved')->count();
         $this->totalEmployee = User::allEmployees(null, true)->count();
-        $this->totalNewEmployee = EmployeeDetails::whereBetween(DB::raw('DATE(`joining_date`)'), [$startDate, $endDate])->count();
-        $this->totalEmployeeExits = EmployeeDetails::whereBetween(DB::raw('DATE(`last_date`)'), [$startDate, $endDate])->count();
+        $this->totalNewEmployee = EmployeeDetails::whereBetween('joining_date', [$startDate, $endDate])->count();
+        $this->totalEmployeeExits = EmployeeDetails::whereBetween('last_date', [$startDate, $endDate])->count();
 
         $attandance = EmployeeDetails::join('users', 'users.id', 'employee_details.user_id')
             ->join('attendances', 'attendances.user_id', 'users.id')
-            ->whereBetween(DB::raw('DATE(attendances.`clock_in_time`)'), [$startDate, $endDate])
+            ->whereBetween('attendances.clock_in_time', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->select(DB::raw('count(users.id) as employeeCount'), DB::raw('DATE(attendances.clock_in_time) as date'))
             ->groupBy('date')
             ->get();
@@ -76,7 +76,7 @@ trait HRDashboard
 
         $this->leavesTaken = User::with('employeeDetail', 'employeeDetail.designation')
             ->join('leaves', 'leaves.user_id', 'users.id')
-            ->whereBetween(DB::raw('DATE(leaves.`leave_date`)'), [$startDate, $endDate])
+            ->whereBetween('leaves.leave_date', [$startDate, $endDate])
             ->where('leaves.status', 'approved')
             ->select(DB::raw('count(leaves.id) as employeeLeaveCount'), 'users.*')
             ->groupBy('users.id')
@@ -98,7 +98,7 @@ trait HRDashboard
         $this->lateAttendanceMarks = User::with('employeeDetail', 'employeeDetail.designation')
             ->without(['role', 'clientDetails'])
             ->join('attendances', 'attendances.user_id', 'users.id')
-            ->whereBetween(DB::raw('DATE(attendances.`clock_in_time`)'), [$startDate, $endDate])
+            ->whereBetween('attendances.clock_in_time', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->where('late', 'yes')
             ->select(DB::raw('count(DISTINCT DATE(attendances.clock_in_time) ) as employeeLateCount'), 'users.*')
             ->groupBy('users.id')

@@ -53,6 +53,7 @@ use App\Traits\ImportExcel;
 use App\Traits\ProjectProgress;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\Mailer\Exception\TransportException;
 
@@ -90,12 +91,12 @@ class ProjectController extends AccountBaseController
                 $this->clients = User::client();
             }
             else {
-                $this->clients = User::allClients();
-                $this->allEmployees = User::allEmployees(null, true, ($viewPermission == 'all' ? 'all' : null));
+                $this->clients = User::allClients(null, true, null, null, 50);
+                $this->allEmployees = User::allEmployees(null, true, ($viewPermission == 'all' ? 'all' : null), null, 50);
             }
 
-            $this->categories = ProjectCategory::all();
-            $this->departments = Team::all();
+            $this->categories = Cache::remember('project_categories_' . company()->id, now()->addMinutes(30), fn() => ProjectCategory::all());
+            $this->departments = Cache::remember('teams_' . company()->id, now()->addMinutes(30), fn() => Team::all());
             $this->projectStatus = ProjectStatusSetting::where('status', 'active')->get();
         }
 
@@ -208,10 +209,10 @@ class ProjectController extends AccountBaseController
 
         $this->pageTitle = __('app.addProject');
         $this->clients = User::allClients(null, false, ($this->addPermission == 'all' ? 'all' : null));
-        $this->categories = ProjectCategory::all();
-        $this->templates = ProjectTemplate::all();
-        $this->currencies = Currency::all();
-        $this->teams = Team::all();
+        $this->categories = Cache::remember('project_categories_' . company()->id, now()->addMinutes(30), fn() => ProjectCategory::all());
+        $this->templates = Cache::remember('project_templates_' . company()->id, now()->addMinutes(30), fn() => ProjectTemplate::all());
+        $this->currencies = Cache::remember('currencies_' . company()->id, now()->addMinutes(30), fn() => Currency::all());
+        $this->teams = Cache::remember('teams_' . company()->id, now()->addMinutes(30), fn() => Team::all());
         $this->employees = User::allEmployees(null, true, ($this->addPermission == 'all' ? 'all' : null));
         $this->redirectUrl = request()->redirectUrl;
 
@@ -454,9 +455,9 @@ class ProjectController extends AccountBaseController
         }
 
         $this->clients = User::allClients(null, false, ($this->editPermission == 'all' ? 'all' : null));
-        $this->categories = ProjectCategory::all();
-        $this->currencies = Currency::all();
-        $this->teams = Team::all();
+        $this->categories = Cache::remember('project_categories_' . company()->id, now()->addMinutes(30), fn() => ProjectCategory::all());
+        $this->currencies = Cache::remember('currencies_' . company()->id, now()->addMinutes(30), fn() => Currency::all());
+        $this->teams = Cache::remember('teams_' . company()->id, now()->addMinutes(30), fn() => Team::all());
         $this->projectStatus = ProjectStatusSetting::where('status', 'active')->get();
 
         $this->employees = '';
@@ -683,11 +684,11 @@ class ProjectController extends AccountBaseController
             $this->view = 'projects.ajax.taskboard';
             break;
         case 'tasks':
-            $this->taskBoardStatus = TaskboardColumn::all();
+            $this->taskBoardStatus = Cache::remember('task_board_status_' . company()->id, now()->addMinutes(30), fn() => TaskboardColumn::all());
 
             return (!$this->project->trashed()) ? $this->tasks($this->project->project_admin == user()->id) : $this->archivedTasks($this->project->project_admin == user()->id);
         case 'gantt':
-            $this->taskBoardStatus = TaskboardColumn::all();
+            $this->taskBoardStatus = Cache::remember('task_board_status_' . company()->id, now()->addMinutes(30), fn() => TaskboardColumn::all());
             $this->view = 'projects.ajax.gantt';
             break;
         case 'invoices':
@@ -741,7 +742,7 @@ class ProjectController extends AccountBaseController
             $this->hoursBudgetChart = $this->hoursBudgetChartData($this->project, $hoursLogged, $breakMinutes);
 
             $this->amountBudgetChart = $this->amountBudgetChartData($this->project);
-            $this->taskBoardStatus = TaskboardColumn::all();
+            $this->taskBoardStatus = Cache::remember('task_board_status_' . company()->id, now()->addMinutes(30), fn() => TaskboardColumn::all());
             $this->earnings = Payment::where('status', 'complete')
                 ->where('project_id', $id)
                 ->sum('amount');
@@ -771,7 +772,7 @@ class ProjectController extends AccountBaseController
      */
     public function taskChartData($id)
     {
-        $taskStatus = TaskboardColumn::all();
+        $taskStatus = Cache::remember('task_board_status_' . company()->id, now()->addMinutes(30), fn() => TaskboardColumn::all());
         $data['labels'] = $taskStatus->pluck('column_name');
         $data['colors'] = $taskStatus->pluck('label_color');
         $data['values'] = [];
@@ -1180,11 +1181,11 @@ class ProjectController extends AccountBaseController
     {
         $this->project = Project::with(['tasks' => function ($query) use ($request) {
             if ($request->startDate !== null && $request->startDate != 'null' && $request->startDate != '') {
-                $query->where(DB::raw('DATE(`start_date`)'), '>=', Carbon::createFromFormat($this->company->date_format, $request->startDate));
+                $query->where('start_date', '>=', Carbon::createFromFormat($this->company->date_format, $request->startDate)->toDateString());
             }
 
             if ($request->endDate !== null && $request->endDate != 'null' && $request->endDate != '') {
-                $query->where(DB::raw('DATE(`due_date`)'), '<=', Carbon::createFromFormat($this->company->date_format, $request->endDate));
+                $query->where('due_date', '<=', Carbon::createFromFormat($this->company->date_format, $request->endDate)->toDateString());
             }
 
             $query->whereNotNull('due_date');
@@ -1349,8 +1350,8 @@ class ProjectController extends AccountBaseController
                 $this->allEmployees = User::allEmployees();
             }
 
-            $this->categories = ProjectCategory::all();
-            $this->departments = Team::all();
+            $this->categories = Cache::remember('project_categories_' . company()->id, now()->addMinutes(30), fn() => ProjectCategory::all());
+            $this->departments = Cache::remember('teams_' . company()->id, now()->addMinutes(30), fn() => Team::all());
         }
 
         return $dataTable->render('projects.archive', $this->data);

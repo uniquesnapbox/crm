@@ -28,6 +28,7 @@ use App\Models\UniversalSearch;
 use App\Models\ClientSubCategory;
 use App\Models\PurposeConsentUser;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use App\DataTables\TicketDataTable;
 use App\DataTables\ClientsDataTable;
 use App\DataTables\InvoicesDataTable;
@@ -79,13 +80,13 @@ class ClientController extends AccountBaseController
         abort_403(!in_array($viewPermission, ['all', 'added', 'both']));
 
         if (!request()->ajax()) {
-            $this->clients = User::allClients(active:false);
-            $this->subcategories = ClientSubCategory::all();
-            $this->categories = ClientCategory::all();
-            $this->projects = Project::all();
-            $this->contracts = ContractType::all();
+            $this->clients = User::allClients(null, false, null, null, 50);
+            $this->subcategories = Cache::remember('client_subcategories_' . company()->id, now()->addMinutes(30), fn() => ClientSubCategory::select('id', 'category_name')->orderBy('category_name')->get());
+            $this->categories = Cache::remember('client_categories_' . company()->id, now()->addMinutes(30), fn() => ClientCategory::select('id', 'category_name')->orderBy('category_name')->get());
+            $this->projects = Cache::remember('client_filter_projects_' . company()->id, now()->addMinutes(15), fn() => Project::select('id', 'project_name')->orderByDesc('id')->limit(50)->get());
+            $this->contracts = Cache::remember('contract_types_' . company()->id, now()->addMinutes(30), fn() => ContractType::select('id', 'name')->orderBy('name')->get());
             $this->countries = countries();
-            $this->totalClients = count($this->clients);
+            $this->totalClients = method_exists($this->clients, 'total') ? $this->clients->total() : count($this->clients);
         }
 
         return $dataTable->render('clients.index', $this->data);

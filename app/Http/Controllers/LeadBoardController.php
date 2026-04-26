@@ -345,14 +345,14 @@ class LeadBoardController extends AccountBaseController
         if ($startDate && $endDate) {
             $query->where(function ($task) use ($startDate, $endDate, $request) {
                 if ($request->date_filter_on == 'created_at') {
-                    $task->whereBetween(DB::raw('DATE(leads.`created_at`)'), [$startDate, $endDate]);
+                    $task->whereBetween('leads.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
                 }
                 elseif ($request->date_filter_on == 'updated_at') {
-                    $task->whereBetween(DB::raw('DATE(leads.`updated_at`)'), [$startDate, $endDate]);
+                    $task->whereBetween('leads.updated_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
                 }
                 elseif ($request->date_filter_on == 'next_follow_up_date') {
                     $task->whereHas('followup', function ($q) use ($startDate, $endDate) {
-                        $q->whereBetween(DB::raw('DATE(lead_follow_up.`next_follow_up_date`)'), [$startDate, $endDate]);
+                        $q->whereBetween('lead_follow_up.next_follow_up_date', [$startDate, $endDate . ' 23:59:59']);
                     });
                 }
             });
@@ -374,9 +374,8 @@ class LeadBoardController extends AccountBaseController
 
         if ($startDate && $endDate) {
             $leads->where(function ($task) use ($startDate, $endDate) {
-                $task->whereBetween(DB::raw('DATE(leads.`created_at`)'), [$startDate, $endDate]);
-
-                $task->orWhereBetween(DB::raw('DATE(leads.`created_at`)'), [$startDate, $endDate]);
+                $task->whereBetween('leads.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
+                $task->orWhereBetween('leads.updated_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
             });
         }
 

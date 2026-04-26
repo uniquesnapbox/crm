@@ -12,7 +12,6 @@ use App\Models\GlobalSetting;
 use App\Models\ProjectStatusSetting;
 use Yajra\DataTables\Html\Button;
 use Yajra\DataTables\Html\Column;
-use Illuminate\Support\Facades\DB;
 
 class ProjectsDataTable extends BaseDataTable
 {
@@ -331,7 +330,7 @@ class ProjectsDataTable extends BaseDataTable
                 $model->where('projects.completion_percent', '!=', 100);
 
                 if ($request->deadLineStartDate == '' && $request->deadLineEndDate == '') {
-                    $model->whereDate('projects.deadline', '<', now(company()->timezone)->toDateString());
+                    $model->where('projects.deadline', '<', now(company()->timezone)->toDateString());
                 }
             }
             else {
@@ -353,7 +352,8 @@ class ProjectsDataTable extends BaseDataTable
         if ($request->deadLineStartDate != '' && $request->deadLineEndDate != '') {
             $startDate = companyToDateString($request->deadLineStartDate);
             $endDate = companyToDateString($request->deadLineEndDate);
-            $model->whereRaw('Date(projects.deadline) >= ?', [$startDate])->whereRaw('Date(projects.deadline) <= ?', [$endDate]);
+            $model->where('projects.deadline', '>=', $startDate)
+                ->where('projects.deadline', '<=', $endDate);
         }
 
         if (!is_null($request->client_id) && $request->client_id != 'all') {
@@ -417,11 +417,11 @@ class ProjectsDataTable extends BaseDataTable
         if ($startFilterDate !== null && $endFilterDate !== null) {
             $model->where(function ($query) use ($startFilterDate, $endFilterDate) {
                 if (request()->date_filter_on == 'start_date') {
-                    $query->whereBetween(DB::raw('DATE(projects.`start_date`)'), [$startFilterDate, $endFilterDate]);
+                    $query->whereBetween('projects.start_date', [$startFilterDate, $endFilterDate]);
 
                 }
                 elseif (request()->date_filter_on == 'deadline') {
-                    $query->whereBetween(DB::raw('DATE(projects.`deadline`)'), [$startFilterDate, $endFilterDate]);
+                    $query->whereBetween('projects.deadline', [$startFilterDate, $endFilterDate]);
 
                 }
 
@@ -441,7 +441,9 @@ class ProjectsDataTable extends BaseDataTable
         if ($request->startDate && $request->endDate) {
             $startDate = companyToDateString($request->startDate);
             $endDate = companyToDateString($request->endDate);
-            $model->whereBetween(DB::raw('DATE(projects.`created_at`)'), [$startDate, $endDate]);
+            $startBoundary = Carbon::parse($startDate, $this->company->timezone)->startOfDay()->toDateTimeString();
+            $endBoundary = Carbon::parse($endDate, $this->company->timezone)->endOfDay()->toDateTimeString();
+            $model->whereBetween('projects.created_at', [$startBoundary, $endBoundary]);
         }
 
         $model->groupBy('projects.id');

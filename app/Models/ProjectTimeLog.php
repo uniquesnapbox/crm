@@ -213,7 +213,9 @@ class ProjectTimeLog extends BaseModel
 
     public static function dateWiseTimelogs($date, $userID = null)
     {
-        $timelogs = ProjectTimeLog::with('breaks')->whereDate('start_time', $date);
+        $from = Carbon::parse($date)->startOfDay();
+        $to = Carbon::parse($date)->endOfDay();
+        $timelogs = ProjectTimeLog::with('breaks')->whereBetween('start_time', [$from, $to]);
 
         if (!is_null($userID)) {
             $timelogs = $timelogs->where('user_id', $userID);
@@ -224,7 +226,9 @@ class ProjectTimeLog extends BaseModel
 
     public static function weekWiseTimelogs($startDate, $endDate, $userID = null)
     {
-        $timelogs = ProjectTimeLog::whereBetween(DB::raw('DATE(`start_time`)'), [$startDate, $endDate]);
+        $from = Carbon::parse($startDate)->startOfDay();
+        $to = Carbon::parse($endDate)->endOfDay();
+        $timelogs = ProjectTimeLog::whereBetween('start_time', [$from, $to]);
 
         if (!is_null($userID)) {
             $timelogs = $timelogs->where('user_id', $userID);

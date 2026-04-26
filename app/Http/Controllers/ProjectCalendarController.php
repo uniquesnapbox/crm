@@ -8,8 +8,8 @@ use App\Models\User;
 use App\Models\Project;
 use Illuminate\Http\Request;
 use App\Models\ProjectCategory;
-use Illuminate\Support\Facades\DB;
 use App\Models\ProjectStatusSetting;
+use Illuminate\Support\Facades\Cache;
 
 class ProjectCalendarController extends AccountBaseController
 {
@@ -39,13 +39,13 @@ class ProjectCalendarController extends AccountBaseController
             $this->clients = User::client();
         }
         else {
-            $this->clients = User::allClients();
-            $this->allEmployees = User::allEmployees(null, true, ($viewPermission == 'all' ? 'all' : null));
+            $this->clients = User::allClients(null, true, null, null, 50);
+            $this->allEmployees = User::allEmployees(null, true, ($viewPermission == 'all' ? 'all' : null), null, 50);
         }
 
-        $this->categories = ProjectCategory::all();
-        $this->departments = Team::all();
-        $this->projectStatus = ProjectStatusSetting::where('status', 'active')->get();
+        $this->categories = Cache::remember('project_categories_' . company()->id, now()->addMinutes(30), fn() => ProjectCategory::all());
+        $this->departments = Cache::remember('teams_' . company()->id, now()->addMinutes(30), fn() => Team::all());
+        $this->projectStatus = Cache::remember('project_status_active_' . company()->id, now()->addMinutes(30), fn() => ProjectStatusSetting::where('status', 'active')->get());
 
         if ($request->start && $request->end) {
             $startDate = Carbon::parse($request->start)->format('Y-m-d');
@@ -54,8 +54,8 @@ class ProjectCalendarController extends AccountBaseController
 
             if ($startDate !== null && $endDate !== null) {
                 $model = Project::where(function ($q) use ($startDate, $endDate) {
-                        $q->whereBetween(DB::raw('DATE(projects.`deadline`)'), [$startDate, $endDate]);
-                        $q->orWhereBetween(DB::raw('DATE(projects.`start_date`)'), [$startDate, $endDate]);
+                        $q->whereBetween('projects.deadline', [$startDate, $endDate]);
+                        $q->orWhereBetween('projects.start_date', [$startDate, $endDate]);
                         $q->orWhere(function ($q1) use ($startDate, $endDate) {
                             $q1->where('projects.start_date', '<=', $startDate)
                                 ->where('projects.deadline', '>=', $endDate);
@@ -96,7 +96,7 @@ class ProjectCalendarController extends AccountBaseController
                     $model->where('projects.completion_percent', '!=', 100);
 
                     if ($request->deadLineStartDate == '' && $request->deadLineEndDate == '') {
-                        $model->whereDate('projects.deadline', '<', now(company()->timezone)->toDateString());
+                        $model->where('projects.deadline', '<', now(company()->timezone)->toDateString());
                     }
                 }
                 else {
@@ -122,16 +122,16 @@ class ProjectCalendarController extends AccountBaseController
             }
 
             $model = $model->get();
+            $statusColorMap = $this->projectStatus->pluck('color', 'status_name');
             $projectData = [];
 
             foreach ($model as $key => $value) {
-                $projectStatus = ProjectStatusSetting::where('status_name', $value->status)->first();
                 $projectData[] = [
                     'id' => $value->id,
                     'title' => $value->project_name,
                     'start' => $value->start_date->format('Y-m-d'),
                     'end' => (!is_null($value->deadline) ? $value->deadline->format('Y-m-d') : $value->start_date->format('Y-m-d')),
-                    'color' => isset($projectStatus->color) ? $projectStatus->color : '#00b5ff'
+                    'color' => $statusColorMap[$value->status] ?? '#00b5ff'
                 ];
             }
 

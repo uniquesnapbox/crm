@@ -6,7 +6,6 @@ use App\DataTables\BaseDataTable;
 use App\Models\ProjectTimeLog;
 use Carbon\Carbon;
 use Carbon\CarbonInterval;
-use Illuminate\Support\Facades\DB;
 use Yajra\DataTables\Html\Button;
 
 class TimeLogReportDataTable extends BaseDataTable
@@ -168,7 +167,8 @@ class TimeLogReportDataTable extends BaseDataTable
             $startDate = companyToDateString($request->startDate);
 
             if (!is_null($startDate)) {
-                $model = $model->where(DB::raw('DATE(project_time_logs.`start_time`)'), '>=', $startDate);
+                $startBoundary = Carbon::parse($startDate, $this->company->timezone)->startOfDay()->toDateTimeString();
+                $model = $model->where('project_time_logs.start_time', '>=', $startBoundary);
             }
         }
 
@@ -176,8 +176,9 @@ class TimeLogReportDataTable extends BaseDataTable
             $endDate = companyToDateString($request->endDate);
 
             if (!is_null($endDate)) {
-                $model = $model->where(function ($query) use ($endDate) {
-                    $query->where(DB::raw('DATE(project_time_logs.`end_time`)'), '<=', $endDate);
+                $endBoundary = Carbon::parse($endDate, $this->company->timezone)->endOfDay()->toDateTimeString();
+                $model = $model->where(function ($query) use ($endBoundary) {
+                    $query->where('project_time_logs.end_time', '<=', $endBoundary);
                 });
             }
         }

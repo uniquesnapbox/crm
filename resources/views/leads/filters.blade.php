@@ -91,13 +91,6 @@
                         <select class="form-control select-picker" name="agent_id" id="agent_id" data-live-search="true"
                             data-container="body" data-size="8">
                             <option value="all">@lang('app.all')</option>
-                            @foreach ($leadAgents as $agent)
-                                <option
-                                    data-content="<div class='d-inline-block mr-1'><img class='taskEmployeeImg rounded-circle' src='{{ $agent->user->image_url }}' ></div> {{ $agent->user->name }}"
-                                    value="{{ $agent->id }}">
-                                    {{ $agent->user->name . ' [' . $agent->user->email . ']' }}
-                                </option>
-                            @endforeach
                         </select>
                     </div>
                 </div>
@@ -110,9 +103,6 @@
                         <select class="form-control select-picker" name="deal_watcher_agent_id" id="deal_watcher_agent_id" data-live-search="true"
                             data-container="body" data-size="8">
                             <option value="all">@lang('app.all')</option>
-                            @foreach ($dealWatcher as $agent)
-                                <x-user-option :user="$agent" />
-                            @endforeach
                         </select>
                     </div>
                 </div>
@@ -125,13 +115,6 @@
                         <select class="form-control select-picker" name="lead_agent_id" id="lead_agent_id" data-live-search="true"
                             data-container="body" data-size="8">
                             <option value="all">@lang('app.all')</option>
-                            @foreach ($dealLeads as $agent)
-                                <option
-                                    data-content="<div class='d-inline-block mr-1'><img class='taskEmployeeImg rounded-circle' src='{{ $agent->image_url }}' ></div> {{ $agent->client_name }}"
-                                    value="{{ $agent->id }}">
-                                    {{ $agent->name . ' [' . $agent->email . ']' }}
-                                </option>
-                            @endforeach
                         </select>
                     </div>
                 </div>
@@ -145,6 +128,80 @@
 
 @push('scripts')
     <script>
+        const dealFilterLoadState = {
+            timeout: null,
+            lastRequest: {
+                leadAgents: '',
+                dealWatcher: '',
+                dealLeads: '',
+            }
+        };
+
+        function escapeHtml(text) {
+            return $('<div>').text(text ?? '').html();
+        }
+
+        function hydrateDealFilter(selectId, items) {
+            const $select = $(selectId);
+            const selectedValue = $select.val() || 'all';
+            const options = ['<option value="all">{{ __('app.all') }}</option>'];
+
+            $.each(items, function(index, item) {
+                options.push('<option value="' + item.id + '">' + escapeHtml(item.text) + '</option>');
+            });
+
+            $select.html(options.join(''));
+            $select.val(selectedValue);
+            if ($select.val() == null) {
+                $select.val('all');
+            }
+            $select.selectpicker('refresh');
+        }
+
+        function loadDealFilterOptions(type = 'all', search = '') {
+            $.easyAjax({
+                url: "{{ route('deals.filter_options') }}",
+                type: "GET",
+                data: {
+                    type: type,
+                    search: search,
+                    limit: 20
+                },
+                success: function(response) {
+                    if (response.status === 'success') {
+                        if (type === 'all' || type === 'leadAgents') {
+                            hydrateDealFilter('#agent_id', response.leadAgents || []);
+                        }
+                        if (type === 'all' || type === 'dealWatcher') {
+                            hydrateDealFilter('#deal_watcher_agent_id', response.dealWatcher || []);
+                        }
+                        if (type === 'all' || type === 'dealLeads') {
+                            hydrateDealFilter('#lead_agent_id', response.dealLeads || []);
+                        }
+                    }
+                }
+            });
+        }
+
+        function bindRemoteFilterSearch(selectId, type) {
+            $(selectId).on('shown.bs.select', function() {
+                const $searchInput = $(this).parent().find('.bs-searchbox input');
+                $searchInput.off('keyup.dealsFilter').on('keyup.dealsFilter', function() {
+                    const searchValue = $(this).val().trim();
+
+                    if (dealFilterLoadState.lastRequest[type] === searchValue) {
+                        return;
+                    }
+
+                    dealFilterLoadState.lastRequest[type] = searchValue;
+                    clearTimeout(dealFilterLoadState.timeout);
+                    dealFilterLoadState.timeout = setTimeout(function() {
+                        loadDealFilterOptions(type, searchValue);
+                    }, 250);
+                });
+            });
+        }
+
         $('#type, #pipeline, #filter_category_id, #filter_source_id, #filter_status_id, #date_filter_on, #min, #max, #agent_id, #deal_watcher_agent_id, #lead_agent_id')
             .on('change keyup', function() {
 
@@ -181,6 +238,13 @@
                 }
                 getStages ();
             });
+
+        $(document).ready(function() {
+            loadDealFilterOptions('all');
+            bindRemoteFilterSearch('#agent_id', 'leadAgents');
+            bindRemoteFilterSearch('#deal_watcher_agent_id', 'dealWatcher');
+            bindRemoteFilterSearch('#lead_agent_id', 'dealLeads');
+        });
 
         $('#search-text-field').on('keyup', function() {
             if ($('#search-text-field').val() != "") {

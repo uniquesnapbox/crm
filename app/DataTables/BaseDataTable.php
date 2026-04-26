@@ -22,6 +22,8 @@ class BaseDataTable extends DataTable
     public function setBuilder($table, $orderBy = 1)
     {
         $intl = File::exists(public_path('i18n/' . user()->locale . '.json')) ? asset('i18n/' . user()->locale . '.json') : __('app.datatable');
+        $rowLimit = (int) (companyOrGlobalSetting()->datatable_row_limit ?? 20);
+        $rowLimit = max(20, min(50, $rowLimit));
 
         return parent::builder()
             ->setTableId($table)
@@ -32,8 +34,12 @@ class BaseDataTable extends DataTable
             ->responsive()
             ->serverSide()
             ->stateSave(false)
-            ->pageLength(companyOrGlobalSetting()->datatable_row_limit ?? 10)
+            ->pageLength($rowLimit)
             ->processing()
+            ->parameters([
+                'deferRender' => true,
+                'searchDelay' => 350,
+            ])
             ->dom($this->domHtml)
             ->language($intl);
     }

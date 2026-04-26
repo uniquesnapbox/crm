@@ -170,6 +170,27 @@ $addProductPermission = user()->permission('add_product');
 
 <script>
     $(document).ready(function() {
+        if ($('#add-products').length) {
+            $('#add-products').selectpicker('destroy');
+            $('#add-products').select2({
+                width: '100%',
+                placeholder: "{{ __('app.menu.selectProduct') }}",
+                ajax: {
+                    url: "{{ route('async-options.index', ['resource' => 'products']) }}",
+                    dataType: 'json',
+                    delay: 250,
+                    data: function(params) {
+                        return {
+                            search: params.term,
+                            page: params.page || 1
+                        };
+                    },
+                    processResults: function(response) {
+                        return response;
+                    }
+                }
+            });
+        }
 
         $('#close_date').each(function(ind, el) {
             datepicker(el, {

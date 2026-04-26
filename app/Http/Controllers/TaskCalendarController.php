@@ -10,7 +10,6 @@ use App\Models\TaskLabelList;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class TaskCalendarController extends AccountBaseController
 {
@@ -34,9 +33,9 @@ class TaskCalendarController extends AccountBaseController
      */
     public function index(Request $request)
     {
-        $this->projects = Project::allProjects();
-        $this->clients = User::allClients();
-        $this->employees = User::allEmployees();
+        $this->projects = Project::allProjects(false, 50);
+        $this->clients = User::allClients(null, true, null, null, 50);
+        $this->employees = User::allEmployees(null, false, null, null, 50);
         $this->taskCategories = TaskCategory::all();
         $this->taskLabels  = TaskLabelList::all();
         $this->taskBoardStatus = TaskboardColumn::all();
@@ -69,9 +68,8 @@ class TaskCalendarController extends AccountBaseController
 
             if ($startDate !== null && $endDate !== null) {
                 $model->where(function ($q) use ($startDate, $endDate) {
-                    $q->whereBetween(DB::raw('DATE(tasks.`due_date`)'), [$startDate, $endDate]);
-
-                    $q->orWhereBetween(DB::raw('DATE(tasks.`start_date`)'), [$startDate, $endDate]);
+                    $q->whereBetween('tasks.due_date', [$startDate, $endDate]);
+                    $q->orWhereBetween('tasks.start_date', [$startDate, $endDate]);
                 });
             }
 

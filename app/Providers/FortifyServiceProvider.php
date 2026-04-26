@@ -13,6 +13,7 @@ use Laravel\Fortify\Features;
 use App\Models\LanguageSetting;
 use App\Models\SocialAuthSetting;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use App\Actions\Fortify\CreateNewUser;
 use Illuminate\Support\ServiceProvider;
@@ -114,22 +115,22 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::loginView(function () {
 
             $this->checkMigrateStatus();
-            $globalSetting = GlobalSetting::first();
-            $company = Company::first();
+            $globalSetting = Cache::remember('login_global_setting', now()->addMinutes(10), fn() => GlobalSetting::first());
+            $company = Cache::remember('login_company', now()->addMinutes(10), fn() => Company::first());
 
             App::setLocale($globalSetting->locale);
             Carbon::setLocale($globalSetting->locale);
             setlocale(LC_TIME, $globalSetting->locale . '_' . mb_strtoupper($globalSetting->locale));
 
-            $userTotal = User::count();
+            $userTotal = Cache::remember('login_user_count', now()->addMinutes(5), fn() => User::count());
 
             if ($userTotal == 0) {
                 return view('auth.account_setup', ['global' => $globalSetting, 'setting' => $globalSetting]);
             }
 
-            $socialAuthSettings = SocialAuthSetting::first();
+            $socialAuthSettings = Cache::remember('login_social_auth_settings', now()->addMinutes(10), fn() => SocialAuthSetting::first());
 
-            $languages = language_setting();
+            $languages = Cache::remember('login_languages', now()->addMinutes(10), fn() => language_setting());
 
             return view('auth.login', [
                 'globalSetting' => $globalSetting,

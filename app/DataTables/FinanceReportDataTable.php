@@ -5,7 +5,6 @@ namespace App\DataTables;
 use App\DataTables\BaseDataTable;
 use App\Models\Payment;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 use Yajra\DataTables\Html\Button;
 
 class FinanceReportDataTable extends BaseDataTable
@@ -96,12 +95,14 @@ class FinanceReportDataTable extends BaseDataTable
 
         if ($request->startDate !== null && $request->startDate != 'null' && $request->startDate != '') {
             $startDate = companyToDateString($request->startDate);
-            $model = $model->where(DB::raw('DATE(payments.`paid_on`)'), '>=', $startDate);
+            $startBoundary = Carbon::parse($startDate, $this->company->timezone)->startOfDay()->toDateTimeString();
+            $model = $model->where('payments.paid_on', '>=', $startBoundary);
         }
 
         if ($request->endDate !== null && $request->endDate != 'null' && $request->endDate != '') {
             $endDate = companyToDateString($request->endDate);
-            $model = $model->where(DB::raw('DATE(payments.`paid_on`)'), '<=', $endDate);
+            $endBoundary = Carbon::parse($endDate, $this->company->timezone)->endOfDay()->toDateTimeString();
+            $model = $model->where('payments.paid_on', '<=', $endBoundary);
         }
 
         if ($request->projectID != 'all' && !is_null($request->projectID)) {

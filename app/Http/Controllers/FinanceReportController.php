@@ -11,6 +11,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class FinanceReportController extends AccountBaseController
 {
@@ -25,11 +26,11 @@ class FinanceReportController extends AccountBaseController
     {
         $this->fromDate = now($this->company->timezone)->startOfMonth();
         $this->toDate = now($this->company->timezone);
-        $this->currencies = Currency::all();
+        $this->currencies = Cache::remember('finance_report_currencies_' . company()->id, now()->addMinutes(30), fn() => Currency::select('id', 'currency_code', 'currency_symbol')->get());
         $this->currentCurrencyId = $this->company->currency_id;
 
-        $this->projects = Project::allProjects();
-        $this->clients = User::allClients();
+        $this->projects = Project::allProjects(false, 50);
+        $this->clients = User::allClients(null, true, null, null, 50);
 
         return $dataTable->render('reports.finance.index', $this->data);
     }
@@ -42,6 +43,8 @@ class FinanceReportController extends AccountBaseController
     {
         $startDate = now($this->company->timezone)->startOfMonth()->toDateString();
         $endDate = now($this->company->timezone)->toDateString();
+        $startBoundary = Carbon::parse($startDate, $this->company->timezone)->startOfDay()->toDateTimeString();
+        $endBoundary = Carbon::parse($endDate, $this->company->timezone)->endOfDay()->toDateTimeString();
 
         $payments = Payment::join('currencies', 'currencies.id', '=', 'payments.currency_id')
             ->leftJoin('invoices', 'invoices.id', '=', 'payments.invoice_id')
@@ -50,15 +53,17 @@ class FinanceReportController extends AccountBaseController
 
         if ($request->startDate !== null && $request->startDate != 'null' && $request->startDate != '') {
             $startDate = companyToDateString($request->startDate);
+            $startBoundary = Carbon::parse($startDate, $this->company->timezone)->startOfDay()->toDateTimeString();
         }
 
-        $payments = $payments->where(DB::raw('DATE(payments.`paid_on`)'), '>=', $startDate);
+        $payments = $payments->where('payments.paid_on', '>=', $startBoundary);
 
         if ($request->endDate !== null && $request->endDate != 'null' && $request->endDate != '') {
             $endDate = companyToDateString($request->endDate);
+            $endBoundary = Carbon::parse($endDate, $this->company->timezone)->endOfDay()->toDateTimeString();
         }
 
-        $payments = $payments->where(DB::raw('DATE(payments.`paid_on`)'), '<=', $endDate);
+        $payments = $payments->where('payments.paid_on', '<=', $endBoundary);
 
         if ($request->projectID != 'all' && !is_null($request->projectID)) {
             $payments = $payments->where('payments.project_id', '=', $request->projectID);
@@ -81,6 +86,8 @@ class FinanceReportController extends AccountBaseController
                 'payments.exchange_rate',
                 'payments.default_currency_id'
             ]);
+        $currencyRates = Currency::whereIn('id', $payments->pluck('currency_id')->unique()->all())
+            ->pluck('exchange_rate', 'id');
 
         $incomes = array();
 
@@ -89,8 +96,7 @@ class FinanceReportController extends AccountBaseController
             if((is_null($invoice->default_currency_id) && is_null($invoice->exchange_rate)) ||
             (!is_null($invoice->default_currency_id) && Company()->currency_id != $invoice->default_currency_id))
             {
-                $currency = Currency::findOrFail($invoice->currency_id);
-                $exchangeRate = $currency->exchange_rate;
+                $exchangeRate = $currencyRates[$invoice->currency_id] ?? 0;
             }
             else {
                 $exchangeRate = $invoice->exchange_rate;

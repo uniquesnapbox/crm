@@ -175,6 +175,51 @@
 <script>
 
     $(document).ready(function () {
+        if ($('#lead_contact').length) {
+            $('#lead_contact').selectpicker('destroy');
+            $('#lead_contact').select2({
+                width: '100%',
+                placeholder: "{{ __('modules.leadContact.leadContacts') }}",
+                allowClear: true,
+                ajax: {
+                    url: "{{ route('async-options.index', ['resource' => 'leads']) }}",
+                    dataType: 'json',
+                    delay: 250,
+                    data: function (params) {
+                        return {
+                            search: params.term,
+                            page: params.page || 1
+                        };
+                    },
+                    processResults: function (response) {
+                        return response;
+                    }
+                }
+            });
+        }
+
+        if ($('#add-products').length) {
+            $('#add-products').selectpicker('destroy');
+            $('#add-products').select2({
+                width: '100%',
+                placeholder: "{{ __('app.menu.selectProduct') }}",
+                ajax: {
+                    url: "{{ route('async-options.index', ['resource' => 'products']) }}",
+                    dataType: 'json',
+                    delay: 250,
+                    data: function (params) {
+                        return {
+                            search: params.term,
+                            page: params.page || 1
+                        };
+                    },
+                    processResults: function (response) {
+                        return response;
+                    }
+                }
+            });
+        }
+
         var id = $('#category_id').val();
         if(id != '')
         {

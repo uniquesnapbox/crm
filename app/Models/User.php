@@ -555,7 +555,7 @@ class User extends BaseModel implements AuthenticatableContract, AuthorizableCon
         return $this->hasMany(ProjectTimeLog::class, 'user_id');
     }
 
-    public static function allClients($exceptId = null, $active = true, $overRidePermission = null, $companyId = null)
+    public static function allClients($exceptId = null, $active = true, $overRidePermission = null, $companyId = null, $perPage = null)
     {
         if (!isRunningInConsoleOrSeeding() && !is_null($overRidePermission)) {
             $viewClientPermission = $overRidePermission;
@@ -605,7 +605,13 @@ class User extends BaseModel implements AuthenticatableContract, AuthorizableCon
             $clients->where('client_details.user_id', user()->id);
         }
 
-        return $clients->orderBy('users.name', 'asc')->get();
+        $clients->orderBy('users.name', 'asc');
+
+        if (!is_null($perPage)) {
+            return $clients->paginate((int) $perPage);
+        }
+
+        return $clients->get();
     }
 
     public static function client()
@@ -622,7 +628,7 @@ class User extends BaseModel implements AuthenticatableContract, AuthorizableCon
             ->get();
     }
 
-    public static function allEmployees($exceptId = null, $active = false, $overRidePermission = null, $companyId = null)
+    public static function allEmployees($exceptId = null, $active = false, $overRidePermission = null, $companyId = null, $perPage = null)
     {
         if (!isRunningInConsoleOrSeeding() && !is_null($overRidePermission)) {
             $viewEmployeePermission = $overRidePermission;
@@ -701,6 +707,10 @@ class User extends BaseModel implements AuthenticatableContract, AuthorizableCon
 
         $users->orderBy('users.name');
         $users->groupBy('users.id');
+
+        if (!is_null($perPage)) {
+            return $users->paginate((int) $perPage);
+        }
 
         return $users->get();
     }

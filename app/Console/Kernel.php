@@ -28,6 +28,8 @@ use App\Console\Commands\SendMonthlyAttendanceReport;
 use App\Console\Commands\SyncUserPermissions;
 use App\Console\Commands\SendTimeTracker;
 use App\Console\Commands\InActiveEmployee;
+use App\Console\Commands\PrewarmDashboardCache;
+use App\Console\Commands\PerformanceReport;
 use DateTimeZone;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
@@ -67,6 +69,8 @@ class Kernel extends ConsoleKernel
         LeavesQuotaRenew::class,
         ClearLogs::class,
         InActiveEmployee::class,
+        PerformanceReport::class,
+        PrewarmDashboardCache::class,
     ];
 
     /**
@@ -125,9 +129,13 @@ class Kernel extends ConsoleKernel
         $schedule->command('send-monthly-attendance-report')->monthly();
 
         $schedule->command('queue:flush')->weekly();
+        $schedule->command('queue:prune-failed --hours=168')->dailyAt('03:10');
+        $schedule->command('perf:report --hours=24 --top=10 --prune')->hourly()->withoutOverlapping();
+        $schedule->command('dashboard:prewarm-cache --users=20')->everyMinute()->withoutOverlapping();
 
-        // Schedule the queue:work command to run without overlapping and with 3 tries
-        $schedule->command('queue:work database --tries=3 --stop-when-empty')->withoutOverlapping();
+        // Queue worker with queue priority and bounded run time.
+        $schedule->command('queue:work database --queue=high,default,low --sleep=3 --tries=3 --max-time=3600 --stop-when-empty')
+            ->withoutOverlapping();
     }
 
     /**

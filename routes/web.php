@@ -120,6 +120,7 @@ use App\Http\Controllers\EmployeeShiftChangeRequestController;
 use App\Http\Controllers\LeadContactController;
 use App\Http\Controllers\LiveTrackingController;
 use App\Http\Controllers\PipelineController;
+use App\Http\Controllers\AsyncOptionsController;
 use App\Http\Controllers\Api\AuthController;
 use App\Models\AttendanceSetting;
 
@@ -136,6 +137,7 @@ Route::group(['middleware' => 'auth:sanctum,web', 'prefix' => 'account'], functi
     })->name('account.admin.live-tracking');
 
     Route::post('image/upload', [ImageController::class, 'store'])->name('image.store');
+    Route::get('async-options/{resource}', [AsyncOptionsController::class, 'index'])->name('async-options.index');
 
 
     Route::get('account-unverified', [DashboardController::class, 'accountUnverified'])->name('account_unverified');
@@ -544,6 +546,7 @@ Route::group(['middleware' => 'auth:sanctum,web', 'prefix' => 'account'], functi
     Route::resource('lead-contact', LeadContactController::class);
     Route::post('lead-contact/apply-quick-action', [LeadContactController::class, 'applyQuickAction'])->name('lead-contact.apply_quick_action');
 
+    Route::get('deals/filter-options', [DealController::class, 'filterOptions'])->name('deals.filter_options');
     Route::get('deals/get-stage/{id}', function () {
         abort(404);
     })->name('deals.get-stage');

@@ -45,9 +45,9 @@ class TaskBoardController extends AccountBaseController
     {
         $this->startDate = now()->subDays(15)->format($this->company->date_format);
         $this->endDate = now()->addDays(15)->format($this->company->date_format);
-        $this->projects = Project::allProjects();
-        $this->clients = User::allClients();
-        $this->employees = User::allEmployees();
+        $this->projects = Project::allProjects(false, 50);
+        $this->clients = User::allClients(null, true, null, null, 50);
+        $this->employees = User::allEmployees(null, false, null, null, 50);
         $this->publicTaskboardLink = encrypt($this->companyName);
         $this->taskCategories = TaskCategory::all();
         $this->taskLabels = TaskLabelList::all();
@@ -100,9 +100,8 @@ class TaskBoardController extends AccountBaseController
 
                 if ($startDate && $endDate) {
                     $q->where(function ($task) use ($startDate, $endDate) {
-                        $task->whereBetween(DB::raw('DATE(tasks.`due_date`)'), [$startDate, $endDate]);
-
-                        $task->orWhereBetween(DB::raw('DATE(tasks.`start_date`)'), [$startDate, $endDate]);
+                        $task->whereBetween('tasks.due_date', [$startDate, $endDate]);
+                        $task->orWhereBetween('tasks.start_date', [$startDate, $endDate]);
                     });
                 }
 
@@ -224,9 +223,8 @@ class TaskBoardController extends AccountBaseController
 
                     if ($startDate && $endDate) {
                         $q->where(function ($task) use ($startDate, $endDate) {
-                            $task->whereBetween(DB::raw('DATE(tasks.`due_date`)'), [$startDate, $endDate]);
-
-                            $task->orWhereBetween(DB::raw('DATE(tasks.`start_date`)'), [$startDate, $endDate]);
+                            $task->whereBetween('tasks.due_date', [$startDate, $endDate]);
+                            $task->orWhereBetween('tasks.start_date', [$startDate, $endDate]);
                         });
                     }
 
@@ -425,9 +423,8 @@ class TaskBoardController extends AccountBaseController
 
         if ($startDate && $endDate) {
             $tasks->where(function ($task) use ($startDate, $endDate) {
-                $task->whereBetween(DB::raw('DATE(tasks.`due_date`)'), [$startDate, $endDate]);
-
-                $task->orWhereBetween(DB::raw('DATE(tasks.`start_date`)'), [$startDate, $endDate]);
+                $task->whereBetween('tasks.due_date', [$startDate, $endDate]);
+                $task->orWhereBetween('tasks.start_date', [$startDate, $endDate]);
             });
         }
 

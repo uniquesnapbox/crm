@@ -30,10 +30,13 @@ class TimelogReportController extends AccountBaseController
             $this->fromDate = now($this->company->timezone)->startOfMonth();
             $this->toDate = now($this->company->timezone);
 
-            $this->employees = User::allEmployees();
-            $this->clients = User::allClients();
-            $this->projects = Project::allProjects();
-            $this->tasks = Task::all();
+            $this->employees = User::allEmployees(null, true, null, null, 50);
+            $this->clients = User::allClients(null, true, null, null, 50);
+            $this->projects = Project::allProjects(false, 50);
+            $this->tasks = Task::query()
+                ->select('id', 'heading')
+                ->orderBy('heading')
+                ->paginate(50);
         }
 
         return $dataTable->render('reports.timelogs.index', $this->data);
@@ -50,17 +53,22 @@ class TimelogReportController extends AccountBaseController
 
         $startDate = now($this->company->timezone)->startOfMonth()->toDateString();
         $endDate = now($this->company->timezone)->toDateString();
+        $startBoundary = Carbon::parse($startDate, $this->company->timezone)->startOfDay()->toDateTimeString();
+        $endBoundary = Carbon::parse($endDate, $this->company->timezone)->endOfDay()->toDateTimeString();
 
         if ($request->startDate !== null && $request->startDate != 'null' && $request->startDate != '') {
             $startDate = companyToDateString($request->startDate);
+            $startBoundary = Carbon::parse($startDate, $this->company->timezone)->startOfDay()->toDateTimeString();
         }
 
         if ($request->endDate !== null && $request->endDate != 'null' && $request->endDate != '') {
             $endDate = companyToDateString($request->endDate);
+            $endBoundary = Carbon::parse($endDate, $this->company->timezone)->endOfDay()->toDateTimeString();
         }
 
-        $timelogs = ProjectTimeLog::with('breaks')->whereDate('project_time_logs.start_time', '>=', $startDate)
-            ->whereDate('project_time_logs.end_time', '<=', $endDate)
+        $timelogs = ProjectTimeLog::query()
+            ->where('project_time_logs.start_time', '>=', $startBoundary)
+            ->where('project_time_logs.end_time', '<=', $endBoundary)
             ->leftJoin('projects', 'projects.id', '=', 'project_time_logs.project_id');
 
         if (!is_null($employee) && $employee !== 'all') {
@@ -129,10 +137,13 @@ class TimelogReportController extends AccountBaseController
             $this->fromDate = now($this->company->timezone)->startOfMonth();
             $this->toDate = now($this->company->timezone);
 
-            $this->employees = User::allEmployees();
-            $this->clients = User::allClients();
-            $this->projects = Project::allProjects();
-            $this->tasks = Task::all();
+            $this->employees = User::allEmployees(null, true, null, null, 50);
+            $this->clients = User::allClients(null, true, null, null, 50);
+            $this->projects = Project::allProjects(false, 50);
+            $this->tasks = Task::query()
+                ->select('id', 'heading')
+                ->orderBy('heading')
+                ->paginate(50);
         }
 
         return $dataTable->render('reports.timelogs.consolidate-index', $this->data);
@@ -142,24 +153,25 @@ class TimelogReportController extends AccountBaseController
     {
         $startDate = ($request->startDate == null) ? null : now($this->company->timezone)->startOfMonth()->toDateString();
         $endDate = ($request->endDate == null) ? null : now($this->company->timezone)->toDateString();
+        $startBoundary = null;
+        $endBoundary = null;
 
-        $projectTimeLog = ProjectTimeLog::with('breaks')->where('user_id', $request->employeeID);
+        $projectTimeLog = ProjectTimeLog::with(['breaks', 'activeBreak']);
 
         if ($request->startDate !== null && $request->startDate != 'null' && $request->startDate != '') {
             $startDate = companyToDateString($request->startDate);
-            $projectTimeLog = $projectTimeLog->where(DB::raw('DATE(`start_time`)'), '>=', $startDate);
+            $startBoundary = Carbon::parse($startDate, $this->company->timezone)->startOfDay()->toDateTimeString();
+            $projectTimeLog = $projectTimeLog->where('start_time', '>=', $startBoundary);
         }
 
         if ($request->endDate !== null && $request->endDate != 'null' && $request->endDate != '') {
             $endDate = companyToDateString($request->endDate);
-            $projectTimeLog = $projectTimeLog->where(DB::raw('DATE(`start_time`)'), '<=', $endDate);
+            $endBoundary = Carbon::parse($endDate, $this->company->timezone)->endOfDay()->toDateTimeString();
+            $projectTimeLog = $projectTimeLog->where('start_time', '<=', $endBoundary);
         }
 
         if ($request->employeeID != 'all' && !is_null($request->employeeID)) {
-            $employeeID = $request->employeeID;
-            $projectTimeLog = $projectTimeLog->where(function ($query) use ($employeeID) {
-                $query->where('user_id', $employeeID);
-            });
+            $projectTimeLog = $projectTimeLog->where('user_id', $request->employeeID);
         }
 
         $projectTimeLog = $projectTimeLog->get();

@@ -328,12 +328,12 @@ class TicketController extends AccountBaseController
 
         if (!is_null($request->startDate) && $request->startDate != '') {
             $startDate = companyToDateString($request->startDate);
-            $tickets->where(DB::raw('DATE(`updated_at`)'), '>=', $startDate);
+            $tickets->where('updated_at', '>=', Carbon::parse($startDate, $this->company->timezone)->startOfDay()->toDateTimeString());
         }
 
         if (!is_null($request->endDate) && $request->endDate != '') {
             $endDate = companyToDateString($request->endDate);
-            $tickets->where(DB::raw('DATE(`updated_at`)'), '<=', $endDate);
+            $tickets->where('updated_at', '<=', Carbon::parse($endDate, $this->company->timezone)->endOfDay()->toDateTimeString());
         }
 
         if (!is_null($request->agentId) && $request->agentId != 'all') {

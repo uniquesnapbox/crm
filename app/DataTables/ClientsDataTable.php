@@ -11,7 +11,6 @@ use App\Models\ClientDetails;
 use App\Models\CustomFieldGroup;
 use Yajra\DataTables\Html\Button;
 use Yajra\DataTables\Html\Column;
-use Illuminate\Support\Facades\DB;
 
 class ClientsDataTable extends BaseDataTable
 {
@@ -111,12 +110,14 @@ class ClientsDataTable extends BaseDataTable
 
         if ($request->startDate !== null && $request->startDate != 'null' && $request->startDate != '') {
             $startDate = companyToDateString($request->startDate);
-            $users = $users->where(DB::raw('DATE(users.`created_at`)'), '>=', $startDate);
+            $startBoundary = Carbon::parse($startDate, $this->company->timezone)->startOfDay()->toDateTimeString();
+            $users = $users->where('users.created_at', '>=', $startBoundary);
         }
 
         if ($request->endDate !== null && $request->endDate != 'null' && $request->endDate != '') {
             $endDate = companyToDateString($request->endDate);
-            $users = $users->where(DB::raw('DATE(users.`created_at`)'), '<=', $endDate);
+            $endBoundary = Carbon::parse($endDate, $this->company->timezone)->endOfDay()->toDateTimeString();
+            $users = $users->where('users.created_at', '<=', $endBoundary);
         }
 
         if ($request->status != 'all' && $request->status != '') {
