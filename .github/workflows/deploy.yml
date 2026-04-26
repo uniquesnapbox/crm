@@ -35,7 +35,32 @@ jobs:
             PubkeyAcceptedAlgorithms +ssh-rsa
           EOF
 
-      - name: Sync project to VPS
+      - name: Define Release Variables
+        run: |
+          set -euo pipefail
+          echo "APP_BASE=/var/www/aimexe" >> "$GITHUB_ENV"
+          RELEASE_ID="$(date -u +%Y%m%d%H%M%S)"
+          echo "RELEASE_ID=${RELEASE_ID}" >> "$GITHUB_ENV"
+          echo "RELEASE_PATH=/var/www/aimexe/releases/${RELEASE_ID}" >> "$GITHUB_ENV"
+
+      - name: Prepare Release Directories
+        run: |
+          set -euo pipefail
+          ssh aimexe-vps "
+            set -euo pipefail
+            mkdir -p '${APP_BASE}/releases' '${APP_BASE}/shared'
+            mkdir -p '${APP_BASE}/shared/storage/framework/cache' \
+                     '${APP_BASE}/shared/storage/framework/sessions' \
+                     '${APP_BASE}/shared/storage/framework/views' \
+                     '${APP_BASE}/shared/storage/logs'
+            if [ ! -f '${APP_BASE}/shared/.env' ]; then
+              echo 'shared/.env not found at ${APP_BASE}/shared/.env'
+              exit 1
+            fi
+            mkdir -p '${RELEASE_PATH}'
+          "
+
+      - name: Sync Project to New Release
         run: |
           set -euo pipefail
           rsync -az --delete \
@@ -48,9 +73,19 @@ jobs:
             --exclude="vendor/" \
             --exclude="storage/" \
             --exclude="public/uploads/" \
-            ./ aimexe-vps:/var/www/aimexe/
+            ./ "aimexe-vps:${RELEASE_PATH}/"
 
-      - name: Run post deploy script
+      - name: Activate Release (Atomic Symlink Swap)
         run: |
           set -euo pipefail
-          ssh aimexe-vps 'cd /var/www/aimexe && chmod +x ./scripts/post_deploy.sh && ./scripts/post_deploy.sh'
+          ssh aimexe-vps "
+            set -euo pipefail
+            ln -sfn '${APP_BASE}/shared/.env' '${RELEASE_PATH}/.env'
+            rm -rf '${RELEASE_PATH}/storage'
+            ln -sfn '${APP_BASE}/shared/storage' '${RELEASE_PATH}/storage'
+            chmod +x '${RELEASE_PATH}/scripts/post_deploy.sh'
+            cd '${RELEASE_PATH}'
+            ./scripts/post_deploy.sh
+            ln -sfn '${RELEASE_PATH}' '${APP_BASE}/current'
+            ls -1dt '${APP_BASE}'/releases/* 2>/dev/null | tail -n +4 | xargs -r rm -rf
+          "
