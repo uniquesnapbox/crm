@@ -52,4 +52,4 @@ jobs:
       - name: Run post deploy script
         run: |
           set -euo pipefail
-          ssh aimexe-vps 'cd /var/www/aimexe && ./scripts/post_deploy.sh'
+          ssh aimexe-vps 'cd /var/www/aimexe && chmod +x ./scripts/post_deploy.sh && ./scripts/post_deploy.sh'
