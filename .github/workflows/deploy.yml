@@ -39,6 +39,8 @@ jobs:
         run: |
           set -euo pipefail
           rsync -az --delete \
+            --no-perms --no-owner --no-group \
+            --omit-dir-times \
             --exclude=".git/" \
             --exclude=".github/" \
             --exclude=".env" \
