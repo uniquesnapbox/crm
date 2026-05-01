@@ -1,0 +1,57 @@
+2026/04/30-13:38:21.110 1a10 Reusing MANIFEST D:\school\AIMEXE-main\whatsapp-service\.wwebjs_auth_aimexe\session-default\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/04/30-13:38:21.124 1a10 Recovering log #298
+2026/04/30-13:38:21.165 1a10 Reusing old log D:\school\AIMEXE-main\whatsapp-service\.wwebjs_auth_aimexe\session-default\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/000298.log 
+2026/04/30-13:38:31.188 3444 Level-0 table #312: started
+2026/04/30-13:38:31.235 3444 Level-0 table #312: 1272368 bytes OK
+2026/04/30-13:38:31.237 3444 Delete type=0 #298
+2026/04/30-13:38:31.240 3444 Compacting 1@1 + 10@2 files
+2026/04/30-13:38:31.373 3444 Generated table #313@1: 62324 keys, 2229551 bytes
+2026/04/30-13:38:31.467 3444 Generated table #314@1: 24025 keys, 2181089 bytes
+2026/04/30-13:38:31.505 3444 Generated table #315@1: 1918 keys, 2145431 bytes
+2026/04/30-13:38:31.538 3444 Generated table #316@1: 2138 keys, 2146906 bytes
+2026/04/30-13:38:31.576 3444 Generated table #317@1: 2321 keys, 2146925 bytes
+2026/04/30-13:38:31.649 3444 Generated table #318@1: 21084 keys, 2210300 bytes
+2026/04/30-13:38:31.743 3444 Generated table #319@1: 27688 keys, 2236615 bytes
+2026/04/30-13:38:31.817 3444 Generated table #320@1: 45916 keys, 2183223 bytes
+2026/04/30-13:38:31.934 3444 Generated table #321@1: 102153 keys, 2252838 bytes
+2026/04/30-13:38:31.946 3444 Generated table #322@1: 4462 keys, 227798 bytes
+2026/04/30-13:38:31.946 3444 Compacted 1@1 + 10@2 files => 19960676 bytes
+2026/04/30-13:38:31.948 3444 compacted to: files[ 0 0 10 0 0 0 0 ]
+2026/04/30-13:38:31.948 3444 Delete type=2 #300
+2026/04/30-13:38:31.948 3444 Delete type=2 #301
+2026/04/30-13:38:31.948 3444 Delete type=2 #302
+2026/04/30-13:38:31.948 3444 Delete type=2 #303
+2026/04/30-13:38:31.949 3444 Delete type=2 #304
+2026/04/30-13:38:31.949 3444 Delete type=2 #305
+2026/04/30-13:38:31.949 3444 Delete type=2 #306
+2026/04/30-13:38:31.949 3444 Delete type=2 #307
+2026/04/30-13:38:31.949 3444 Delete type=2 #308
+2026/04/30-13:38:31.949 3444 Delete type=2 #309
+2026/04/30-13:38:31.949 3444 Delete type=2 #312
+2026/04/30-13:49:41.913 3444 Level-0 table #324: started
+2026/04/30-13:49:41.945 3444 Level-0 table #324: 1059915 bytes OK
+2026/04/30-13:49:41.947 3444 Delete type=0 #311
+2026/04/30-13:53:30.264 1714 Compacting 1@1 + 10@2 files
+2026/04/30-13:53:30.344 1714 Generated table #325@1: 62642 keys, 2229096 bytes
+2026/04/30-13:53:30.419 1714 Generated table #326@1: 24496 keys, 2180473 bytes
+2026/04/30-13:53:30.454 1714 Generated table #327@1: 1910 keys, 2143691 bytes
+2026/04/30-13:53:30.493 1714 Generated table #328@1: 2126 keys, 2151562 bytes
+2026/04/30-13:53:30.530 1714 Generated table #329@1: 2341 keys, 2147061 bytes
+2026/04/30-13:53:30.595 1714 Generated table #330@1: 20883 keys, 2209800 bytes
+2026/04/30-13:53:30.673 1714 Generated table #331@1: 27911 keys, 2236587 bytes
+2026/04/30-13:53:30.732 1714 Generated table #332@1: 44871 keys, 2181718 bytes
+2026/04/30-13:53:30.828 1714 Generated table #333@1: 102242 keys, 2255161 bytes
+2026/04/30-13:53:30.839 1714 Generated table #334@1: 5392 keys, 247466 bytes
+2026/04/30-13:53:30.840 1714 Compacted 1@1 + 10@2 files => 19982615 bytes
+2026/04/30-13:53:30.841 1714 compacted to: files[ 0 0 10 0 0 0 0 ]
+2026/04/30-13:53:30.842 1714 Delete type=2 #313
+2026/04/30-13:53:30.842 1714 Delete type=2 #314
+2026/04/30-13:53:30.842 1714 Delete type=2 #315
+2026/04/30-13:53:30.842 1714 Delete type=2 #316
+2026/04/30-13:53:30.842 1714 Delete type=2 #317
+2026/04/30-13:53:30.842 1714 Delete type=2 #318
+2026/04/30-13:53:30.842 1714 Delete type=2 #319
+2026/04/30-13:53:30.842 1714 Delete type=2 #320
+2026/04/30-13:53:30.843 1714 Delete type=2 #321
+2026/04/30-13:53:30.843 1714 Delete type=2 #322
+2026/04/30-13:53:30.843 1714 Delete type=2 #324
