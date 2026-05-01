@@ -31,6 +31,12 @@ class UpdateRequest extends CoreRequest
             'mobile' => 'required',
             'client_email' => 'nullable|email:rfc,strict|unique:leads,client_email,'.$this->route('lead_contact').',id,company_id,' . company()->id,
             'assigned_to' => 'nullable|exists:users,id',
+            'status_id' => 'nullable|exists:lead_status,id',
+            'interest_level' => 'nullable|in:low,medium,high,very_high',
+            'deal_size' => 'nullable|numeric|min:0',
+            'contact_status' => 'nullable|in:pending,connected,not_connected',
+            'contact_status_reason' => 'nullable|required_if:contact_status,not_connected|max:5000',
+            'products_services' => 'nullable|string|max:5000',
         ];
 
         $rules = $this->customFieldRules($rules);

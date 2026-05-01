@@ -16,12 +16,14 @@ use App\Traits\ProjectProgress;
 use App\Models\UniversalSearch;
 use App\Models\User;
 use App\Services\Google;
+use App\Services\TaskWhatsAppNotificationService;
 use Carbon\Carbon;
 use Google\Service\Exception;
 use Google_Service_Calendar_Event;
 use Google_Service_Calendar_EventAttendee;
 use Google_Service_Calendar_EventDateTime;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Log;
 use App\Traits\EmployeeActivityTrait;
 
 class TaskObserver
@@ -104,13 +106,17 @@ class TaskObserver
             if (request()->has('project_id') && request()->project_id != 'all' && request()->project_id != '') {
                 if ((request()->mention_user_id) != null || request()->mention_user_id != '' || $mentionIds != null && $mentionIds != '') {
 
-                    event(new TaskEvent($task, $mentionDescriptionMembers, 'TaskMention'));
+                    $this->dispatchEventSafely(new TaskEvent($task, $mentionDescriptionMembers, 'TaskMention'), 'Task mention notification failed.', [
+                        'task_id' => $task->id,
+                    ]);
 
                     if (request()->user_id != null || request()->user_id != '' || request()->has('user_id')) {
 
                         if ($unmentionIds != null && $unmentionIds != '') {
 
-                            event(new TaskEvent($task, $unmentionDescriptionMember, 'NewTask'));
+                            $this->dispatchEventSafely(new TaskEvent($task, $unmentionDescriptionMember, 'NewTask'), 'New task notification failed.', [
+                                'task_id' => $task->id,
+                            ]);
 
                         }
                     }
@@ -119,7 +125,9 @@ class TaskObserver
                 else {
 
                     if ($task->project->client_id != null && $task->project->allow_client_notification == 'enable' && $task->project->client->status != 'deactive') {
-                        event(new TaskEvent($task, $task->project->client, 'NewClientTask'));
+                        $this->dispatchEventSafely(new TaskEvent($task, $task->project->client, 'NewClientTask'), 'New client task notification failed.', [
+                            'task_id' => $task->id,
+                        ]);
                     }
 
                 }
@@ -129,7 +137,9 @@ class TaskObserver
 
                 if ((request()->mention_user_id) != null || request()->mention_user_id != '') {
 
-                    event(new TaskEvent($task, $mentionDescriptionMembers, 'TaskMention'));
+                    $this->dispatchEventSafely(new TaskEvent($task, $mentionDescriptionMembers, 'TaskMention'), 'Task mention notification failed.', [
+                        'task_id' => $task->id,
+                    ]);
 
                 }
 
@@ -137,7 +147,9 @@ class TaskObserver
 
                     if ($unmentionIds != null && $unmentionIds != '') {
 
-                        event(new TaskEvent($task, $unmentionDescriptionMember, 'NewTask'));
+                        $this->dispatchEventSafely(new TaskEvent($task, $unmentionDescriptionMember, 'NewTask'), 'New task notification failed.', [
+                            'task_id' => $task->id,
+                        ]);
 
                     }
                 }
@@ -163,6 +175,10 @@ class TaskObserver
             if (!empty(request()->user_id) && request()->template_id == '') {
 
                 $task->users()->sync(request()->user_id);
+                app(TaskWhatsAppNotificationService::class)->sendAssignedNotifications(
+                    $task->fresh(['boardColumn', 'project', 'addedByUser']),
+                    request()->user_id
+                );
 
             }
 
@@ -197,7 +213,9 @@ class TaskObserver
 
             if (!empty($newMention)) {
 
-                event(new TaskEvent($task, $newMentionMembers, 'TaskMention'));
+                $this->dispatchEventSafely(new TaskEvent($task, $newMentionMembers, 'TaskMention'), 'Task mention notification failed.', [
+                    'task_id' => $task->id,
+                ]);
 
             }
         }
@@ -219,18 +237,24 @@ class TaskObserver
                 if ($task->boardColumn->slug == 'completed') {
                     // send task complete notification
                     $admins = User::allAdmins($task->company->id);
-                    event(new TaskEvent($task, $admins, 'TaskCompleted'));
+                    $this->dispatchEventSafely(new TaskEvent($task, $admins, 'TaskCompleted'), 'Task completed notification failed.', [
+                        'task_id' => $task->id,
+                    ]);
 
                     if ($task->addedByUser) {
                         $addedByUserRole = $task->addedByUser->roles->pluck('name')->toArray();
 
                         if (!is_null($task->added_by) && !in_array('client', $addedByUserRole) && !in_array($task->added_by, $admins->pluck('id')->toArray())) {
-                            event(new TaskEvent($task, $task->addedByUser, 'TaskCompleted'));
+                            $this->dispatchEventSafely(new TaskEvent($task, $task->addedByUser, 'TaskCompleted'), 'Task completed notification failed.', [
+                                'task_id' => $task->id,
+                            ]);
                         }
                     }
 
                     $taskUser = $task->users->whereNotIn('id', $admins->pluck('id'))->whereNotIn('id', [$task->added_by]);
-                    event(new TaskEvent($task, $taskUser, 'TaskCompleted'));
+                    $this->dispatchEventSafely(new TaskEvent($task, $taskUser, 'TaskCompleted'), 'Task completed notification failed.', [
+                        'task_id' => $task->id,
+                    ]);
 
                     $timeLogs = ProjectTimeLog::with('user')->whereNull('end_time')
                         ->where('task_id', $task->id)
@@ -269,7 +293,9 @@ class TaskObserver
                         $project = $task->project;
 
                         if ($project->client_id != null && $project->allow_client_notification == 'enable' && $project->client->status != 'deactive') {
-                            event(new TaskEvent($task, $project->client, 'TaskCompletedClient'));
+                            $this->dispatchEventSafely(new TaskEvent($task, $project->client, 'TaskCompletedClient'), 'Task completed client notification failed.', [
+                                'task_id' => $task->id,
+                            ]);
                         }
                     }
                 }
@@ -279,7 +305,9 @@ class TaskObserver
             if (request('user_id')) {
                 if (($movingTaskId != '' && $task->id == $movingTaskId) || $movingTaskId == '') {
                     // Send notification to user
-                    event(new TaskEvent($task, $task->users, 'TaskUpdated'));
+                    $this->dispatchEventSafely(new TaskEvent($task, $task->users, 'TaskUpdated'), 'Task updated notification failed.', [
+                        'task_id' => $task->id,
+                    ]);
                 }
             }
         }
@@ -385,6 +413,17 @@ class TaskObserver
         if (!is_null($task->project_id)) {
             // Calculate project progress if enabled
             $this->calculateProjectProgress($task->project_id);
+        }
+    }
+
+    private function dispatchEventSafely(object $event, string $message, array $context = []): void
+    {
+        try {
+            event($event);
+        } catch (\Throwable $exception) {
+            Log::warning($message, $context + [
+                'error' => $exception->getMessage(),
+            ]);
         }
     }
 

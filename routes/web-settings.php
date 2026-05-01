@@ -84,6 +84,7 @@ Route::group(['middleware' => 'auth', 'prefix' => 'account/settings'], function 
 
     Route::get('push-notification-settings/send-test-notification', [PushNotificationController::class, 'sendTestNotification'])->name('push_notification_settings.send_test_notification');
     Route::get('whatsapp-settings/send-test-notification', [WhatsappSettingController::class, 'sendTestNotification'])->name('whatsapp_settings.send_test_notification');
+    Route::get('whatsapp-settings/connection-status', [WhatsappSettingController::class, 'connectionStatus'])->name('whatsapp-settings.connection-status');
 
     Route::resource('smtp-settings', SmtpSettingController::class);
     Route::resource('notifications', NotificationSettingController::class);

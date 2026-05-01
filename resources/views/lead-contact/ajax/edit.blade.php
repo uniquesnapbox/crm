@@ -57,6 +57,15 @@ $assignLeadPermission = in_array('admin', user_roles()) || user()->permission('a
                         </div>
                     @endif
 
+                    <div class="col-lg-4 col-md-6">
+                        <x-forms.select fieldId="status_id" fieldLabel="Lead Status" fieldName="status_id" search="true">
+                            <option value="">--</option>
+                            @foreach ($status as $item)
+                                <option @selected($leadContact->status_id == $item->id) value="{{ $item->id }}">{{ $item->type }}</option>
+                            @endforeach
+                        </x-forms.select>
+                    </div>
+
                     @if ($addPermission == 'all')
                         <div class="col-lg-4 col-md-6">
                             <x-forms.select fieldId="added_by" :fieldLabel="__('app.added').' '.__('app.by')"
@@ -138,6 +147,86 @@ $assignLeadPermission = in_array('admin', user_roles()) || user()->permission('a
                         </div>
                     </div>
 
+                </div>
+
+                <h4 class="mb-0 p-20 f-21 font-weight-normal text-capitalize border-top-grey">
+                    Lead Qualification
+                </h4>
+
+                <div class="row p-20">
+                    <div class="col-lg-4 col-md-6">
+                        <x-forms.select fieldId="interest_level" fieldLabel="Interest Level" fieldName="interest_level">
+                            <option value="">--</option>
+                            <option @selected($leadContact->interest_level === 'low') value="low">Low</option>
+                            <option @selected($leadContact->interest_level === 'medium') value="medium">Medium</option>
+                            <option @selected($leadContact->interest_level === 'high') value="high">High</option>
+                            <option @selected($leadContact->interest_level === 'very_high') value="very_high">Very High</option>
+                        </x-forms.select>
+                    </div>
+
+                    <div class="col-lg-4 col-md-6">
+                        <div class="form-group my-3">
+                            <label class="f-14 text-dark-grey mb-12" for="deal_size">Deal Size</label>
+                            <input type="number" step="0.01" min="0" class="form-control" name="deal_size" id="deal_size"
+                                value="{{ $leadContact->deal_size }}" placeholder="Expected amount">
+                        </div>
+                    </div>
+
+                    @if ($viewLeadCategoryPermission != 'none')
+                        <div class="col-lg-4 col-md-6">
+                            <x-forms.label class="my-3" fieldId="category_id" fieldLabel="Customer Group">
+                            </x-forms.label>
+                            <x-forms.input-group>
+                                <select class="form-control select-picker" name="category_id" id="category_id"
+                                    data-live-search="true">
+                                    <option value="">--</option>
+                                    @foreach ($categories as $category)
+                                        <option @selected($leadContact->category_id == $category->id) value="{{ $category->id }}">
+                                            {{ $category->category_name }}</option>
+                                    @endforeach
+                                </select>
+
+                                @if ($addLeadCategoryPermission == 'all' || $addLeadCategoryPermission == 'added')
+                                    <x-slot name="append">
+                                        <button type="button"
+                                            class="btn btn-outline-secondary border-grey add-lead-category"
+                                            data-toggle="tooltip" data-original-title="{{ __('app.add').' Customer Group' }}">
+                                            @lang('app.add')</button>
+                                    </x-slot>
+                                @endif
+                            </x-forms.input-group>
+                        </div>
+                    @endif
+
+                    <div class="col-lg-4 col-md-6">
+                        <x-forms.select fieldId="contact_status" fieldLabel="Lead Contact Status" fieldName="contact_status">
+                            <option value="">--</option>
+                            <option @selected($leadContact->contact_status === 'pending') value="pending">Pending</option>
+                            <option @selected($leadContact->contact_status === 'connected') value="connected">Connected</option>
+                            <option @selected($leadContact->contact_status === 'not_connected') value="not_connected">Not Connected</option>
+                        </x-forms.select>
+                    </div>
+
+                    <div class="col-lg-8 col-md-6 {{ $leadContact->contact_status === 'not_connected' ? '' : 'd-none' }}" id="contact-status-reason-wrapper">
+                        <div class="form-group my-3">
+                            <label class="f-14 text-dark-grey mb-12" for="contact_status_reason">If Not Connected, Why?</label>
+                            <textarea class="form-control" name="contact_status_reason" id="contact_status_reason" rows="3" placeholder="Write the reason">{{ $leadContact->contact_status_reason }}</textarea>
+                        </div>
+                    </div>
+
+                    <div class="col-md-12">
+                        <div class="form-group my-3">
+                            <label class="f-14 text-dark-grey mb-12" for="products_services">Products / Services</label>
+                            <textarea class="form-control" name="products_services" id="products_services" rows="3" placeholder="What is the lead interested in?">{{ $leadContact->products_services }}</textarea>
+                        </div>
+                    </div>
+
+                    <div class="col-md-12">
+                        <div class="form-group my-3">
+                            <label class="f-14 text-dark-grey mb-12" for="note">Notes</label>
+                            <textarea class="form-control" name="note" id="note" rows="4" placeholder="Qualification notes, comments, or background">{{ $leadContact->note }}</textarea>
+                        </div>
+                    </div>
                 </div>
 
                 <x-forms.custom-field :fields="$fields" :model="$leadContact"></x-forms.custom-field>
@@ -249,6 +338,14 @@ $assignLeadPermission = in_array('admin', user_roles()) || user()->permission('a
             $(this).find('svg').toggleClass('fa-chevron-down fa-chevron-up');
             $('#other-details').toggleClass('d-none');
         });
+
+        function toggleContactReason() {
+            const showReason = $('#contact_status').val() === 'not_connected';
+            $('#contact-status-reason-wrapper').toggleClass('d-none', !showReason);
+        }
+
+        $('#contact_status').on('change', toggleContactReason);
+        toggleContactReason();
 
         $('#createTaskLabel').click(function() {
             const url = "{{ route('task-label.create') }}";

@@ -66,6 +66,13 @@ class NotificationSettingController extends AccountBaseController
             'api_token' => null,
             'default_country_code' => null,
             'test_number' => null,
+            'send_lead_created_message' => 'no',
+            'lead_created_template' => WhatsappNotificationSetting::DEFAULT_LEAD_CREATED_TEMPLATE,
+            'lead_created_sender_number' => config('app.admin_whatsapp', ''),
+            'ticket_assigned_staff_template' => 'A new ticket has been assigned to you. Ticket #{{ticket_number}}: {{subject}}',
+            'ticket_assigned_client_template' => 'Your ticket #{{ticket_number}} has been forwarded to our team. We will get back to you soon.',
+            'ticket_resolved_client_template' => 'Your ticket #{{ticket_number}} has been resolved. If you need anything else, please let us know.',
+            'task_assigned_staff_template' => 'A new task has been assigned to you. Task: {{task_heading}}',
             'last_send_status' => null,
             'last_error_message' => null,
             'last_http_status' => null,
@@ -98,14 +105,6 @@ class NotificationSettingController extends AccountBaseController
             break;
 
         case 'whatsapp-setting':
-            $this->whatsappEventSettings = $this->emailSettings
-                ->whereIn('slug', EmailNotificationSetting::WHATSAPP_NOTIFICATION_SLUGS)
-                ->values();
-            $this->checkedAll = $this->whatsappEventSettings->count() > 0
-                && $this->whatsappEventSettings->count() === $this->whatsappEventSettings->filter(function ($value) {
-                    return $value->send_whatsapp == 'yes';
-                })->count();
-
             $this->view = 'notification-settings.ajax.whatsapp-setting';
             break;
 

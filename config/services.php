@@ -81,6 +81,13 @@ return [
         'otp_template' => env('WHATSAPP_OTP_TEMPLATE_NAME', 'auth_uniq'),
     ],
 
+    'whatsapp_service' => [
+        'base_url' => env('WHATSAPP_SERVICE_URL', ''),
+        'api_key' => env('WHATSAPP_SERVICE_API_KEY', ''),
+        'session' => env('WHATSAPP_SERVICE_SESSION', 'default'),
+        'timeout' => env('WHATSAPP_SERVICE_TIMEOUT', 30),
+    ],
+
 
 
     'sentry' => [

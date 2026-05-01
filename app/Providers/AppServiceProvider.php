@@ -59,7 +59,7 @@ class AppServiceProvider extends ServiceProvider
         }
 
         // prevent scripts from timing out during long operations
-        ini_set('max_execution_time', '300');
+        ini_set('max_execution_time', '0');
 
         CarbonInterval::macro('formatHuman', function ($totalMinutes, $seconds = false): string {
 

@@ -1,125 +1,184 @@
 <div class="col-xl-8 col-lg-12 col-md-12 ntfcn-tab-content-left w-100 p-4 ">
     <div class="row" id="whatsapp-row">
         <div class="col-lg-12">
-            <x-forms.checkbox fieldLabel="Enable WhatsApp notifications" fieldName="whatsapp_status" fieldId="whatsapp_status"
-                fieldValue="active" fieldRequired="true" :checked="$whatsappSettings->status == 'active'" />
-        </div>
-
-        <div class="col-lg-12 whatsapp_details @if($whatsappSettings->status == 'inactive') d-none @endif">
             <div class="row mt-3">
-                <div class="col-lg-12">
-                    <x-forms.text :fieldLabel="'Base URL'" fieldName="base_url" fieldId="base_url"
-                        :fieldValue="$whatsappSettings->base_url" fieldRequired="true" />
+                <div class="col-lg-12 mt-2">
+                    <div class="card border-grey rounded">
+                        <div class="card-body">
+                            <div class="d-flex flex-wrap justify-content-between align-items-start mb-3">
+                                <div>
+                                    <h5 class="text-dark-grey f-15 mb-1">WhatsApp Connection</h5>
+                                    <div class="text-muted f-12">
+                                        Scan this QR from the WhatsApp account you want to connect with the microservice.
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-outline-secondary btn-sm mt-2 mt-lg-0" id="refresh-whatsapp-connection">
+                                    Refresh QR
+                                </button>
+                            </div>
+
+                            <div class="mb-3">
+                                <span class="badge badge-secondary mr-2" id="whatsapp-service-status">Checking service...</span>
+                                <span class="badge badge-secondary" id="whatsapp-session-status">Checking session...</span>
+                            </div>
+
+                            <div class="text-muted f-12 mb-3" id="whatsapp-connection-meta">
+                                Session: <code>--</code>
+                            </div>
+
+                            <div class="alert alert-warning d-none" id="whatsapp-connection-error"></div>
+
+                            <div class="text-center border rounded p-3 bg-white" id="whatsapp-qr-wrapper">
+                                <img src="" alt="WhatsApp QR" id="whatsapp-qr-image" class="img-fluid d-none" style="max-height: 280px;">
+                                <div class="text-muted f-13" id="whatsapp-qr-placeholder">
+                                    QR will appear here when the WhatsApp service requests login.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="col-lg-12">
-                    <x-forms.text :fieldLabel="'API Token'" fieldName="api_token" fieldId="api_token"
-                        :fieldValue="$whatsappSettings->api_token" fieldRequired="true" />
+                <div class="col-lg-12 mt-3">
+                    <x-forms.text :fieldLabel="'Sender WhatsApp Number'" fieldName="lead_created_sender_number"
+                        fieldId="lead_created_sender_number"
+                        :fieldValue="$whatsappSettings->lead_created_sender_number ?: config('app.admin_whatsapp', '')"
+                        :fieldPlaceholder="'Defaults to admin WhatsApp number'" />
+                    <div class="text-muted f-12 mt-1">
+                        If left empty, the system uses <code>ADMIN_WHATSAPP</code>. This number is also used as the WhatsApp service session key.
+                    </div>
                 </div>
 
-                <div class="col-lg-6 col-md-6">
-                    <x-forms.text :fieldLabel="'Default Country Code'" fieldName="default_country_code" fieldId="default_country_code"
-                        :fieldValue="$whatsappSettings->default_country_code" fieldRequired="true" />
+                <div class="col-lg-12 mt-3">
+                    <x-forms.textarea :fieldLabel="'Lead Creation Message Template'" fieldName="lead_created_template"
+                        fieldId="lead_created_template" fieldRequired="true"
+                        :fieldValue="$whatsappSettings->lead_created_template ?: \App\Models\WhatsappNotificationSetting::DEFAULT_LEAD_CREATED_TEMPLATE"
+                        fieldPlaceholder="Hello @{{client_name}}, thank you for your interest." />
+                    <div class="text-muted f-12 mt-1">
+                        Available placeholders: <code>@{{client_name}}</code>, <code>@{{company_name}}</code>, <code>@{{email}}</code>, <code>@{{mobile}}</code>, <code>@{{lead_id}}</code>, <code>@{{created_by}}</code>
+                    </div>
+                    <div class="text-muted f-12 mt-1">
+                        The actual sending account must be logged in inside the WhatsApp service session for this same sender number.
+                    </div>
                 </div>
 
-                <div class="col-lg-6 col-md-6">
-                    <x-forms.text :fieldLabel="'Test Number'" fieldName="test_number" fieldId="test_number"
-                        :fieldValue="$whatsappSettings->test_number" />
-                </div>
-            </div>
-
-            <div class="mt-4 p-3 bg-light rounded">
-                <div class="d-flex flex-wrap align-items-center mb-2">
-                    <span class="f-14 text-dark-grey mr-2">Last WhatsApp send status:</span>
-                    @php
-                        $status = $whatsappSettings->last_send_status;
-                        $statusClass = $status === 'sent' ? 'badge badge-success' : ($status === 'accepted' ? 'badge badge-warning' : ($status === 'failed' ? 'badge badge-danger' : 'badge badge-secondary'));
-                    @endphp
-                    <span class="{{ $statusClass }}">{{ $whatsappSettings->delivery_status_label }}</span>
+                <div class="col-lg-12 mt-4">
+                    <h5 class="text-dark-grey f-15 mb-3">Ticket WhatsApp Templates</h5>
                 </div>
 
-                @if (!empty($whatsappSettings->last_error_message))
-                    <div class="f-13 text-danger mb-2">
-                        <strong>Last error message:</strong> {{ $whatsappSettings->last_error_message }}
-                    </div>
-                @endif
+                <div class="col-lg-12 mt-2">
+                    <x-forms.textarea :fieldLabel="'Ticket Assigned Message for Staff'" fieldName="ticket_assigned_staff_template"
+                        fieldId="ticket_assigned_staff_template" fieldRequired="true"
+                        :fieldValue="$whatsappSettings->ticket_assigned_staff_template ?: 'A new ticket has been assigned to you. Ticket #{{ticket_number}}: {{subject}}'"
+                        fieldPlaceholder="A new ticket has been assigned to you. Ticket #@{{ticket_number}}: @{{subject}}" />
+                </div>
 
-                @if (!empty($whatsappSettings->last_http_status))
-                    <div class="f-13 text-dark-grey mb-1">
-                        <strong>Last HTTP status:</strong> {{ $whatsappSettings->last_http_status }}
-                    </div>
-                @endif
+                <div class="col-lg-12 mt-3">
+                    <x-forms.textarea :fieldLabel="'Ticket Assigned Message for Client'" fieldName="ticket_assigned_client_template"
+                        fieldId="ticket_assigned_client_template" fieldRequired="true"
+                        :fieldValue="$whatsappSettings->ticket_assigned_client_template ?: 'Your ticket #{{ticket_number}} has been forwarded to our team. We will get back to you soon.'"
+                        fieldPlaceholder="Your ticket #@{{ticket_number}} has been forwarded to our team." />
+                </div>
 
-                @if (!empty($whatsappSettings->last_normalized_phone))
-                    <div class="f-13 text-dark-grey mb-1">
-                        <strong>Final normalized phone:</strong> {{ $whatsappSettings->last_normalized_phone }}
+                <div class="col-lg-12 mt-3">
+                    <x-forms.textarea :fieldLabel="'Ticket Resolved Message for Client'" fieldName="ticket_resolved_client_template"
+                        fieldId="ticket_resolved_client_template" fieldRequired="true"
+                        :fieldValue="$whatsappSettings->ticket_resolved_client_template ?: 'Your ticket #{{ticket_number}} has been resolved. If you need anything else, please let us know.'"
+                        fieldPlaceholder="Your ticket #@{{ticket_number}} has been resolved." />
+                    <div class="text-muted f-12 mt-1">
+                        Available placeholders: <code>@{{ticket_number}}</code>, <code>@{{subject}}</code>, <code>@{{status}}</code>, <code>@{{priority}}</code>, <code>@{{agent_name}}</code>, <code>@{{client_name}}</code>
                     </div>
-                @endif
+                </div>
 
-                @if (!empty($whatsappSettings->last_response_message))
-                    <div class="f-13 text-dark-grey mb-1">
-                        <strong>Exact API response message:</strong> {{ $whatsappSettings->last_response_message }}
-                    </div>
-                @endif
+                <div class="col-lg-12 mt-4">
+                    <h5 class="text-dark-grey f-15 mb-3">Task WhatsApp Templates</h5>
+                </div>
 
-                @if (!empty($whatsappSettings->last_response_body))
-                    <div class="f-13 text-dark-grey mb-1">
-                        <strong>Raw API response body:</strong>
-                        <pre class="mt-1 mb-0 p-2 bg-white border rounded text-wrap">{{ $whatsappSettings->last_response_body }}</pre>
+                <div class="col-lg-12 mt-2">
+                    <x-forms.textarea :fieldLabel="'Task Assigned Message for Staff'" fieldName="task_assigned_staff_template"
+                        fieldId="task_assigned_staff_template" fieldRequired="true"
+                        :fieldValue="$whatsappSettings->task_assigned_staff_template ?: \App\Models\WhatsappNotificationSetting::DEFAULT_TASK_ASSIGNED_TEMPLATE"
+                        fieldPlaceholder="A new task has been assigned to you. Task: @{{task_heading}}" />
+                    <div class="text-muted f-12 mt-1">
+                        Available placeholders: <code>@{{task_heading}}</code>, <code>@{{task_id}}</code>, <code>@{{project_name}}</code>, <code>@{{due_date}}</code>, <code>@{{task_status}}</code>, <code>@{{assigned_by}}</code>
                     </div>
-                @endif
-
-                @if (!empty($whatsappSettings->last_delivery_status))
-                    <div class="f-13 text-dark-grey mb-1">
-                        <strong>Delivery interpretation:</strong>
-                        @if ($whatsappSettings->last_delivery_status === 'sent')
-                            Sent confirmed by API response.
-                        @elseif ($whatsappSettings->last_delivery_status === 'accepted')
-                            Request accepted by API only. Handset delivery is not confirmed.
-                        @elseif ($whatsappSettings->last_delivery_status === 'failed')
-                            Request failed.
-                        @endif
-                    </div>
-                @endif
-
-                @if (!empty($whatsappSettings->last_sent_at))
-                    <div class="f-13 text-dark-grey">
-                        <strong>Last attempt:</strong> {{ $whatsappSettings->last_sent_at->timezone(company()->timezone)->format(company()->date_format . ' ' . company()->time_format) }}
-                    </div>
-                @endif
+                </div>
             </div>
         </div>
     </div>
-</div>
-
-<div class="col-xl-4 col-lg-12 col-md-12 ntfcn-tab-content-right border-left-grey p-4">
-    <h4 class="f-16 text-capitalize f-w-500 text-dark-grey">WhatsApp Notification Settings</h4>
-    <div class="mb-3 d-flex">
-        <x-forms.checkbox :checked="$checkedAll == true"
-            :fieldLabel="__('modules.permission.selectAll')"
-            fieldName="select_all_checkbox" fieldId="select_all_whatsapp"
-            fieldValue="all"/>
-    </div>
-    @foreach ($whatsappEventSettings as $emailSetting)
-        <div class="mb-3 d-flex notification">
-            <x-forms.checkbox :checked="$emailSetting->send_whatsapp == 'yes'"
-                :fieldLabel="__('modules.emailNotification.'.str_slug($emailSetting->setting_name))"
-                fieldName="send_whatsapp[]" :fieldId="'send_whatsapp_'.$emailSetting->id" :fieldValue="$emailSetting->id" />
-        </div>
-    @endforeach
 </div>
 
 <div class="w-100 border-top-grey set-btns">
     <x-setting-form-actions>
         <x-forms.button-primary id="save-whatsapp-form" class="mr-3" icon="check">@lang('app.save')
         </x-forms.button-primary>
-
-        <x-forms.button-secondary id="send-test-whatsapp" icon="location-arrow">
-            Send Test WhatsApp</x-forms.button-secondary>
     </x-setting-form-actions>
 </div>
 
 <script>
+    function loadWhatsAppConnectionStatus() {
+        const $serviceStatus = $('#whatsapp-service-status');
+        const $sessionStatus = $('#whatsapp-session-status');
+        const $meta = $('#whatsapp-connection-meta');
+        const $error = $('#whatsapp-connection-error');
+        const $image = $('#whatsapp-qr-image');
+        const $placeholder = $('#whatsapp-qr-placeholder');
+
+        $serviceStatus.removeClass('badge-success badge-danger badge-warning').addClass('badge-secondary').text('Checking service...');
+        $sessionStatus.removeClass('badge-success badge-danger badge-warning').addClass('badge-secondary').text('Checking session...');
+        $error.addClass('d-none').text('');
+
+        $.easyAjax({
+            url: "{{ route('whatsapp-settings.connection-status') }}",
+            type: "GET",
+            container: "#editSettings",
+            success: function (response) {
+                const health = response.health || {};
+                const qr = response.qr || {};
+                const qrData = qr.data || {};
+                const sessionKey = response.sessionKey || qrData.sessionKey || 'default';
+                const sessionStatus = qrData.status || 'unknown';
+                const isReady = Boolean(health.data && health.data.ready);
+
+                $serviceStatus.removeClass('badge-secondary').addClass(health.success ? (isReady ? 'badge-success' : 'badge-warning') : 'badge-danger');
+                $serviceStatus.text(health.success ? (isReady ? 'Service Ready' : 'Service Online') : 'Service Error');
+
+                $sessionStatus.removeClass('badge-secondary').addClass(
+                    sessionStatus === 'ready' ? 'badge-success' :
+                    (sessionStatus === 'qr_required' ? 'badge-warning' : 'badge-danger')
+                );
+                $sessionStatus.text('Session: ' + sessionStatus.replace(/_/g, ' '));
+
+                $meta.html('Session: <code>' + sessionKey + '</code>' + (response.baseUrl ? ' | URL: <code>' + response.baseUrl + '</code>' : ''));
+
+                if (qr.image) {
+                    $image.attr('src', qr.image).removeClass('d-none');
+                    $placeholder.addClass('d-none');
+                } else {
+                    $image.attr('src', '').addClass('d-none');
+                    $placeholder.removeClass('d-none').text(
+                        sessionStatus === 'ready'
+                            ? 'WhatsApp is already connected for this session.'
+                            : 'QR is not available yet. If this stays empty, make sure the Node WhatsApp service is running and requesting login.'
+                    );
+                }
+
+                const errors = [health.error, qr.error].filter(Boolean).join(' ');
+                if (errors) {
+                    $error.removeClass('d-none').text(errors);
+                }
+            },
+            error: function () {
+                $serviceStatus.removeClass('badge-secondary').addClass('badge-danger').text('Service Error');
+                $sessionStatus.removeClass('badge-secondary').addClass('badge-danger').text('Session Error');
+                $('#whatsapp-connection-error').removeClass('d-none').text('Unable to fetch WhatsApp connection details from CRM.');
+            }
+        });
+    }
+
+    $('body').on('click', '#refresh-whatsapp-connection', function() {
+        loadWhatsAppConnectionStatus();
+    });
+
     $('body').on('click', '#save-whatsapp-form', function() {
         $.easyAjax({
             url: "{{ route('whatsapp-settings.update', $whatsappSettings->id ?: 1) }}",
@@ -133,23 +192,5 @@
         })
     });
 
-    $('body').on('click', '#send-test-whatsapp', function() {
-        $.easyAjax({
-            url: "{{ route('whatsapp_settings.send_test_notification') }}",
-            type: "GET",
-            success: function () {
-                window.location.reload();
-            }
-        })
-    });
-
-    var whatsappCheckboxes = document.querySelectorAll(".notification input[type=checkbox]");
-
-    $('body').on('click', '#select_all_whatsapp', function() {
-        var selectAll = $('#select_all_whatsapp').is(':checked');
-
-        whatsappCheckboxes.forEach(function(checkbox){
-            checkbox.checked = selectAll;
-        })
-    });
+    loadWhatsAppConnectionStatus();
 </script>

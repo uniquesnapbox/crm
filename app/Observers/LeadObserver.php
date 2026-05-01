@@ -6,6 +6,8 @@ use App\Events\LeadEvent;
 use App\Models\Lead;
 use App\Models\Notification;
 use App\Models\UniversalSearch;
+use App\Services\LeadWhatsAppNotificationService;
+use Illuminate\Support\Facades\Log;
 
 class LeadObserver
 {
@@ -42,7 +44,17 @@ class LeadObserver
     public function created(Lead $leadContact)
     {
         if (!isRunningInConsoleOrSeeding()) {
-            event(new LeadEvent($leadContact, 'NewLeadCreated'));
+            app(LeadWhatsAppNotificationService::class)->sendLeadCreatedMessage($leadContact);
+
+            try {
+                event(new LeadEvent($leadContact, 'NewLeadCreated'));
+            } catch (\Throwable $exception) {
+                Log::warning('Lead email notification failed after lead creation.', [
+                    'lead_id' => $leadContact->id,
+                    'company_id' => $leadContact->company_id,
+                    'error' => $exception->getMessage(),
+                ]);
+            }
         }
     }
 

@@ -33,6 +33,12 @@ class StoreRequest extends CoreRequest
         $rules['mobile'] = 'required';
         $rules['client_email'] = 'nullable|email:rfc,strict|unique:leads,client_email,null,id,company_id,' . company()->id;
         $rules['assigned_to'] = 'nullable|exists:users,id';
+        $rules['status_id'] = 'nullable|exists:lead_status,id';
+        $rules['interest_level'] = 'nullable|in:low,medium,high,very_high';
+        $rules['deal_size'] = 'nullable|numeric|min:0';
+        $rules['contact_status'] = 'nullable|in:pending,connected,not_connected';
+        $rules['contact_status_reason'] = 'nullable|required_if:contact_status,not_connected|max:5000';
+        $rules['products_services'] = 'nullable|string|max:5000';
 
         return $this->customFieldRules($rules);
 

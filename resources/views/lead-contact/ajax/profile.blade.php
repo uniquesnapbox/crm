@@ -111,23 +111,104 @@
 
             <x-cards.data-row :label="__('modules.lead.leadCategory')" :value="$leadContact->category->category_name ?? '--'" />
 
+            @if ($leadContact->leadStatus)
+                <div class="col-12 px-0 pb-3 d-block d-lg-flex d-md-flex">
+                    <p class="mb-0 text-lightest f-14 w-30 d-inline-block text-capitalize">
+                        Lead Status
+                    </p>
+                    <p class="mb-0 text-dark-grey f-14">
+                        <x-status :value="$leadContact->leadStatus->type" :style="'color:' . $leadContact->leadStatus->label_color" />
+                    </p>
+                </div>
+            @else
+                <x-cards.data-row :label="'Lead Status'" :value="'--'" />
+            @endif
+
+            <x-cards.data-row :label="'Interest Level'" :value="$leadContact->interest_level ? str($leadContact->interest_level)->replace('_', ' ')->title() : '--'" />
+
+            <x-cards.data-row :label="'Deal Size'" :value="!is_null($leadContact->deal_size) ? number_format((float) $leadContact->deal_size, 2) : '--'" />
+
+            <x-cards.data-row :label="'Lead Contact Status'" :value="$leadContact->contact_status ? str($leadContact->contact_status)->replace('_', ' ')->title() : '--'" />
+
+            @if (!empty($leadContact->contact_status_reason))
+                <div class="col-12 px-0 pb-3 d-block d-lg-flex d-md-flex">
+                    <p class="mb-0 text-lightest f-14 w-30 d-inline-block text-capitalize">
+                        Not Connected Reason
+                    </p>
+                    <p class="mb-0 text-dark-grey f-14">
+                        {{ $leadContact->contact_status_reason }}
+                    </p>
+                </div>
+            @endif
+
+            @if (!empty($leadContact->products_services))
+                <div class="col-12 px-0 pb-3 d-block d-lg-flex d-md-flex">
+                    <p class="mb-0 text-lightest f-14 w-30 d-inline-block text-capitalize">
+                        Products / Services
+                    </p>
+                    <p class="mb-0 text-dark-grey f-14">
+                        {{ $leadContact->products_services }}
+                    </p>
+                </div>
+            @endif
+
             <x-cards.data-row :label="__('modules.lead.companyName')" :value="!empty($leadContact->company_name) ? $leadContact->company_name : '--'" />
 
             <x-cards.data-row :label="__('modules.lead.website')" :value="$leadContact->website ?? '--'" />
 
             <x-cards.data-row :label="__('modules.lead.mobile')" :value="$leadContact->mobile ?? '--'" />
 
+            @php
+                $greetingStatus = $leadContact->whatsapp_greeting_status;
+                $greetingStatusLabel = $greetingStatus === 'sent'
+                    ? 'Sent'
+                    : ($greetingStatus === 'failed' ? 'Failed' : 'Pending');
+                $greetingStatusClass = $greetingStatus === 'sent'
+                    ? 'text-success'
+                    : ($greetingStatus === 'failed' ? 'text-danger' : 'text-warning');
+                $greetingSentAt = $leadContact->whatsapp_greeting_sent_at
+                    ? $leadContact->whatsapp_greeting_sent_at->timezone(company()->timezone)->format(company()->date_format . ' ' . company()->time_format)
+                    : '--';
+            @endphp
+
+            <div class="col-12 px-0 pb-3 d-block d-lg-flex d-md-flex">
+                <p class="mb-0 text-lightest f-14 w-30 d-inline-block text-capitalize">
+                    WhatsApp Greeting
+                </p>
+                <p class="mb-0 f-14 {{ $greetingStatusClass }}">
+                    {{ $greetingStatusLabel }}
+                </p>
+            </div>
+
+            <x-cards.data-row :label="'Greeting Sent At'" :value="$greetingSentAt" />
+
+            @if (!empty($leadContact->whatsapp_greeting_error))
+                <div class="col-12 px-0 pb-3 d-block d-lg-flex d-md-flex">
+                    <p class="mb-0 text-lightest f-14 w-30 d-inline-block text-capitalize">
+                        Greeting Error
+                    </p>
+                    <p class="mb-0 text-danger f-14">
+                        {{ $leadContact->whatsapp_greeting_error }}
+                    </p>
+                </div>
+            @endif
+
             <x-cards.data-row :label="__('modules.client.officePhoneNumber')" :value="$leadContact->office ?? '--'" />
 
             <x-cards.data-row :label="__('app.country')" :value="$leadContact->country ?? '--'" />
 
-            <x-cards.data-row :label="__('modules.stripeCustomerAddress.state')" :value="$leadContact->state ?? '--'" />
-
-            <x-cards.data-row :label="__('modules.stripeCustomerAddress.city')" :value="$leadContact->city ?? '--'" />
-
-            <x-cards.data-row :label="__('modules.stripeCustomerAddress.postalCode')" :value="$leadContact->postal_code ?? '--'" />
-
             <x-cards.data-row :label="__('modules.lead.address')" :value="$leadContact->address ?? '--'" />
+
+            @if (!empty($leadContact->note))
+                <div class="col-12 px-0 pb-3 d-block d-lg-flex d-md-flex">
+                    <p class="mb-0 text-lightest f-14 w-30 d-inline-block text-capitalize">
+                        Notes
+                    </p>
+                    <p class="mb-0 text-dark-grey f-14">
+                        {{ strip_tags($leadContact->note) }}
+                    </p>
+                </div>
+            @endif
 
             {{-- Custom fields data --}}
             <x-forms.custom-field-show :fields="$fields" :model="$leadContact"></x-forms.custom-field-show>

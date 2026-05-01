@@ -104,6 +104,7 @@ class Lead extends BaseModel
 
     protected $casts = [
         // 'salutation' => Salutation::class,  // removed
+        'whatsapp_greeting_sent_at' => 'datetime',
     ];
 
     public function getImageUrlAttribute()

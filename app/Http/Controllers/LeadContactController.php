@@ -63,7 +63,7 @@ class LeadContactController extends AccountBaseController
 
     public function show($id)
     {
-        $this->leadContact = Lead::with(['leadSource', 'category', 'addedBy', 'assignedTo', 'followUps', 'latestFollowUp'])->findOrFail($id)->withCustomFields();
+        $this->leadContact = Lead::with(['leadSource', 'leadStatus', 'category', 'addedBy', 'assignedTo', 'followUps', 'latestFollowUp'])->findOrFail($id)->withCustomFields();
 
         $this->viewPermission = user()->permission('view_lead');
 
@@ -201,6 +201,7 @@ class LeadContactController extends AccountBaseController
         $leadContact->client_email = $request->client_email;
         $leadContact->note = trim_editor($request->note);
         $leadContact->source_id = $request->source_id;
+        $leadContact->status_id = $request->status_id;
         $leadContact->client_id = $existingUser?->id;
         $leadContact->company_name = $request->company_name;
         $leadContact->website = $request->website;
@@ -210,6 +211,11 @@ class LeadContactController extends AccountBaseController
         // city, state, postal_code removed
         $leadContact->country = $request->country;
         $leadContact->mobile = $request->mobile;
+        $leadContact->interest_level = $request->interest_level;
+        $leadContact->deal_size = $request->deal_size;
+        $leadContact->contact_status = $request->contact_status;
+        $leadContact->contact_status_reason = $request->contact_status_reason;
+        $leadContact->products_services = $request->products_services;
         $leadContact->added_by = $request->added_by ?? user()->id; // save added_by, fallback to current user
         $leadContact->assigned_to = $this->resolvedAssignedTo($request);
         $leadContact->save();
@@ -250,7 +256,7 @@ class LeadContactController extends AccountBaseController
      */
     public function edit($id)
     {
-        $this->leadContact = Lead::with('leadSource', 'category', 'assignedTo')->findOrFail($id)->withCustomFields();
+        $this->leadContact = Lead::with('leadSource', 'leadStatus', 'category', 'assignedTo')->findOrFail($id)->withCustomFields();
 
         $this->editPermission = user()->permission('edit_lead');
 
@@ -272,6 +278,7 @@ class LeadContactController extends AccountBaseController
         }
 
         $this->sources = LeadSource::all();
+        $this->status = LeadStatus::all();
         $this->categories = LeadCategory::all();
         $this->countries = countries();
 
@@ -316,6 +323,7 @@ class LeadContactController extends AccountBaseController
         $leadContact->client_email = $request->client_email;
         $leadContact->note = trim_editor($request->note);
         $leadContact->source_id = $request->source_id;
+        $leadContact->status_id = $request->status_id;
         $leadContact->category_id = $request->category_id;
         $leadContact->company_name = $request->company_name;
         $leadContact->website = $request->website;
@@ -325,6 +333,11 @@ class LeadContactController extends AccountBaseController
         // city, state, postal_code removed
         $leadContact->country = $request->country;
         $leadContact->mobile = $request->mobile;
+        $leadContact->interest_level = $request->interest_level;
+        $leadContact->deal_size = $request->deal_size;
+        $leadContact->contact_status = $request->contact_status;
+        $leadContact->contact_status_reason = $request->contact_status_reason;
+        $leadContact->products_services = $request->products_services;
         $leadContact->added_by = $request->added_by ?? $leadContact->added_by; // update added_by if provided
         $leadContact->assigned_to = $this->resolvedAssignedTo($request, $leadContact);
         $leadContact->save();
