@@ -30,7 +30,7 @@ class StoreRequest extends CoreRequest
         $rules = array();
 
         $rules['client_name'] = 'required';
-        $rules['mobile'] = 'required';
+        $rules['mobile'] = ['required', 'regex:/^\+\d{7,15}$/'];
         $rules['client_email'] = 'nullable|email:rfc,strict|unique:leads,client_email,null,id,company_id,' . company()->id;
         $rules['assigned_to'] = 'nullable|exists:users,id';
         $rules['status_id'] = 'nullable|exists:lead_status,id';
@@ -52,8 +52,16 @@ class StoreRequest extends CoreRequest
 
         $attributes['client_name'] = __('app.name');
         $attributes['client_email'] = __('app.email');
+        $attributes['mobile'] = __('modules.lead.mobile');
 
         return $attributes;
+    }
+
+    public function messages()
+    {
+        return [
+            'mobile.regex' => 'Mobile number must be in international format with country code (example: +919876543210).',
+        ];
     }
 
 }

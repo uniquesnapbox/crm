@@ -288,7 +288,7 @@ class PrewarmDashboardCache extends Command
                     ->where('tasks.board_column_id', '<>', $completedTaskColumnId)
                     ->with([
                         'boardColumn:id,column_name,label_color',
-                        'labels:id,label_name,label_color',
+                        'labels:id,label_name,color',
                     ])
                     ->select('tasks.id', 'tasks.task_short_code', 'tasks.heading', 'tasks.board_column_id', 'tasks.due_date')
                     ->distinct()

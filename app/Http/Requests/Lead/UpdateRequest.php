@@ -28,7 +28,7 @@ class UpdateRequest extends CoreRequest
     {
         $rules = [
             'client_name' => 'required',
-            'mobile' => 'required',
+            'mobile' => ['required', 'regex:/^\+\d{7,15}$/'],
             'client_email' => 'nullable|email:rfc,strict|unique:leads,client_email,'.$this->route('lead_contact').',id,company_id,' . company()->id,
             'assigned_to' => 'nullable|exists:users,id',
             'status_id' => 'nullable|exists:lead_status,id',
@@ -52,8 +52,16 @@ class UpdateRequest extends CoreRequest
 
         $attributes['client_name'] = __('app.name');
         $attributes['client_email'] = __('app.email');
+        $attributes['mobile'] = __('modules.lead.mobile');
 
         return $attributes;
+    }
+
+    public function messages()
+    {
+        return [
+            'mobile.regex' => 'Mobile number must be in international format with country code (example: +919876543210).',
+        ];
     }
 
 }

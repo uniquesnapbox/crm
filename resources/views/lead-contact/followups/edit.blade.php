@@ -46,12 +46,6 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-6">
-                    <x-forms.text :fieldLabel="__('app.latitude')" fieldName="latitude" fieldId="latitude" :fieldValue="$follow->latitude" />
-                </div>
-                <div class="col-md-6">
-                    <x-forms.text :fieldLabel="__('app.longitude')" fieldName="longitude" fieldId="longitude" :fieldValue="$follow->longitude" />
-                </div>
                 <div class="col-md-12">
                     <div class="form-group my-3">
                         <x-forms.textarea :fieldLabel="__('modules.lead.remark')" fieldName="remark" fieldId="remark" :fieldValue="$follow->remark"></x-forms.textarea>
@@ -93,7 +87,11 @@
             data: $('#leadFollowUpForm').serialize(),
             success: function(response) {
                 if (response.status === "success") {
-                    window.location.href = "{{ route('lead-contact.show', $follow->lead_id) }}?tab=follow-up";
+                    const modalOpen = $(MODAL_LG).hasClass('show') || $(MODAL_LG).hasClass('in');
+                    if (modalOpen) {
+                        $(MODAL_LG).modal('hide');
+                    }
+                    window.location.href = "{{ route('lead-contact.show', $follow->lead_id) }}?tab=history";
                 }
             }
         });

@@ -2,6 +2,27 @@
 
 @push('datatable-styles')
     @include('sections.datatable_css')
+    <style>
+        #lead-contact-table tbody tr.lead-table-row td {
+            padding-top: 8px !important;
+            padding-bottom: 8px !important;
+            line-height: 1.2;
+            vertical-align: middle;
+        }
+
+        #lead-contact-table tbody tr.lead-table-row {
+            cursor: pointer;
+        }
+
+        #lead-contact-table tbody tr.lead-table-row:hover {
+            background: #f7fbff;
+        }
+
+        #lead-contact-table .lead-table-actions .btn {
+            min-width: 30px;
+            padding: 0.2rem 0.45rem;
+        }
+    </style>
 @endpush
 
 @section('filter-section')
@@ -68,45 +89,63 @@ $addLeadCustomFormPermission = user()->permission('manage_lead_custom_forms');
     @include('sections.datatable_js')
 
     <script>
-        $('#lead-contact-table').on('preXhr.dt', function(e, settings, data) {
+        const leadShowRouteTemplate = "{{ route('lead-contact.show', ':id') }}";
+        const leadContactTableId = "lead-contact-table";
 
+        function getLeadContactFilters() {
             var dateRangePicker = $('#datatableRange').data('daterangepicker');
             var startDate = $('#datatableRange').val();
+            var endDate = null;
 
             if (startDate == '') {
                 startDate = null;
                 endDate = null;
-            } else {
+            } else if (dateRangePicker) {
                 startDate = dateRangePicker.startDate.format('{{ company()->moment_date_format }}');
                 endDate = dateRangePicker.endDate.format('{{ company()->moment_date_format }}');
             }
 
-            var searchText = $('#search-text-field').val();
-            var min = $('#min').val();
-            var max = $('#max').val();
-            var type = $('#type').val();
-            var category_id = $('#filter_category_id').val();
-            var source_id = $('#filter_source_id').val();
-            var date_filter_on = $('#date_filter_on').val();
-            var filter_added_by = $('#filter_addedBy').val();
-            var filter_assigned_to = $('#filter_assigned_to').val();
+            return {
+                startDate: startDate,
+                endDate: endDate,
+                searchText: $('#search-text-field').val(),
+                min: $('#min').val(),
+                max: $('#max').val(),
+                type: $('#type').val(),
+                category_id: $('#filter_category_id').val(),
+                source_id: $('#filter_source_id').val(),
+                status_id: $('#filter_status_id').val(),
+                interest_level: $('#filter_interest_level').val(),
+                date_filter_on: $('#date_filter_on').val(),
+                filter_addedBy: $('#filter_addedBy').val(),
+                filter_assignedTo: $('#filter_assigned_to').val()
+            };
+        }
 
-            data['startDate'] = startDate;
-            data['filter_addedBy'] = filter_added_by;
-            data['filter_assignedTo'] = filter_assigned_to;
-            data['endDate'] = endDate;
-            data['searchText'] = searchText;
-            data['type'] = type;
-            data['min'] = min;
-            data['max'] = max;
-            data['category_id'] = category_id;
-            data['source_id'] = source_id;
-            data['date_filter_on'] = date_filter_on;
+        $('#' + leadContactTableId).on('preXhr.dt', function(e, settings, data) {
+            Object.assign(data, getLeadContactFilters());
         });
 
         const showTable = () => {
             window.LaravelDataTables["lead-contact-table"].draw(false);
         }
+
+        $('body').on('click', '#table-actions .buttons-excel', function(e) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+
+            const dt = window.LaravelDataTables[leadContactTableId];
+            const url = dt.ajax.url() || window.location.href;
+            const currentParams = dt.ajax.params() || {};
+            const filterParams = getLeadContactFilters();
+
+            const exportParams = Object.assign({}, currentParams, filterParams, {
+                action: 'excel'
+            });
+
+            const separator = url.indexOf('?') > -1 ? '&' : '?';
+            window.location = url + separator + $.param(exportParams);
+        });
 
         $('#reset-filters').click(function() {
             $('#filter-form')[0].reset();
@@ -243,6 +282,19 @@ $addLeadCustomFormPermission = user()->permission('manage_lead_custom_forms');
 
         $('body').on('click', '#add-lead', function() {
             window.location.href = "{{ route('lead-form.index') }}";
+        });
+
+        $('body').on('click', '#lead-contact-table tbody tr.lead-table-row', function(e) {
+            if ($(e.target).closest('a,button,input,label,.select-picker,.dropdown,.dropdown-menu,.swal2-container').length) {
+                return;
+            }
+
+            const rowId = ($(this).attr('id') || '').replace('row-', '');
+            if (!rowId) {
+                return;
+            }
+
+            window.location.href = leadShowRouteTemplate.replace(':id', rowId);
         });
 
         $( document ).ready(function() {

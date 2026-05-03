@@ -257,7 +257,7 @@ trait EmployeeDashboard
                 ->where('tasks.board_column_id', '<>', $completedTaskColumn->id)
                 ->with([
                     'boardColumn:id,column_name,label_color',
-                    'labels:id,label_name,label_color',
+                    'labels:id,label_name,color',
                 ])
                 ->select('tasks.id', 'tasks.task_short_code', 'tasks.heading', 'tasks.board_column_id', 'tasks.due_date')
                 ->distinct()

@@ -8,6 +8,7 @@ use App\DataTables\LeadNotesDataTable;
 use App\Helper\Reply;
 use App\Http\Requests\Admin\Employee\ImportProcessRequest;
 use App\Http\Requests\Admin\Employee\ImportRequest;
+use App\Http\Requests\Lead\QuickUpdateRequest;
 use App\Http\Requests\Lead\StoreRequest;
 use App\Http\Requests\Lead\UpdateRequest;
 use App\Imports\LeadImport;
@@ -17,6 +18,7 @@ use App\Models\LeadCategory;
 use App\Models\Lead;
 use App\Models\LeadCustomForm;
 use App\Models\LeadFollowUp;
+use App\Models\LeadHistory;
 use App\Models\LeadSource;
 use App\Models\LeadStatus;
 use App\Models\Product;
@@ -54,6 +56,7 @@ class LeadContactController extends AccountBaseController
         if (!request()->ajax()) {
             $this->categories = LeadCategory::get();
             $this->sources = LeadSource::get();
+            $this->statuses = LeadStatus::get();
             $this->employees = User::allEmployees();
         }
 
@@ -72,6 +75,19 @@ class LeadContactController extends AccountBaseController
         $this->pageTitle = $this->leadContact->client_name; // removed salutation
 
         $this->categories = LeadCategory::all();
+        $this->sources = LeadSource::all();
+        $this->statuses = LeadStatus::all();
+        $this->products = Product::query()->select('id', 'name')->orderBy('name')->get();
+        $this->countries = countries();
+        $this->editPermission = user()->permission('edit_lead');
+        $this->canInlineEdit = (
+            $this->editPermission == 'all'
+            || ($this->editPermission == 'added' && $this->leadContact->added_by == user()->id)
+            || ($this->editPermission == 'owned' && $this->leadContact->assigned_to == user()->id)
+            || ($this->editPermission == 'both' && ($this->leadContact->added_by == user()->id || $this->leadContact->assigned_to == user()->id))
+            || user()->id == $this->leadContact->added_by
+            || user()->id == $this->leadContact->assigned_to
+        );
 
         $this->leadFormFields = LeadCustomForm::with('customField')->where('status', 'active')->where('custom_fields_id', '!=', 'null')->get();
 
@@ -87,9 +103,9 @@ class LeadContactController extends AccountBaseController
 
         switch ($tab) {
         case 'follow-up':
-            return $this->followUps();
         case 'notes':
-            return $this->notes();
+        case 'history':
+            return $this->history();
         default:
             $this->view = 'lead-contact.ajax.profile';
             break;
@@ -131,6 +147,119 @@ class LeadContactController extends AccountBaseController
         $this->view = 'lead-contact.ajax.follow-up';
 
         return (new LeadFollowupDataTable())->render('lead-contact.show', $this->data);
+    }
+
+    public function history()
+    {
+        $editFollowUpPermission = user()->permission('edit_lead_follow_up');
+        $canUpdateFollowUpStatus = in_array($editFollowUpPermission, ['all', 'added', 'both', 'owned']);
+        $historyItems = collect();
+
+        if (Schema::hasTable('lead_histories')) {
+            $historyRows = LeadHistory::with('createdBy')
+                ->where('lead_id', $this->leadContact->id)
+                ->orderByDesc('event_at')
+                ->orderByDesc('id')
+                ->limit(400)
+                ->get();
+
+            $historyItems = $historyRows->map(function (LeadHistory $row) use ($canUpdateFollowUpStatus) {
+                $meta = is_array($row->meta) ? $row->meta : [];
+                $followUpId = $meta['followup_id'] ?? null;
+                $followUpStatus = $meta['followup_status'] ?? null;
+                $type = 'updated';
+
+                if (str_contains((string) $row->event_type, 'created')) {
+                    $type = 'created';
+                }
+                if (str_contains((string) $row->event_type, 'followup')) {
+                    $type = 'followup';
+                }
+                if (str_contains((string) $row->event_type, 'note')) {
+                    $type = 'note';
+                }
+
+                return [
+                    'event_type' => $row->event_type,
+                    'type' => $type,
+                    'title' => $row->title ?: 'Lead Updated',
+                    'description' => $row->description ?: '--',
+                    'meta' => 'By ' . (optional($row->createdBy)->name ?: 'System'),
+                    'timestamp' => $row->event_at ?: $row->created_at,
+                    'followup_id' => $followUpId,
+                    'followup_status' => $followUpStatus,
+                    'followup_edit_url' => $followUpId ? route('lead-contact.follow_up_edit', $followUpId) : null,
+                    'can_update_followup_status' => $canUpdateFollowUpStatus && !empty($followUpId),
+                ];
+            });
+        }
+
+        $hasCreatedEntry = $historyItems->contains(function ($item) {
+            return ($item['event_type'] ?? '') === 'lead_created';
+        });
+
+        if (!$hasCreatedEntry) {
+            $historyItems->push([
+                'event_type' => 'lead_created',
+                'type' => 'created',
+                'title' => 'Lead Created',
+                'description' => $this->leadContact->client_name . ' was added as a lead.',
+                'meta' => 'By ' . (optional($this->leadContact->addedBy)->name ?: 'System'),
+                'timestamp' => $this->leadContact->created_at,
+            ]);
+        }
+
+        // Backward compatibility: include legacy follow-ups that were created
+        // before lead_histories logging existed.
+        $existingFollowUpIds = $historyItems
+            ->pluck('followup_id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $legacyFollowUps = LeadFollowUp::with('addedBy')
+            ->where('lead_id', $this->leadContact->id)
+            ->when(!empty($existingFollowUpIds), function ($query) use ($existingFollowUpIds) {
+                $query->whereNotIn('id', $existingFollowUpIds);
+            })
+            ->orderByDesc('created_at')
+            ->limit(150)
+            ->get();
+
+        foreach ($legacyFollowUps as $followUp) {
+            $status = ucfirst((string) ($followUp->status ?: 'pending'));
+            $nextDateText = $followUp->next_follow_up_date
+                ? ' | Next: ' . $followUp->next_follow_up_date->timezone(company()->timezone)->format(company()->date_format . ' ' . company()->time_format)
+                : '';
+
+            $historyItems->push([
+                'event_type' => 'followup_legacy',
+                'type' => 'followup',
+                'title' => 'Follow-up ' . $status,
+                'description' => (trim(strip_tags((string) $followUp->remark)) ?: 'Follow-up updated') . $nextDateText,
+                'meta' => 'By ' . (optional($followUp->addedBy)->name ?: 'System'),
+                'timestamp' => $followUp->updated_at ?: $followUp->created_at ?: $followUp->next_follow_up_date,
+                'followup_id' => $followUp->id,
+                'followup_status' => $followUp->status ?: 'pending',
+                'followup_edit_url' => route('lead-contact.follow_up_edit', $followUp->id),
+                'can_update_followup_status' => $canUpdateFollowUpStatus,
+            ]);
+        }
+
+        $this->historyItems = $historyItems
+            ->filter(fn ($item) => !empty($item['timestamp']))
+            ->sortByDesc('timestamp')
+            ->values();
+
+        $tab = request('tab');
+        $this->activeTab = $tab ?: 'history';
+        $this->view = 'lead-contact.ajax.history';
+
+        if (request()->ajax()) {
+            return $this->returnAjax($this->view);
+        }
+
+        return view('lead-contact.show', $this->data);
     }
 
     /**
@@ -210,7 +339,7 @@ class LeadContactController extends AccountBaseController
         $leadContact->office = $request->office;
         // city, state, postal_code removed
         $leadContact->country = $request->country;
-        $leadContact->mobile = $request->mobile;
+        $leadContact->mobile = $this->normalizeMobileByCountry($request->mobile, $request->country);
         $leadContact->interest_level = $request->interest_level;
         $leadContact->deal_size = $request->deal_size;
         $leadContact->contact_status = $request->contact_status;
@@ -332,7 +461,7 @@ class LeadContactController extends AccountBaseController
         $leadContact->office = $request->office;
         // city, state, postal_code removed
         $leadContact->country = $request->country;
-        $leadContact->mobile = $request->mobile;
+        $leadContact->mobile = $this->normalizeMobileByCountry($request->mobile, $request->country);
         $leadContact->interest_level = $request->interest_level;
         $leadContact->deal_size = $request->deal_size;
         $leadContact->contact_status = $request->contact_status;
@@ -353,6 +482,153 @@ class LeadContactController extends AccountBaseController
         }
 
         return Reply::successWithData(__('messages.updateSuccess'), ['redirectUrl' => route('lead-contact.index')]);
+    }
+
+    public function quickUpdate(QuickUpdateRequest $request, $id)
+    {
+        $leadContact = Lead::findOrFail($id);
+        $this->editPermission = user()->permission('edit_lead');
+
+        abort_403(!$this->canAccessLead($leadContact));
+
+        abort_403(!($this->editPermission == 'all'
+            || ($this->editPermission == 'added' && $leadContact->added_by == user()->id)
+            || ($this->editPermission == 'owned' && $leadContact->assigned_to == user()->id)
+            || ($this->editPermission == 'both' && ($leadContact->added_by == user()->id || $leadContact->assigned_to == user()->id))
+            || user()->id == $leadContact->added_by
+            || user()->id == $leadContact->assigned_to)
+        );
+
+        $field = (string) $request->field;
+        $rawValue = $request->input('value');
+        $value = is_string($rawValue) ? trim($rawValue) : $rawValue;
+
+        if (in_array($field, ['source_id', 'category_id', 'status_id'], true)) {
+            $value = ($value === '' || is_null($value)) ? null : (int) $value;
+        }
+
+        if ($field === 'source_id') {
+            abort_403(user()->permission('view_lead_sources') === 'none');
+
+            if (!is_null($value)) {
+                abort_unless(LeadSource::whereKey($value)->exists(), 422, 'Invalid lead source selected.');
+            }
+        }
+
+        if ($field === 'category_id') {
+            abort_403(user()->permission('view_lead_category') === 'none');
+
+            if (!is_null($value)) {
+                abort_unless(LeadCategory::whereKey($value)->exists(), 422, 'Invalid lead category selected.');
+            }
+        }
+
+        if ($field === 'status_id' && !is_null($value)) {
+            abort_unless(LeadStatus::whereKey($value)->exists(), 422, 'Invalid lead status selected.');
+        }
+
+        if ($field === 'client_name') {
+            abort_unless(!empty((string) $value), 422, 'Name is required.');
+            $value = mb_substr((string) $value, 0, 191);
+        }
+
+        if ($field === 'client_email') {
+            $value = $value === '' ? null : mb_substr((string) $value, 0, 191);
+
+            if (!is_null($value)) {
+                abort_unless(filter_var($value, FILTER_VALIDATE_EMAIL), 422, 'Please provide a valid email address.');
+
+                $emailExists = Lead::where('company_id', company()->id)
+                    ->where('client_email', $value)
+                    ->where('id', '!=', $leadContact->id)
+                    ->exists();
+
+                abort_unless(!$emailExists, 422, 'This email is already in use.');
+            }
+        }
+
+        if ($field === 'interest_level') {
+            $allowed = ['low', 'medium', 'high', 'very_high', ''];
+            abort_unless(in_array((string) $value, $allowed, true), 422, 'Invalid interest level.');
+            $value = $value === '' ? null : $value;
+        }
+
+        if ($field === 'deal_size') {
+            if ($value === '' || is_null($value)) {
+                $value = null;
+            } else {
+                abort_unless(is_numeric($value), 422, 'Deal size must be numeric.');
+                $value = (float) $value;
+                abort_unless($value >= 0, 422, 'Deal size cannot be negative.');
+            }
+        }
+
+        if ($field === 'contact_status') {
+            $allowed = ['pending', 'connected', 'not_connected', ''];
+            abort_unless(in_array((string) $value, $allowed, true), 422, 'Invalid contact status.');
+            $value = $value === '' ? null : $value;
+        }
+
+        if (in_array($field, ['company_name', 'website', 'office', 'country'], true)) {
+            $value = $value === '' ? null : mb_substr((string) $value, 0, 191);
+        }
+
+        if ($field === 'products_services') {
+            $items = [];
+
+            if (is_array($rawValue)) {
+                $items = $rawValue;
+            } elseif (!is_null($rawValue) && $rawValue !== '') {
+                $items = explode(',', (string) $rawValue);
+            }
+
+            $items = collect($items)
+                ->map(fn ($item) => trim((string) $item))
+                ->filter()
+                ->unique()
+                ->values();
+
+            $value = $items->isEmpty()
+                ? null
+                : mb_substr($items->implode(', '), 0, 5000);
+        }
+
+        if ($field === 'mobile') {
+            $countryForMobile = $request->input('country', $leadContact->country);
+            $value = $this->normalizeMobileByCountry($value, $countryForMobile);
+        }
+
+        if ($field === 'address') {
+            $value = $value === '' ? null : mb_substr((string) $value, 0, 5000);
+        }
+
+        $currentValue = $leadContact->{$field};
+        if ((is_null($currentValue) ? '' : (string) $currentValue) === (is_null($value) ? '' : (string) $value)) {
+            $leadContact->loadMissing(['leadSource', 'category', 'leadStatus']);
+
+            return Reply::successWithData(__('messages.updateSuccess'), [
+                'field' => $field,
+                'value' => $value,
+                'source' => $leadContact->leadSource?->type,
+                'category' => $leadContact->category?->category_name,
+                'lead_status' => $leadContact->leadStatus?->type,
+                'statusColor' => $leadContact->leadStatus?->label_color,
+            ]);
+        }
+
+        $leadContact->{$field} = $value;
+        $leadContact->save();
+
+        $leadContact->loadMissing(['leadSource', 'category', 'leadStatus']);
+
+        return Reply::successWithData(__('messages.updateSuccess'), [
+            'field' => $field,
+            'value' => $value,
+            'source' => $leadContact->leadSource?->type,
+            'category' => $leadContact->category?->category_name,
+            'lead_status' => $leadContact->leadStatus?->type,
+            'statusColor' => $leadContact->leadStatus?->label_color,
+        ]);
     }
 
     /**
@@ -425,8 +701,6 @@ class LeadContactController extends AccountBaseController
             'start_time' => 'required',
             'remind_time' => 'nullable|required_if:send_reminder,yes|integer|min:1',
             'remind_type' => 'nullable|in:minute,hour,day',
-            'latitude' => 'nullable|numeric',
-            'longitude' => 'nullable|numeric',
         ]);
 
         $followUp = new LeadFollowUp();
@@ -441,14 +715,23 @@ class LeadContactController extends AccountBaseController
         $followUp->remind_time = $request->send_reminder === 'yes' ? $request->remind_time : null;
         $followUp->remind_type = $request->send_reminder === 'yes' ? $request->remind_type : null;
         $followUp->status = 'pending';
-        $followUp->latitude = $request->latitude;
-        $followUp->longitude = $request->longitude;
+        $followUp->latitude = null;
+        $followUp->longitude = null;
         $followUp->added_by = user()->id;
         $followUp->last_updated_by = user()->id;
         $followUp->save();
 
         $lead->next_follow_up = 'yes';
         $lead->save();
+
+        $this->pushLeadHistory($lead->id, 'followup_created', [
+            'title' => 'Follow-up Added',
+            'description' => trim(strip_tags((string) $followUp->remark)) ?: 'New follow-up created.',
+            'meta' => [
+                'followup_id' => $followUp->id,
+                'followup_status' => $followUp->status ?: 'pending',
+            ],
+        ]);
 
         return Reply::success(__('messages.recordSaved'));
     }
@@ -485,10 +768,11 @@ class LeadContactController extends AccountBaseController
             'start_time' => 'required',
             'remind_time' => 'nullable|required_if:send_reminder,yes|integer|min:1',
             'remind_type' => 'nullable|in:minute,hour,day',
-            'latitude' => 'nullable|numeric',
-            'longitude' => 'nullable|numeric',
             'status' => 'required|in:pending,canceled,completed',
         ]);
+
+        $oldStatus = (string) ($followUp->status ?: 'pending');
+        $oldRemark = trim(strip_tags((string) $followUp->remark));
 
         $followUp->remark = trim_editor($request->remark);
         $followUp->next_follow_up_date = Carbon::createFromFormat(
@@ -500,11 +784,31 @@ class LeadContactController extends AccountBaseController
         $followUp->remind_time = $request->send_reminder === 'yes' ? $request->remind_time : null;
         $followUp->remind_type = $request->send_reminder === 'yes' ? $request->remind_type : null;
         $followUp->status = $request->status;
-        $followUp->latitude = $request->latitude;
-        $followUp->longitude = $request->longitude;
+        $followUp->latitude = null;
+        $followUp->longitude = null;
         $followUp->last_updated_by = user()->id;
         $followUp->save();
         $this->syncLeadFollowUpFlag($followUp->lead_id);
+
+        $newStatus = (string) ($followUp->status ?: 'pending');
+        $newRemark = trim(strip_tags((string) $followUp->remark));
+
+        $changes = [];
+        if ($oldStatus !== $newStatus) {
+            $changes[] = 'Status: ' . ucfirst($oldStatus) . ' -> ' . ucfirst($newStatus);
+        }
+        if ($oldRemark !== $newRemark) {
+            $changes[] = 'Remark updated';
+        }
+
+        $this->pushLeadHistory($followUp->lead_id, 'followup_updated', [
+            'title' => 'Follow-up Updated',
+            'description' => !empty($changes) ? implode(' | ', $changes) : 'Follow-up details updated.',
+            'meta' => [
+                'followup_id' => $followUp->id,
+                'followup_status' => $followUp->status ?: 'pending',
+            ],
+        ]);
 
         return Reply::success(__('messages.updateSuccess'));
     }
@@ -522,9 +826,15 @@ class LeadContactController extends AccountBaseController
         ));
 
         $leadId = $followUp->lead_id;
+        $oldStatus = (string) ($followUp->status ?: 'pending');
         $followUp->delete();
 
         $this->syncLeadFollowUpFlag($leadId);
+
+        $this->pushLeadHistory($leadId, 'followup_deleted', [
+            'title' => 'Follow-up Deleted',
+            'description' => 'A follow-up (' . ucfirst($oldStatus) . ') was deleted.',
+        ]);
 
         return Reply::success(__('messages.deleteSuccess'));
     }
@@ -541,11 +851,23 @@ class LeadContactController extends AccountBaseController
             || ($this->editFollowUpPermission == 'both' && ($followUp->added_by == user()->id || $this->canAccessLead(optional($followUp->lead))))
         ));
 
+        $oldStatus = (string) ($followUp->status ?: 'pending');
         $followUp->status = $request->status;
         $followUp->last_updated_by = user()->id;
         $followUp->save();
 
         $this->syncLeadFollowUpFlag($followUp->lead_id);
+
+        if ($oldStatus !== (string) $followUp->status) {
+            $this->pushLeadHistory($followUp->lead_id, 'followup_status_updated', [
+                'title' => 'Follow-up Status Changed',
+                'description' => 'Status changed from "' . ucfirst($oldStatus) . '" to "' . ucfirst((string) $followUp->status) . '".',
+                'meta' => [
+                    'followup_id' => $followUp->id,
+                    'followup_status' => $followUp->status ?: 'pending',
+                ],
+            ]);
+        }
 
         return Reply::success(__('messages.leadStatusChangeSuccess'));
     }
@@ -728,6 +1050,32 @@ class LeadContactController extends AccountBaseController
         ]);
     }
 
+    private function pushLeadHistory(int $leadId, string $eventType, array $payload = []): void
+    {
+        if (!Schema::hasTable('lead_histories')) {
+            return;
+        }
+
+        $lead = Lead::query()->select('id', 'company_id')->find($leadId);
+        if (!$lead) {
+            return;
+        }
+
+        LeadHistory::create([
+            'company_id' => $lead->company_id ?: (company()->id ?? null),
+            'lead_id' => $lead->id,
+            'event_type' => $eventType,
+            'title' => $payload['title'] ?? 'Lead Updated',
+            'description' => $payload['description'] ?? null,
+            'field_key' => $payload['field_key'] ?? null,
+            'old_value' => $payload['old_value'] ?? null,
+            'new_value' => $payload['new_value'] ?? null,
+            'meta' => $payload['meta'] ?? null,
+            'created_by' => user()->id ?? null,
+            'event_at' => now(),
+        ]);
+    }
+
     private function isAdminUser(): bool
     {
         return in_array('admin', user_roles());
@@ -769,6 +1117,42 @@ class LeadContactController extends AccountBaseController
         }
 
         return $request->filled('assigned_to') ? (int) $request->assigned_to : null;
+    }
+
+    private function normalizeMobileByCountry($input, $countryName = null): string
+    {
+        $countryList = collect(countries());
+        $country = $countryList->first(function ($item) use ($countryName) {
+            return strtolower((string) $item->nicename) === strtolower((string) $countryName);
+        });
+
+        if (!$country) {
+            $country = $countryList->first(function ($item) {
+                return strtolower((string) $item->nicename) === 'india';
+            });
+        }
+
+        $countryCode = preg_replace('/\D+/', '', (string) ($country->phonecode ?? '91'));
+        abort_unless($countryCode !== '', 422, 'Country phone code is missing.');
+
+        $digits = preg_replace('/\D+/', '', (string) $input);
+
+        if (str_starts_with($digits, $countryCode)) {
+            $digits = substr($digits, strlen($countryCode));
+        }
+
+        $digits = ltrim($digits, '0');
+
+        if ($countryCode === '91') {
+            abort_unless(strlen($digits) === 10, 422, 'For India, mobile number must be 10 digits.');
+        } else {
+            abort_unless(strlen($digits) >= 6 && strlen($digits) <= 12, 422, 'Mobile number must be between 6 and 12 digits.');
+        }
+
+        $fullDigits = $countryCode . $digits;
+        abort_unless(strlen($fullDigits) >= 7 && strlen($fullDigits) <= 15, 422, 'Mobile number must be in valid international format.');
+
+        return '+' . $fullDigits;
     }
 
     public function importLead()

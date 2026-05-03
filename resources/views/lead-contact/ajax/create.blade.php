@@ -106,8 +106,30 @@ $assignLeadPermission = in_array('admin', user_roles()) || user()->permission('a
                     </div>
 
                     <div class="col-lg-3 col-md-6">
-                        <x-forms.tel fieldId="mobile" fieldLabel="WhatsApp Mobile" fieldName="mobile"
-                           :fieldPlaceholder="__('placeholders.mobile')" fieldRequired="true"></x-forms.tel>
+                        <div class="form-group my-3">
+                            <label class="f-14 text-dark-grey mb-12" for="mobile_local">
+                                WhatsApp Mobile <sup class="f-14 mr-1">*</sup>
+                            </label>
+                            <div class="input-group">
+                                <div class="input-group-prepend">
+                                    <select class="form-control" id="mobile_country_code" style="width: 90px; min-width: 90px; max-width: 90px;">
+                                        @foreach ($countries as $item)
+                                            @php $code = preg_replace('/\D+/', '', (string) $item->phonecode); @endphp
+                                            @if (!empty($code))
+                                                <option value="{{ $code }}" data-country="{{ $item->nicename }}"
+                                                    {{ $item->nicename == 'India' ? 'selected' : '' }}>
+                                                    +{{ $code }}
+                                                </option>
+                                            @endif
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <input type="text" class="form-control" id="mobile_local" maxlength="10"
+                                    inputmode="numeric" pattern="[0-9]{10}" placeholder="9876543210" autocomplete="off">
+                            </div>
+                            <input type="hidden" name="mobile" id="mobile" value="">
+                            <small class="text-muted">Enter 10-digit mobile number. Country code +91 is fixed.</small>
+                        </div>
                     </div>
 
                     <div class="col-lg-3 col-md-6">
@@ -121,6 +143,7 @@ $assignLeadPermission = in_array('admin', user_roles()) || user()->permission('a
                             <option value="">--</option>
                             @foreach ($countries as $item)
                                 <option data-tokens="{{ $item->iso3 }}"
+                                    data-phonecode="{{ $item->phonecode }}"
                                     data-content="<span class='flag-icon flag-icon-{{ strtolower($item->iso) }} flag-icon-squared'></span> {{ $item->nicename }}"
                                     value="{{ $item->nicename }}"
                                     {{ $item->nicename == 'India' ? 'selected' : '' }}>
@@ -251,6 +274,83 @@ $assignLeadPermission = in_array('admin', user_roles()) || user()->permission('a
 
 <script>
     $(document).ready(function() {
+        function selectedCountryCode() {
+            const code = ($('#mobile_country_code').val() || '91').toString().replace(/\D+/g, '');
+            return code || '91';
+        }
+
+        function syncCountryToCode() {
+            const selected = $('#country option:selected');
+            const code = (selected.data('phonecode') || '91').toString().replace(/\D+/g, '') || '91';
+            $('#mobile_country_code').val(code);
+        }
+
+        function syncCodeToCountry() {
+            const code = selectedCountryCode();
+            const $country = $('#country');
+            const $match = $country.find('option').filter(function() {
+                return (($(this).data('phonecode') || '').toString().replace(/\D+/g, '')) === code;
+            }).first();
+
+            if ($match.length) {
+                $country.val($match.val());
+                if (typeof $country.selectpicker === 'function') {
+                    $country.selectpicker('refresh');
+                }
+            }
+        }
+
+        function sanitizeMobileLocal(value, countryCode) {
+            const digits = (value || '').toString().replace(/\D+/g, '');
+            return countryCode === '91' ? digits.slice(0, 10) : digits.slice(0, 12);
+        }
+
+        function syncHiddenMobile() {
+            const code = selectedCountryCode();
+            const local = sanitizeMobileLocal($('#mobile_local').val(), code);
+            $('#mobile_local').val(local);
+            $('#mobile').val(local ? ('+' + code + local) : '');
+            return local;
+        }
+
+        function validateMobileBeforeSave() {
+            const code = selectedCountryCode();
+            const local = syncHiddenMobile();
+
+            const isValid = code === '91' ? local.length === 10 : (local.length >= 6 && local.length <= 12);
+
+            if (!isValid) {
+                if (typeof toastr !== 'undefined') {
+                    toastr.error(code === '91'
+                        ? 'Please enter a valid 10-digit mobile number for India (+91).'
+                        : 'Please enter a valid mobile number (6-12 digits) for selected country code.');
+                } else {
+                    alert(code === '91'
+                        ? 'Please enter a valid 10-digit mobile number for India (+91).'
+                        : 'Please enter a valid mobile number (6-12 digits) for selected country code.');
+                }
+                return false;
+            }
+
+            return true;
+        }
+
+        $('#mobile_local').on('input', function() {
+            syncHiddenMobile();
+        });
+
+        $('#country').on('change', function() {
+            syncCountryToCode();
+            syncHiddenMobile();
+        });
+
+        $('#mobile_country_code').on('change', function() {
+            syncCodeToCountry();
+            syncHiddenMobile();
+        });
+
+        syncCountryToCode();
+        syncHiddenMobile();
 
         $('.custom-date-picker').each(function(ind, el) {
             datepicker(el, {
@@ -260,6 +360,9 @@ $assignLeadPermission = in_array('admin', user_roles()) || user()->permission('a
         });
 
         $('#save-more-lead-form').click(function () {
+            if (!validateMobileBeforeSave()) {
+                return;
+            }
             $('#add_more').val(true);
             const url = "{{ route('lead-contact.store') }}?add_more=true";
             var data = $('#save-lead-data-form').serialize() + '&add_more=true';
@@ -267,6 +370,9 @@ $assignLeadPermission = in_array('admin', user_roles()) || user()->permission('a
         });
 
         $('#save-lead-form').click(function() {
+            if (!validateMobileBeforeSave()) {
+                return;
+            }
             const url = "{{ route('lead-contact.store') }}";
             var data = $('#save-lead-data-form').serialize();
             saveLead(data, url, "#save-lead-form");

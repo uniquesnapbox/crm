@@ -4,12 +4,6 @@
     @include('sections.datatable_css')
 @endpush
 
-@php
-$viewClientNote = user()->permission('view_lead_note');
-$viewLeadFollowUps = user()->permission('view_lead_follow_up');
-@endphp
-
-
 @section('filter-section')
     <!-- FILTER START -->
     <!-- PROJECT HEADER START -->
@@ -21,14 +15,7 @@ $viewLeadFollowUps = user()->permission('view_lead_follow_up');
                 <i class="fa fa-times"></i>
             </a>
             <x-tab :href="route('lead-contact.show', $leadContact->id)" :text="__('modules.lead.profile')" class="profile" />
-
-                @if (in_array($viewLeadFollowUps, ['all', 'added', 'both', 'owned']))
-                <x-tab :href="route('lead-contact.show', $leadContact->id).'?tab=follow-up'" :text="__('modules.lead.followUp')" class="follow-up" ajax="false"/>
-            @endif
-
-            @if ($viewClientNote == 'all' || $viewClientNote == 'both' || $viewClientNote == 'added' || $viewClientNote == 'owned')
-                <x-tab :href="route('lead-contact.show', $leadContact->id).'?tab=notes'" ajax="false" :text="__('app.notes')" class="notes" />
-            @endif
+            <x-tab :href="route('lead-contact.show', $leadContact->id).'?tab=history'" :text="'History'" class="history" ajax="false" />
         </div>
         <a class="mb-0 d-block d-lg-none text-dark-grey ml-auto mr-2 border-left-grey"
             onclick="openClientDetailSidebar()"><i class="fa fa-ellipsis-v "></i></a>
