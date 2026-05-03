@@ -1,0 +1,458 @@
+﻿<!doctype html>
+<html lang="en">
+
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="icon" type="image/png" sizes="16x16" href="http://localhost/crm/public/favicon.png">
+    <link rel="manifest" href="http://localhost/crm/public/favicon.png">
+    <meta name="msapplication-TileColor" content="#ffffff">
+    <meta name="msapplication-TileImage" content="http://localhost/crm/public/favicon.png">
+    <meta name="theme-color" content="#ffffff">
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="http://localhost/crm/public/vendor/css/all.min.css" defer="defer">
+
+    <!-- Template CSS -->
+    <link href="http://localhost/crm/public/vendor/froiden-helper/helper.css" rel="stylesheet" defer="defer">
+    <link type="text/css" rel="stylesheet" media="all" href="http://localhost/crm/public/css/main.css">
+    <link type="text/css" rel="stylesheet" media="all" href="http://localhost/crm/public/css/custom.css">
+
+    <title>USB CRM</title>
+
+
+        <script src="http://localhost/crm/public/vendor/jquery/jquery.min.js"></script>
+
+    <style defer="defer">
+        .login_header {
+            background-color: #FFFFFF      !important;
+        }
+
+    </style>
+    <style>
+    :root {
+        /* For Logged in user take header color a app theme*/
+        /* For public pages use company specific header color example invoice,estimate public page*/
+        /* For all other pages use like auth use global setting header*/
+        --header_color:  #E2430B ;
+        --sidebar_color:  #171F29 ;
+    }
+
+    .sidebar-dark .main-sidebar,
+    .sidebar-dark .sidebar-brand-box,
+    .sidebar-dark .sidebar-menu,
+    .sidebar-dark .sidebarTogglerBox,
+    .sidebar-light .main-sidebar,
+    .sidebar-light .sidebar-brand-box,
+    .sidebar-light .sidebar-menu,
+    .sidebar-light .sidebarTogglerBox {
+        background-color: var(--sidebar_color) !important;
+    }
+
+    .btn-primary,
+    .btn-primary.disabled:hover,
+    .btn-primary:disabled:hover {
+        background-color: var(--header_color) !important;
+        border: 1px solid var(--header_color) !important;
+    }
+
+    .text-primary {
+        color: var(--header_color) !important;
+    }
+
+    .bg-primary {
+        background: var(--header_color) !important;
+    }
+
+    .datepicker table tr td, .datepicker table tr th {
+        font-size: 14px;
+    }
+
+    .project-header .project-menu .p-sub-menu.active:after,
+    .project-header .project-menu .p-sub-menu::after,
+    .qs-current, .datepicker table tr td.active.active {
+        background: var(--header_color) !important;
+        text-shadow: none;
+        border-color: var(--header_color) !important;
+    }
+
+    .sidebar-brand-box .sidebar-brand-dropdown a.dropdown-item:hover,
+    .dropdown-item.active,
+    .close-task-detail {
+        background-color: var(--header_color) !important;
+    }
+
+    .pagination .page-item.active .page-link,
+    .custom-control-input:checked ~ .custom-control-label::before {
+        background-color: var(--header_color) !important;
+        border-color: var(--header_color) !important;
+    }
+
+    .close-task-detail span {
+        border: 1px solid var(--header_color) !important;
+    }
+
+    .tabs .nav .nav-link.active,
+    .tabs .nav .nav-item:hover {
+        border-bottom: 3px solid var(--header_color) !important;
+    }
+
+    .sidebar-light .sidebar-menu li .nav-item:focus,
+    .sidebar-light .sidebar-menu li .nav-item:hover,
+    .sidebar-light .sidebar-menu li .accordionItemContent a:hover {
+        color: var(--header_color) !important;
+    }
+
+    .sidebar-light .accordionItem a.active {
+        color: var(--header_color) !important;
+    }
+
+    .menu-item-count, .unread-notifications-count, .active-timer-count {
+        background-color: var(--header_color) !important;
+    }
+
+    .dropdown-item.active .text-dark-grey {
+        color: #ffffff;
+    }
+
+</style>
+    
+    
+</head>
+
+<body class="">
+
+<header class="sticky-top d-flex justify-content-center align-items-center login_header bg-white px-4">
+    <img class="mr-2 rounded" src="http://localhost/crm/public/img/square-logo-header.png" alt="Logo"/>
+            <h3 class="mb-0 pl-1 ">USB CRM</h3>
+    </header>
+
+
+<section class="bg-grey py-5 login_section"  >
+    <div class="container">
+        <div class="row">
+            <div class="col-md-12 text-center">
+
+                <div class="login_box mx-auto rounded bg-white text-center">
+                    <form id="login-form" action="http://localhost/crm/public/login" class="ajax-form" method="POST">
+        <input type="hidden" name="_token" value="ZDCuzSUkRG3wktvQdPIhAMylGGfqFIzHyQgmnVsG" autocomplete="off">
+        <h3 class="text-capitalize mb-4 f-w-500">Log In</h3>
+
+        <script>
+            const facebook = "http://localhost/crm/public/redirect/facebook";
+            const google = "http://localhost/crm/public/redirect/google";
+            const twitter = "http://localhost/crm/public/redirect/twitter";
+            const linkedin = "http://localhost/crm/public/redirect/linkedin";
+        </script>
+
+                                
+        
+        <div class="form-group text-left">
+            <label for="email">Email Address</label>
+            <input tabindex="1" type="email" name="email"
+                   class="form-control height-50 f-15 light_text "
+                   autofocus
+                   value=""
+                   placeholder="Email Address" id="email">
+                                </div>
+
+        
+        <div id="password-section"
+             >
+            <div class="form-group text-left">
+                <label for="password">Password</label>
+                <div class="input-group">
+    
+    <input type="password" name="password" id="password"
+                           placeholder="Must have at least 8 characters" tabindex="3"
+                           class="form-control height-50 f-15 light_text ">
+
+    
+            <div class="input-group-append">
+            <button type="button" data-toggle="tooltip"
+                                data-original-title="Show/Hide Value"
+                                class="btn btn-outline-secondary border-grey height-50 toggle-password">
+                            <i
+                                class="fa fa-eye"></i></button>
+        </div>
+    </div>
+                            </div>
+            <div class="forgot_pswd mb-3">
+                <a href="http://localhost/crm/public/forgot-password">Forgot your password?</a>
+            </div>
+
+            <div class="form-group text-left ">
+                <input id="checkbox-signup" class="cursor-pointer" type="checkbox" name="remember">
+                <label for="checkbox-signup" class="cursor-pointer">Stay logged in</label>
+            </div>
+
+            
+            <input type="hidden" id="g_recaptcha" name="g_recaptcha">
+
+            
+            <button type="submit" id="submit-login"
+                    class="btn-primary f-w-500 rounded w-100 height-50 f-18">
+                Log In <i class="fa fa-arrow-right pl-1"></i>
+            </button>
+
+                    </div>
+
+
+    </form>
+
+
+
+
+    
+<div class="position-relative my-4">
+    <hr/>
+    <span class="position-absolute bg-white px-3 text-muted"
+          style="top:-12px; left:50%; transform:translateX(-50%); font-size:13px;">
+        OR
+    </span>
+</div>
+
+
+<div id="wa-number-step">
+    <div class="form-group text-left">
+        <label class="f-15">
+            <i class="fab fa-whatsapp text-success"></i>
+            Login with WhatsApp Number
+        </label>
+        <input type="tel"
+               id="wa_mobile"
+               class="form-control height-50 f-15 light_text"
+               placeholder="e.g. 923001234567 (with country code)"/>
+        <small class="text-muted">Enter number with country code, no + or spaces</small>
+    </div>
+    <div id="wa-send-error" class="text-danger f-13 mb-2 d-none"></div>
+    <button type="button"
+            id="wa-send-btn"
+            onclick="waSendOtp()"
+            class="btn btn-success f-w-500 rounded w-100 height-50 f-15">
+        <i class="fab fa-whatsapp mr-2"></i> Send OTP via WhatsApp
+    </button>
+</div>
+
+
+<div id="wa-otp-step" class="d-none">
+    <div class="form-group text-left">
+        <label class="f-15">
+            <i class="fab fa-whatsapp text-success"></i>
+            Enter OTP sent to your WhatsApp
+        </label>
+        <input type="text"
+               id="wa_otp"
+               class="form-control height-50 f-15 light_text text-center f-20 letter-spacing-5"
+               placeholder="_ _ _ _ _ _"
+               maxlength="6"
+               style="letter-spacing: 8px; font-size: 22px;"/>
+        <small class="text-muted">OTP expires in 5 minutes</small>
+    </div>
+    <div id="wa-otp-error" class="text-danger f-13 mb-2 d-none"></div>
+    <button type="button"
+            id="wa-verify-btn"
+            onclick="waVerifyOtp()"
+            class="btn btn-primary f-w-500 rounded w-100 height-50 f-15">
+        Verify OTP &amp; Login
+    </button>
+    <button type="button"
+            onclick="waReset()"
+            class="btn btn-link w-100 mt-2 f-13 text-muted">
+        &larr; Use different number
+    </button>
+</div>
+                </div>
+
+                
+
+                                    <div class="my-3 d-flex flex-column flex-grow-1">
+                        <div class="align-items-center flex-grow-1">
+                                                            <span class="my-10 f-12 mx-1 ">
+                                <a href="javascript:;" class="text-dark-grey my-2 change-lang"
+                                   data-lang="en">
+                                    <span
+                                        class='flag-icon flag-icon-gb flag-icon-squared'></span>
+                                    English
+                                </a>
+                            </span>
+                                                            <span class="my-10 f-12 mx-1 ">
+                                <a href="javascript:;" class="text-dark-grey my-2 change-lang"
+                                   data-lang="en">
+                                    <span
+                                        class='flag-icon flag-icon-gb flag-icon-squared'></span>
+                                    English
+                                </a>
+                            </span>
+                                                    </div>
+                    </div>
+                
+
+            </div>
+        </div>
+
+    </div>
+
+</section>
+<!-- Global Required Javascript -->
+<script src="http://localhost/crm/public/vendor/bootstrap/javascript/bootstrap-native.js" defer="defer"></script>
+
+<!-- Font Awesome -->
+<script src="http://localhost/crm/public/vendor/jquery/all.min.js" defer="defer"></script>
+
+<!-- Template JS -->
+<script src="http://localhost/crm/public/js/main.js"></script>
+<script>
+    document.loading = 'Loading...';
+    const MODAL_DEFAULT = '#myModalDefault';
+    const MODAL_LG = '#myModal';
+    const MODAL_XL = '#myModalXl';
+    const MODAL_HEADING = '#modelHeading';
+    const RIGHT_MODAL = '#task-detail-1';
+    const RIGHT_MODAL_CONTENT = '#right-modal-content';
+    const RIGHT_MODAL_TITLE = '#right-modal-title';
+
+    const dropifyMessages = {
+        default: "Choose a file",
+        replace: "Drop a file or click to replace",
+        remove: "Remove",
+        error: "Some error occurred.",
+    };
+    $('.change-lang').click(function (event) {
+        const locale = $(this).data("lang");
+        event.preventDefault();
+        let url = "http://localhost/crm/public/change-lang/:locale";
+        url = url.replace(':locale', locale);
+        $.easyAjax({
+            url: url,
+            container: '#login-form',
+            blockUI:true,
+            type: "GET",
+            success: function (response) {
+                if (response.status === 'success') {
+                    window.location.reload();
+                }
+            }
+        })
+    });
+    document.addEventListener('DOMContentLoaded', function () {
+        const blockedDomains = ['USB CRM', 'froiden', 'envato', 'codecanyon'];
+        document.querySelectorAll('a[href]').forEach(function (a) {
+            const href = (a.getAttribute('href') || '').toLowerCase();
+            if (blockedDomains.some(d => href.includes(d))) {
+                a.setAttribute('href', 'javascript:;');
+                a.removeAttribute('target');
+                a.removeAttribute('rel');
+            }
+        });
+    });
+</script>
+
+<script>
+
+            $(document).ready(function () {
+
+                $("form#login-form").submit(function () {
+                    const button = $('form#login-form').find('#submit-login');
+
+                    const text = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Loading...';
+
+                    button.prop("disabled", true);
+                    button.html(text);
+                });
+
+                function handleFormSubmit(e) {
+                    e.preventDefault();
+                }
+
+                $('#submit-next').click(function (event) {
+                    event.preventDefault();
+                    document.addEventListener('click', handleFormSubmit, false);
+
+                    const url = "http://localhost/crm/public/check-email";
+                    $.easyAjax({
+                        url: url,
+                        container: '#login-form',
+                        disableButton: true,
+                        buttonSelector: "#submit-next",
+                        type: "POST",
+                        data: $('#login-form').serialize(),
+                        success: function (response) {
+                            if (response.status === 'success') {
+                                $('#submit-next, #signup-client-next').remove();
+                                $('#password-section').removeClass('d-none');
+                                $('#forget-pass-email-section').remove();
+                                $("#password").focus();
+                                document.removeEventListener('click', handleFormSubmit);
+                            }
+                        }
+                    })
+                });
+
+                
+            });
+        </script>
+
+
+
+
+
+<script>
+function waSendOtp() {
+    const mobile = document.getElementById('wa_mobile').value.trim();
+    // const errDiv = document.getElementById('wa-number-error');
+      const errDiv = document.getElementById('wa-send-error')
+    const btn    = document.getElementById('wa-send-btn');
+    errDiv.classList.add('d-none');
+    if (!mobile) { errDiv.textContent = 'Please enter your WhatsApp number.'; errDiv.classList.remove('d-none'); return; }
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+    fetch('http://localhost/crm/public/whatsapp-send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': 'ZDCuzSUkRG3wktvQdPIhAMylGGfqFIzHyQgmnVsG' },
+        body: JSON.stringify({ mobile: mobile })
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false; btn.textContent = 'Send OTP via WhatsApp';
+        if (data.status === 'success') {
+            document.getElementById('wa-number-step').classList.add('d-none');
+            document.getElementById('wa-otp-step').classList.remove('d-none');
+        } else { errDiv.textContent = data.message; errDiv.classList.remove('d-none'); }
+    })
+    .catch(() => { btn.disabled = false; btn.textContent = 'Send OTP via WhatsApp'; errDiv.textContent = 'Something went wrong.'; errDiv.classList.remove('d-none'); });
+}
+
+function waVerifyOtp() {
+    const mobile = document.getElementById('wa_mobile').value.trim();
+    const otp    = document.getElementById('wa_otp').value.trim();
+    const errDiv = document.getElementById('wa-otp-error');
+    const btn    = document.getElementById('wa-verify-btn');
+    errDiv.classList.add('d-none');
+    if (!otp || otp.length !== 6) { errDiv.textContent = 'Please enter the 6-digit OTP.'; errDiv.classList.remove('d-none'); return; }
+    btn.disabled = true; btn.textContent = 'Verifying...';
+    fetch('http://localhost/crm/public/whatsapp-verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': 'ZDCuzSUkRG3wktvQdPIhAMylGGfqFIzHyQgmnVsG' },
+        body: JSON.stringify({ mobile: mobile, otp: otp })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.status === 'success') { window.location.href = data.redirect; }
+        else { btn.disabled = false; btn.textContent = 'Verify OTP & Login'; errDiv.textContent = data.message; errDiv.classList.remove('d-none'); }
+    })
+    .catch(() => { btn.disabled = false; btn.textContent = 'Verify OTP & Login'; errDiv.textContent = 'Something went wrong.'; errDiv.classList.remove('d-none'); });
+}
+
+function waReset() {
+    document.getElementById('wa-number-step').classList.remove('d-none');
+    document.getElementById('wa-otp-step').classList.add('d-none');
+    document.getElementById('wa_otp').value = '';
+}
+</script>
+
+</body>
+
+</html>
+

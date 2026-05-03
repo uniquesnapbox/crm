@@ -35,7 +35,6 @@ use App\Http\Controllers\TaskNoteController;
 use App\Http\Controllers\ClientDocController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EventFileController;
-use App\Http\Controllers\LeadBoardController;
 use App\Http\Controllers\LeaveFileController;
 use App\Http\Controllers\QuickbookController;
 use App\Http\Controllers\TaskBoardController;
@@ -52,7 +51,6 @@ use App\Http\Controllers\TicketFileController;
 use App\Http\Controllers\BankAccountController;
 use App\Http\Controllers\DesignationController;
 use App\Http\Controllers\EmployeeDocController;
-use App\Http\Controllers\ImmigrationController;
 use App\Http\Controllers\LeadCategoryController;
 use App\Http\Controllers\LeaveReportController;
 use App\Http\Controllers\LeavesQuotaController;
@@ -94,7 +92,6 @@ use App\Http\Controllers\ProjectCategoryController;
 use App\Http\Controllers\ProjectTemplateController;
 use App\Http\Controllers\TimelogCalendarController;
 use App\Http\Controllers\AttendanceReportController;
-use App\Http\Controllers\AttendanceSettingController;
 use App\Http\Controllers\ContractTemplateController;
 use App\Http\Controllers\EmergencyContactController;
 use App\Http\Controllers\EstimateTemplateController;
@@ -119,22 +116,21 @@ use App\Http\Controllers\ProjectTemplateSubTaskController;
 use App\Http\Controllers\EmployeeShiftChangeRequestController;
 use App\Http\Controllers\LeadContactController;
 use App\Http\Controllers\LiveTrackingController;
-use App\Http\Controllers\PipelineController;
 use App\Http\Controllers\AsyncOptionsController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\DisabledFeatureController;
 use App\Models\AttendanceSetting;
 
 Route::post('mobile-login', [AuthController::class, 'login'])
     ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class])
+    ->middleware('throttle:mobile-login')
     ->name('mobile.login');
 
 // Allow both web-session users and Sanctum token (used by Flutter app) to access the same routes.
 // Order matters: Sanctum will attempt token auth first, then fall back to the web guard.
 Route::group(['middleware' => 'auth:sanctum,web', 'prefix' => 'account'], function () {
     Route::get('live-tracking', [LiveTrackingController::class, 'index'])->name('account.live-tracking');
-    Route::get('admin/live-tracking', function () {
-        return redirect()->route('account.live-tracking');
-    })->name('account.admin.live-tracking');
+    Route::redirect('admin/live-tracking', '/account/live-tracking')->name('account.admin.live-tracking');
 
     Route::post('image/upload', [ImageController::class, 'store'])->name('image.store');
     Route::get('async-options/{resource}', [AsyncOptionsController::class, 'index'])->name('async-options.index');
@@ -456,12 +452,8 @@ Route::group(['middleware' => 'auth:sanctum,web', 'prefix' => 'account'], functi
     Route::post('deals/follow-up-delete/{id}', [DealController::class, 'deleteFollow'])->name('deals.follow_up_delete');
 
     // Disabled deal stage flow while lead-first workflow is active.
-    Route::post('deals/change-stage', function () {
-        abort(404);
-    })->name('deals.change_stage');
-    Route::post('deals/apply-quick-action', function () {
-        abort(404);
-    })->name('deals.apply_quick_action');
+    Route::post('deals/change-stage', [DisabledFeatureController::class, 'notFound'])->name('deals.change_stage');
+    Route::post('deals/apply-quick-action', [DisabledFeatureController::class, 'notFound'])->name('deals.apply_quick_action');
 
     Route::get('deals/gdpr-consent', [DealController::class, 'consent'])->name('deals.gdpr_consent');
     Route::post('deals/save-deal-consent/{deal}', [DealController::class, 'saveLeadConsent'])->name('deals.save_lead_consent');
@@ -482,50 +474,24 @@ Route::group(['middleware' => 'auth:sanctum,web', 'prefix' => 'account'], functi
     Route::resource('deal-notes', DealNoteController::class);
 
     // Disabled deal board routes while lead-first workflow is active.
-    Route::post('leadboards/collapseColumn', function () {
-        abort(404);
-    })->name('leadboards.collapse_column');
-    Route::post('leadboards/updateIndex', function () {
-        abort(404);
-    })->name('leadboards.update_index');
-    Route::get('leadboards/loadMore', function () {
-        abort(404);
-    })->name('leadboards.load_more');
-    Route::get('leadboards', function () {
-        abort(404);
-    })->name('leadboards.index');
-    Route::get('leadboards/create', function () {
-        abort(404);
-    })->name('leadboards.create');
-    Route::post('leadboards', function () {
-        abort(404);
-    })->name('leadboards.store');
-    Route::get('leadboards/{leadboard}', function () {
-        abort(404);
-    })->name('leadboards.show');
-    Route::get('leadboards/{leadboard}/edit', function () {
-        abort(404);
-    })->name('leadboards.edit');
-    Route::match(['put', 'patch'], 'leadboards/{leadboard}', function () {
-        abort(404);
-    })->name('leadboards.update');
-    Route::delete('leadboards/{leadboard}', function () {
-        abort(404);
-    })->name('leadboards.destroy');
+    Route::post('leadboards/collapseColumn', [DisabledFeatureController::class, 'notFound'])->name('leadboards.collapse_column');
+    Route::post('leadboards/updateIndex', [DisabledFeatureController::class, 'notFound'])->name('leadboards.update_index');
+    Route::get('leadboards/loadMore', [DisabledFeatureController::class, 'notFound'])->name('leadboards.load_more');
+    Route::get('leadboards', [DisabledFeatureController::class, 'notFound'])->name('leadboards.index');
+    Route::get('leadboards/create', [DisabledFeatureController::class, 'notFound'])->name('leadboards.create');
+    Route::post('leadboards', [DisabledFeatureController::class, 'notFound'])->name('leadboards.store');
+    Route::get('leadboards/{leadboard}', [DisabledFeatureController::class, 'notFound'])->name('leadboards.show');
+    Route::get('leadboards/{leadboard}/edit', [DisabledFeatureController::class, 'notFound'])->name('leadboards.edit');
+    Route::match(['put', 'patch'], 'leadboards/{leadboard}', [DisabledFeatureController::class, 'notFound'])->name('leadboards.update');
+    Route::delete('leadboards/{leadboard}', [DisabledFeatureController::class, 'notFound'])->name('leadboards.destroy');
 
     Route::post('lead-form/sortFields', [LeadCustomFormController::class, 'sortFields'])->name('lead-form.sortFields');
     Route::resource('lead-form', LeadCustomFormController::class);
 
     Route::group(['prefix' => 'deals'], function () {
-        Route::get('import', function () {
-            abort(404);
-        })->name('deals.import');
-        Route::post('import', function () {
-            abort(404);
-        })->name('deals.import.store');
-        Route::post('import/process', function () {
-            abort(404);
-        })->name('deals.import.process');
+        Route::get('import', [DisabledFeatureController::class, 'notFound'])->name('deals.import');
+        Route::post('import', [DisabledFeatureController::class, 'notFound'])->name('deals.import.store');
+        Route::post('import/process', [DisabledFeatureController::class, 'notFound'])->name('deals.import.process');
     });
 
     Route::group(['prefix' => 'lead-contact'], function () {
@@ -548,30 +514,14 @@ Route::group(['middleware' => 'auth:sanctum,web', 'prefix' => 'account'], functi
     Route::post('lead-contact/apply-quick-action', [LeadContactController::class, 'applyQuickAction'])->name('lead-contact.apply_quick_action');
 
     Route::get('deals/filter-options', [DealController::class, 'filterOptions'])->name('deals.filter_options');
-    Route::get('deals/get-stage/{id}', function () {
-        abort(404);
-    })->name('deals.get-stage');
-    Route::get('deals/get-deals/{id}', function () {
-        abort(404);
-    })->name('deals.get-deals');
-    Route::get('deals/get-agent/{id}', function () {
-        abort(404);
-    })->name('deals.get_agents');
-    Route::get('deals/create', function () {
-        abort(404);
-    })->name('deals.create');
-    Route::post('deals', function () {
-        abort(404);
-    })->name('deals.store');
-    Route::get('deals/{deal}/edit', function () {
-        abort(404);
-    })->name('deals.edit');
-    Route::match(['put', 'patch'], 'deals/{deal}', function () {
-        abort(404);
-    })->name('deals.update');
-    Route::delete('deals/{deal}', function () {
-        abort(404);
-    })->name('deals.destroy');
+    Route::get('deals/get-stage/{id}', [DisabledFeatureController::class, 'notFound'])->name('deals.get-stage');
+    Route::get('deals/get-deals/{id}', [DisabledFeatureController::class, 'notFound'])->name('deals.get-deals');
+    Route::get('deals/get-agent/{id}', [DisabledFeatureController::class, 'notFound'])->name('deals.get_agents');
+    Route::get('deals/create', [DisabledFeatureController::class, 'notFound'])->name('deals.create');
+    Route::post('deals', [DisabledFeatureController::class, 'notFound'])->name('deals.store');
+    Route::get('deals/{deal}/edit', [DisabledFeatureController::class, 'notFound'])->name('deals.edit');
+    Route::match(['put', 'patch'], 'deals/{deal}', [DisabledFeatureController::class, 'notFound'])->name('deals.update');
+    Route::delete('deals/{deal}', [DisabledFeatureController::class, 'notFound'])->name('deals.destroy');
     Route::resource('deals', DealController::class)->only(['index', 'show']);
 
     // leaves files routes

@@ -97,7 +97,7 @@
         <!-- SIDEBAR BRAND END -->
 
         <!-- SIDEBAR MENU START -->
-        <div class="sidebar-menu {{ user()->dark_theme ? 'bg-dark' : '' }}" id="sideMenuScroll">
+        <div class="sidebar-menu {{ user()->dark_theme ? 'bg-dark' : '' }}" id="appSideMenuScroll">
             @include('sections.menu')
         </div>
         <!-- SIDEBAR MENU END -->
@@ -108,7 +108,11 @@
         class="text-center d-flex justify-content-between align-items-center position-fixed sidebarTogglerBox {{ user()->dark_theme ? 'bg-dark' : '' }}">
         <button class="border-0 d-lg-block d-none text-lightest font-weight-bold" id="sidebarToggle"></button>
 
-        <p class="mb-0 text-dark-grey px-1 py-0 rounded f-10">v{{ File::get('version.txt') }}</p>
+        @php
+            $appVersionFile = public_path('version.txt');
+            $appVersion = File::exists($appVersionFile) ? trim(File::get($appVersionFile)) : '0.0.0';
+        @endphp
+        <p class="mb-0 text-dark-grey px-1 py-0 rounded f-10">v{{ $appVersion }}</p>
     </div>
     <!-- Sidebar Toggler -->
 </aside>
@@ -143,5 +147,61 @@
 
         });
 
+        // Fallback: force sidebar navigation if any script accidentally blocks default link click.
+        $(document).on('click', '#appSideMenuScroll a[href]', function(e) {
+            if (e.which !== 1 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+                return;
+            }
+
+            const href = ($(this).attr('href') || '').trim();
+            const target = ($(this).attr('target') || '').trim().toLowerCase();
+
+            if (!href || href === '#' || href.toLowerCase().startsWith('javascript:')) {
+                return;
+            }
+
+            e.preventDefault();
+
+            if (target === '_blank') {
+                window.open(href, '_blank');
+                return;
+            }
+
+            window.location.href = href;
+        });
+
+        // Fallback accordion behavior (independent of bundled main.js handlers)
+        $(document).on('click', '#appSideMenuScroll .accordionItemHeading', function(e) {
+            e.preventDefault();
+            const $currentItem = $(this).closest('.accordionItem');
+            const wasOpen = $currentItem.hasClass('openIt');
+
+            $('#appSideMenuScroll .accordionItem').removeClass('openIt').addClass('closeIt');
+
+            if (!wasOpen) {
+                $currentItem.removeClass('closeIt').addClass('openIt');
+            }
+        });
+
     });
 </script>
+
+<style>
+    /* Hard safeguard against invisible overlays intercepting sidebar clicks */
+    aside .main-sidebar,
+    aside .main-sidebar * {
+        pointer-events: auto !important;
+    }
+
+    aside .main-sidebar {
+        z-index: 2147483000 !important;
+    }
+
+    aside .sidebar-menu,
+    aside .sidebar-menu ul,
+    aside .sidebar-menu li,
+    aside .sidebar-menu a {
+        position: relative;
+        z-index: 2147483001 !important;
+    }
+</style>

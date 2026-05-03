@@ -21,9 +21,7 @@ use App\Http\Controllers\Payment\StripeWebhookController;
 use App\Http\Controllers\PublicLeadGdprController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return redirect(route('login'));
-});
+Route::redirect('/', '/login');
 
 Route::get('/invitation/{code}', [RegisterController::class, 'invitation'])->name('invitation');
 Route::post('/invitation/accept-invite', [RegisterController::class, 'acceptInvite'])->name('accept_invite');
@@ -145,7 +143,7 @@ Route::get('cropper/{element}', [ImageController::class, 'cropper'])->name('crop
 // Sync user permissions
 Route::get('sync-user-permissions', [HomeController::class, 'syncPermissions'])->name('sync_user_permissions');
 
-Route::get('file/{type}/{path}', [FileController::class, 'getFile'])->name('file.getFile');
+Route::get('file/{type}/{path}', [FileController::class, 'getFile'])->middleware('signed')->name('file.getFile');
 
 // SIGNED URLS ->middleware('signed')
 Route::get('/proposal/{hash}', [HomeController::class, 'proposal'])->name('front.proposal')->middleware('signed');

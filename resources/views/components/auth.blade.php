@@ -133,10 +133,26 @@
         })
     });
     document.addEventListener('DOMContentLoaded', function () {
-        const blockedDomains = ['USB CRM', 'froiden', 'envato', 'codecanyon'];
+        const blockedHosts = ['froiden.com', 'envato.com', 'codecanyon.net'];
         document.querySelectorAll('a[href]').forEach(function (a) {
-            const href = (a.getAttribute('href') || '').toLowerCase();
-            if (blockedDomains.some(d => href.includes(d))) {
+            const rawHref = (a.getAttribute('href') || '').trim();
+            if (!rawHref || rawHref.startsWith('#') || rawHref.toLowerCase().startsWith('javascript:')) {
+                return;
+            }
+
+            let parsedUrl;
+            try {
+                parsedUrl = new URL(rawHref, window.location.origin);
+            } catch (e) {
+                return;
+            }
+
+            const host = parsedUrl.hostname.toLowerCase();
+            const isBlocked = blockedHosts.some(function (blockedHost) {
+                return host === blockedHost || host.endsWith('.' + blockedHost);
+            });
+
+            if (isBlocked) {
                 a.setAttribute('href', 'javascript:;');
                 a.removeAttribute('target');
                 a.removeAttribute('rel');

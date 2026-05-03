@@ -72,9 +72,12 @@ class DashboardController extends AccountBaseController
         $data = $request->all();
         unset($data['_token']);
         DashboardWidget::where('status', 1)->where('dashboard_type', $dashboardType)->update(['status' => 0]);
+        $enabledWidgets = array_keys($data);
 
-        foreach ($data as $key => $widget) {
-            DashboardWidget::where('widget_name', $key)->where('dashboard_type', $dashboardType)->update(['status' => 1]);
+        if (!empty($enabledWidgets)) {
+            DashboardWidget::where('dashboard_type', $dashboardType)
+                ->whereIn('widget_name', $enabledWidgets)
+                ->update(['status' => 1]);
         }
 
         return Reply::success(__('messages.updateSuccess'));

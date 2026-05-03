@@ -585,15 +585,37 @@ class ClientController extends AccountBaseController
 
     public function clientStats($id)
     {
-        return DB::table('users')
-            ->select(
-                DB::raw('(select count(projects.id) from `projects` WHERE projects.client_id = ' . $id . ' and deleted_at IS NULL) as totalProjects'),
-                DB::raw('(select count(invoices.id) from `invoices` left join projects on projects.id=invoices.project_id WHERE invoices.status != "paid" and invoices.status != "canceled" and (projects.client_id = ' . $id . ' or invoices.client_id = ' . $id . ')) as totalUnpaidInvoices'),
-                DB::raw('(select sum(payments.amount) from `payments` left join projects on projects.id=payments.project_id WHERE payments.status = "complete" and projects.client_id = ' . $id . ') as projectPayments'),
-                DB::raw('(select sum(payments.amount) from `payments` inner join invoices on invoices.id=payments.invoice_id  WHERE payments.status = "complete" and invoices.client_id = ' . $id . ') as invoicePayments'),
-                DB::raw('(select count(contracts.id) from `contracts` WHERE contracts.client_id = ' . $id . ') as totalContracts')
-            )
-            ->first();
+        return Cache::remember('client_stats_' . company()->id . '_' . $id, now()->addMinutes(2), function () use ($id) {
+            $totalProjects = Project::where('client_id', $id)->whereNull('deleted_at')->count();
+
+            $totalUnpaidInvoices = Invoice::leftJoin('projects', 'projects.id', '=', 'invoices.project_id')
+                ->where('invoices.status', '!=', 'paid')
+                ->where('invoices.status', '!=', 'canceled')
+                ->where(function ($query) use ($id) {
+                    $query->where('projects.client_id', $id)
+                        ->orWhere('invoices.client_id', $id);
+                })->count('invoices.id');
+
+            $projectPayments = Payment::leftJoin('projects', 'projects.id', '=', 'payments.project_id')
+                ->where('payments.status', 'complete')
+                ->where('projects.client_id', $id)
+                ->sum('payments.amount');
+
+            $invoicePayments = Payment::join('invoices', 'invoices.id', '=', 'payments.invoice_id')
+                ->where('payments.status', 'complete')
+                ->where('invoices.client_id', $id)
+                ->sum('payments.amount');
+
+            $totalContracts = DB::table('contracts')->where('client_id', $id)->count();
+
+            return (object) [
+                'totalProjects' => $totalProjects,
+                'totalUnpaidInvoices' => $totalUnpaidInvoices,
+                'projectPayments' => $projectPayments,
+                'invoicePayments' => $invoicePayments,
+                'totalContracts' => $totalContracts,
+            ];
+        });
     }
 
     /**
@@ -603,16 +625,22 @@ class ClientController extends AccountBaseController
      */
     public function projectChartData($id)
     {
-        $labels = ProjectStatusSetting::where('status', 'active')->pluck('status_name');
-        $data['labels'] = ProjectStatusSetting::where('status', 'active')->pluck('status_name');
-        $data['colors'] = ProjectStatusSetting::where('status', 'active')->pluck('color');
-        $data['values'] = [];
+        return Cache::remember('client_project_chart_' . company()->id . '_' . $id, now()->addMinutes(2), function () use ($id) {
+            $statusRows = ProjectStatusSetting::where('status', 'active')
+                ->orderBy('id')
+                ->get(['status_name', 'color']);
 
-        foreach ($labels as $label) {
-            $data['values'][] = Project::where('client_id', $id)->where('status', $label)->count();
-        }
+            $counts = Project::where('client_id', $id)
+                ->select('status', DB::raw('COUNT(*) as total'))
+                ->groupBy('status')
+                ->pluck('total', 'status');
 
-        return $data;
+            return [
+                'labels' => $statusRows->pluck('status_name'),
+                'colors' => $statusRows->pluck('color'),
+                'values' => $statusRows->map(fn($row) => (int) ($counts[$row->status_name] ?? 0))->values()->all(),
+            ];
+        });
     }
 
     /**
@@ -622,16 +650,19 @@ class ClientController extends AccountBaseController
      */
     public function invoiceChartData($id)
     {
-        $labels = ['paid', 'unpaid', 'partial', 'canceled', 'draft'];
-        $data['labels'] = [__('app.paid'), __('app.unpaid'), __('app.partial'), __('app.canceled'), __('app.draft')];
-        $data['colors'] = ['#2CB100', '#FCBD01', '#e2430b', '#D30000', '#616e80'];
-        $data['values'] = [];
+        return Cache::remember('client_invoice_chart_' . company()->id . '_' . $id, now()->addMinutes(2), function () use ($id) {
+            $statuses = ['paid', 'unpaid', 'partial', 'canceled', 'draft'];
+            $counts = Invoice::where('client_id', $id)
+                ->select('status', DB::raw('COUNT(*) as total'))
+                ->groupBy('status')
+                ->pluck('total', 'status');
 
-        foreach ($labels as $label) {
-            $data['values'][] = Invoice::where('client_id', $id)->where('status', $label)->count();
-        }
-
-        return $data;
+            return [
+                'labels' => [__('app.paid'), __('app.unpaid'), __('app.partial'), __('app.canceled'), __('app.draft')],
+                'colors' => ['#2CB100', '#FCBD01', '#e2430b', '#D30000', '#616e80'],
+                'values' => collect($statuses)->map(fn($status) => (int) ($counts[$status] ?? 0))->values()->all(),
+            ];
+        });
     }
 
     /**

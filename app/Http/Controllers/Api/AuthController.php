@@ -9,11 +9,21 @@ use App\Services\WhatsAppOtpService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
     public function login(Request $request): JsonResponse
     {
+        $throttleKey = Str::lower((string) $request->input('email')) . '|' . $request->ip();
+
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            return response()->json([
+                'message' => 'Too many login attempts. Please try again after a minute.',
+            ], 429);
+        }
+
         $validated = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required', 'string'],
@@ -25,17 +35,15 @@ class AuthController extends Controller
             ->where('email', $validated['email'])
             ->first();
 
-        if (!$user || !Hash::check($validated['password'], $user->password)) {
+        if (!$user || !Hash::check($validated['password'], $user->password) || $user->status !== 'active') {
+            RateLimiter::hit($throttleKey, 60);
+
             return response()->json([
                 'message' => 'Invalid email or password.',
             ], 422);
         }
 
-        if ($user->status !== 'active') {
-            return response()->json([
-                'message' => 'This account is inactive.',
-            ], 403);
-        }
+        RateLimiter::clear($throttleKey);
 
         $token = $user->createToken($validated['device_name'] ?? 'flutter_crm_app')->plainTextToken;
 

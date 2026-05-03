@@ -1,21 +1,21 @@
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
-/***/ "./node_modules/axios/index.js"
+/***/ "./node_modules/axios/index.js":
 /*!*************************************!*\
   !*** ./node_modules/axios/index.js ***!
   \*************************************/
-(module, __unused_webpack_exports, __webpack_require__) {
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 module.exports = __webpack_require__(/*! ./lib/axios */ "./node_modules/axios/lib/axios.js");
 
-/***/ },
+/***/ }),
 
-/***/ "./node_modules/axios/lib/adapters/xhr.js"
+/***/ "./node_modules/axios/lib/adapters/xhr.js":
 /*!************************************************!*\
   !*** ./node_modules/axios/lib/adapters/xhr.js ***!
   \************************************************/
-(module, __unused_webpack_exports, __webpack_require__) {
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 "use strict";
 
@@ -209,13 +209,13 @@ module.exports = function xhrAdapter(config) {
 };
 
 
-/***/ },
+/***/ }),
 
-/***/ "./node_modules/axios/lib/axios.js"
+/***/ "./node_modules/axios/lib/axios.js":
 /*!*****************************************!*\
   !*** ./node_modules/axios/lib/axios.js ***!
   \*****************************************/
-(module, __unused_webpack_exports, __webpack_require__) {
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 "use strict";
 
@@ -276,13 +276,13 @@ module.exports = axios;
 module.exports["default"] = axios;
 
 
-/***/ },
+/***/ }),
 
-/***/ "./node_modules/axios/lib/cancel/Cancel.js"
+/***/ "./node_modules/axios/lib/cancel/Cancel.js":
 /*!*************************************************!*\
   !*** ./node_modules/axios/lib/cancel/Cancel.js ***!
   \*************************************************/
-(module) {
+/***/ ((module) => {
 
 "use strict";
 
@@ -306,13 +306,13 @@ Cancel.prototype.__CANCEL__ = true;
 module.exports = Cancel;
 
 
-/***/ },
+/***/ }),
 
-/***/ "./node_modules/axios/lib/cancel/CancelToken.js"
+/***/ "./node_modules/axios/lib/cancel/CancelToken.js":
 /*!******************************************************!*\
   !*** ./node_modules/axios/lib/cancel/CancelToken.js ***!
   \******************************************************/
-(module, __unused_webpack_exports, __webpack_require__) {
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 "use strict";
 
@@ -374,13 +374,13 @@ CancelToken.source = function source() {
 module.exports = CancelToken;
 
 
-/***/ },
+/***/ }),
 
-/***/ "./node_modules/axios/lib/cancel/isCancel.js"
+/***/ "./node_modules/axios/lib/cancel/isCancel.js":
 /*!***************************************************!*\
   !*** ./node_modules/axios/lib/cancel/isCancel.js ***!
   \***************************************************/
-(module) {
+/***/ ((module) => {
 
 "use strict";
 
@@ -390,13 +390,13 @@ module.exports = function isCancel(value) {
 };
 
 
-/***/ },
+/***/ }),
 
-/***/ "./node_modules/axios/lib/core/Axios.js"
+/***/ "./node_modules/axios/lib/core/Axios.js":
 /*!**********************************************!*\
   !*** ./node_modules/axios/lib/core/Axios.js ***!
   \**********************************************/
-(module, __unused_webpack_exports, __webpack_require__) {
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 "use strict";
 
@@ -549,13 +549,13 @@ utils.forEach(['post', 'put', 'patch'], function forEachMethodWithData(method) {
 module.exports = Axios;
 
 
-/***/ },
+/***/ }),
 
-/***/ "./node_modules/axios/lib/core/InterceptorManager.js"
+/***/ "./node_modules/axios/lib/core/InterceptorManager.js":
 /*!***********************************************************!*\
   !*** ./node_modules/axios/lib/core/InterceptorManager.js ***!
   \***********************************************************/
-(module, __unused_webpack_exports, __webpack_require__) {
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 "use strict";
 
@@ -614,13 +614,13 @@ InterceptorManager.prototype.forEach = function forEach(fn) {
 module.exports = InterceptorManager;
 
 
-/***/ },
+/***/ }),
 
-/***/ "./node_modules/axios/lib/core/buildFullPath.js"
+/***/ "./node_modules/axios/lib/core/buildFullPath.js":
 /*!******************************************************!*\
   !*** ./node_modules/axios/lib/core/buildFullPath.js ***!
   \******************************************************/
-(module, __unused_webpack_exports, __webpack_require__) {
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 "use strict";
 
@@ -645,13 +645,13 @@ module.exports = function buildFullPath(baseURL, requestedURL) {
 };
 
 
-/***/ },
+/***/ }),
 
-/***/ "./node_modules/axios/lib/core/createError.js"
+/***/ "./node_modules/axios/lib/core/createError.js":
 /*!****************************************************!*\
   !*** ./node_modules/axios/lib/core/createError.js ***!
   \****************************************************/
-(module, __unused_webpack_exports, __webpack_require__) {
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 "use strict";
 
@@ -674,13 +674,13 @@ module.exports = function createError(message, config, code, request, response) 
 };
 
 
-/***/ },
+/***/ }),
 
-/***/ "./node_modules/axios/lib/core/dispatchRequest.js"
+/***/ "./node_modules/axios/lib/core/dispatchRequest.js":
 /*!********************************************************!*\
   !*** ./node_modules/axios/lib/core/dispatchRequest.js ***!
   \********************************************************/
-(module, __unused_webpack_exports, __webpack_require__) {
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 "use strict";
 
@@ -767,13 +767,13 @@ module.exports = function dispatchRequest(config) {
 };
 
 
-/***/ },
+/***/ }),
 
-/***/ "./node_modules/axios/lib/core/enhanceError.js"
+/***/ "./node_modules/axios/lib/core/enhanceError.js":
 /*!*****************************************************!*\
   !*** ./node_modules/axios/lib/core/enhanceError.js ***!
   \*****************************************************/
-(module) {
+/***/ ((module) => {
 
 "use strict";
 
@@ -820,13 +820,13 @@ module.exports = function enhanceError(error, config, code, request, response) {
 };
 
 
-/***/ },
+/***/ }),
 
-/***/ "./node_modules/axios/lib/core/mergeConfig.js"
+/***/ "./node_modules/axios/lib/core/mergeConfig.js":
 /*!****************************************************!*\
   !*** ./node_modules/axios/lib/core/mergeConfig.js ***!
   \****************************************************/
-(module, __unused_webpack_exports, __webpack_require__) {
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 "use strict";
 
@@ -918,13 +918,13 @@ module.exports = function mergeConfig(config1, config2) {
 };
 
 
-/***/ },
+/***/ }),
 
-/***/ "./node_modules/axios/lib/core/settle.js"
+/***/ "./node_modules/axios/lib/core/settle.js":
 /*!***********************************************!*\
   !*** ./node_modules/axios/lib/core/settle.js ***!
   \***********************************************/
-(module, __unused_webpack_exports, __webpack_require__) {
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 "use strict";
 
@@ -954,13 +954,13 @@ module.exports = function settle(resolve, reject, response) {
 };
 
 
-/***/ },
+/***/ }),
 
-/***/ "./node_modules/axios/lib/core/transformData.js"
+/***/ "./node_modules/axios/lib/core/transformData.js":
 /*!******************************************************!*\
   !*** ./node_modules/axios/lib/core/transformData.js ***!
   \******************************************************/
-(module, __unused_webpack_exports, __webpack_require__) {
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 "use strict";
 
@@ -987,13 +987,13 @@ module.exports = function transformData(data, headers, fns) {
 };
 
 
-/***/ },
+/***/ }),
 
-/***/ "./node_modules/axios/lib/defaults.js"
+/***/ "./node_modules/axios/lib/defaults.js":
 /*!********************************************!*\
   !*** ./node_modules/axios/lib/defaults.js ***!
   \********************************************/
-(module, __unused_webpack_exports, __webpack_require__) {
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 "use strict";
 /* provided dependency */ var process = __webpack_require__(/*! process/browser.js */ "./node_modules/process/browser.js");
@@ -1133,13 +1133,13 @@ utils.forEach(['post', 'put', 'patch'], function forEachMethodWithData(method) {
 module.exports = defaults;
 
 
-/***/ },
+/***/ }),
 
-/***/ "./node_modules/axios/lib/helpers/bind.js"
+/***/ "./node_modules/axios/lib/helpers/bind.js":
 /*!************************************************!*\
   !*** ./node_modules/axios/lib/helpers/bind.js ***!
   \************************************************/
-(module) {
+/***/ ((module) => {
 
 "use strict";
 
@@ -1155,13 +1155,13 @@ module.exports = function bind(fn, thisArg) {
 };
 
 
-/***/ },
+/***/ }),
 
-/***/ "./node_modules/axios/lib/helpers/buildURL.js"
+/***/ "./node_modules/axios/lib/helpers/buildURL.js":
 /*!****************************************************!*\
   !*** ./node_modules/axios/lib/helpers/buildURL.js ***!
   \****************************************************/
-(module, __unused_webpack_exports, __webpack_require__) {
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 "use strict";
 
@@ -1236,13 +1236,13 @@ module.exports = function buildURL(url, params, paramsSerializer) {
 };
 
 
-/***/ },
+/***/ }),
 
-/***/ "./node_modules/axios/lib/helpers/combineURLs.js"
+/***/ "./node_modules/axios/lib/helpers/combineURLs.js":
 /*!*******************************************************!*\
   !*** ./node_modules/axios/lib/helpers/combineURLs.js ***!
   \*******************************************************/
-(module) {
+/***/ ((module) => {
 
 "use strict";
 
@@ -1261,13 +1261,13 @@ module.exports = function combineURLs(baseURL, relativeURL) {
 };
 
 
-/***/ },
+/***/ }),
 
-/***/ "./node_modules/axios/lib/helpers/cookies.js"
+/***/ "./node_modules/axios/lib/helpers/cookies.js":
 /*!***************************************************!*\
   !*** ./node_modules/axios/lib/helpers/cookies.js ***!
   \***************************************************/
-(module, __unused_webpack_exports, __webpack_require__) {
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 "use strict";
 
@@ -1325,13 +1325,13 @@ module.exports = (
 );
 
 
-/***/ },
+/***/ }),
 
-/***/ "./node_modules/axios/lib/helpers/isAbsoluteURL.js"
+/***/ "./node_modules/axios/lib/helpers/isAbsoluteURL.js":
 /*!*********************************************************!*\
   !*** ./node_modules/axios/lib/helpers/isAbsoluteURL.js ***!
   \*********************************************************/
-(module) {
+/***/ ((module) => {
 
 "use strict";
 
@@ -1350,13 +1350,13 @@ module.exports = function isAbsoluteURL(url) {
 };
 
 
-/***/ },
+/***/ }),
 
-/***/ "./node_modules/axios/lib/helpers/isAxiosError.js"
+/***/ "./node_modules/axios/lib/helpers/isAxiosError.js":
 /*!********************************************************!*\
   !*** ./node_modules/axios/lib/helpers/isAxiosError.js ***!
   \********************************************************/
-(module) {
+/***/ ((module) => {
 
 "use strict";
 
@@ -1372,13 +1372,13 @@ module.exports = function isAxiosError(payload) {
 };
 
 
-/***/ },
+/***/ }),
 
-/***/ "./node_modules/axios/lib/helpers/isURLSameOrigin.js"
+/***/ "./node_modules/axios/lib/helpers/isURLSameOrigin.js":
 /*!***********************************************************!*\
   !*** ./node_modules/axios/lib/helpers/isURLSameOrigin.js ***!
   \***********************************************************/
-(module, __unused_webpack_exports, __webpack_require__) {
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 "use strict";
 
@@ -1451,13 +1451,13 @@ module.exports = (
 );
 
 
-/***/ },
+/***/ }),
 
-/***/ "./node_modules/axios/lib/helpers/normalizeHeaderName.js"
+/***/ "./node_modules/axios/lib/helpers/normalizeHeaderName.js":
 /*!***************************************************************!*\
   !*** ./node_modules/axios/lib/helpers/normalizeHeaderName.js ***!
   \***************************************************************/
-(module, __unused_webpack_exports, __webpack_require__) {
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 "use strict";
 
@@ -1474,13 +1474,13 @@ module.exports = function normalizeHeaderName(headers, normalizedName) {
 };
 
 
-/***/ },
+/***/ }),
 
-/***/ "./node_modules/axios/lib/helpers/parseHeaders.js"
+/***/ "./node_modules/axios/lib/helpers/parseHeaders.js":
 /*!********************************************************!*\
   !*** ./node_modules/axios/lib/helpers/parseHeaders.js ***!
   \********************************************************/
-(module, __unused_webpack_exports, __webpack_require__) {
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 "use strict";
 
@@ -1538,13 +1538,13 @@ module.exports = function parseHeaders(headers) {
 };
 
 
-/***/ },
+/***/ }),
 
-/***/ "./node_modules/axios/lib/helpers/spread.js"
+/***/ "./node_modules/axios/lib/helpers/spread.js":
 /*!**************************************************!*\
   !*** ./node_modules/axios/lib/helpers/spread.js ***!
   \**************************************************/
-(module) {
+/***/ ((module) => {
 
 "use strict";
 
@@ -1576,13 +1576,13 @@ module.exports = function spread(callback) {
 };
 
 
-/***/ },
+/***/ }),
 
-/***/ "./node_modules/axios/lib/helpers/validator.js"
+/***/ "./node_modules/axios/lib/helpers/validator.js":
 /*!*****************************************************!*\
   !*** ./node_modules/axios/lib/helpers/validator.js ***!
   \*****************************************************/
-(module, __unused_webpack_exports, __webpack_require__) {
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 "use strict";
 
@@ -1692,13 +1692,13 @@ module.exports = {
 };
 
 
-/***/ },
+/***/ }),
 
-/***/ "./node_modules/axios/lib/utils.js"
+/***/ "./node_modules/axios/lib/utils.js":
 /*!*****************************************!*\
   !*** ./node_modules/axios/lib/utils.js ***!
   \*****************************************/
-(module, __unused_webpack_exports, __webpack_require__) {
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 "use strict";
 
@@ -2052,19 +2052,19 @@ module.exports = {
 };
 
 
-/***/ },
+/***/ }),
 
-/***/ "./resources/js/bootstrap.js"
+/***/ "./resources/js/bootstrap.js":
 /*!***********************************!*\
   !*** ./resources/js/bootstrap.js ***!
   \***********************************/
-(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var laravel_echo__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! laravel-echo */ "./node_modules/laravel-echo/dist/echo.js");
+/* provided dependency */ var process = __webpack_require__(/*! process/browser.js */ "./node_modules/process/browser.js");
 window._ = __webpack_require__(/*! lodash */ "./node_modules/lodash/lodash.js");
-
 /**
  * We'll load the axios HTTP library which allows us to easily issue requests
  * to our Laravel back-end. This library automatically handles sending the
@@ -2073,7 +2073,6 @@ window._ = __webpack_require__(/*! lodash */ "./node_modules/lodash/lodash.js");
 
 window.axios = __webpack_require__(/*! axios */ "./node_modules/axios/index.js");
 window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
-
 /**
  * Echo exposes an expressive API for subscribing to channels and listening
  * for events that are broadcast by Laravel. Echo and event broadcasting
@@ -2084,25 +2083,23 @@ window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 window.Pusher = __webpack_require__(/*! pusher-js */ "./node_modules/pusher-js/dist/web/pusher.js");
 window.Echo = new laravel_echo__WEBPACK_IMPORTED_MODULE_0__["default"]({
   broadcaster: 'pusher',
-  key: "",
-  cluster: "mt1",
+  key: process.env.MIX_PUSHER_APP_KEY,
+  cluster: process.env.MIX_PUSHER_APP_CLUSTER,
   forceTLS: true
 });
 
-/***/ },
+/***/ }),
 
-/***/ "./node_modules/laravel-echo/dist/echo.js"
+/***/ "./node_modules/laravel-echo/dist/echo.js":
 /*!************************************************!*\
   !*** ./node_modules/laravel-echo/dist/echo.js ***!
   \************************************************/
-(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   Channel: () => (/* binding */ Channel),
-/* harmony export */   Connector: () => (/* binding */ Connector),
-/* harmony export */   EventFormatter: () => (/* binding */ EventFormatter),
+/* harmony export */   "Channel": () => (/* binding */ Channel),
 /* harmony export */   "default": () => (/* binding */ Echo)
 /* harmony export */ });
 function _typeof(obj) {
@@ -2292,7 +2289,7 @@ var EventFormatter = /*#__PURE__*/function () {
   function EventFormatter(namespace) {
     _classCallCheck(this, EventFormatter);
 
-    this.namespace = namespace; //
+    this.setNamespace(namespace);
   }
   /**
    * Format the given event name.
@@ -2302,8 +2299,8 @@ var EventFormatter = /*#__PURE__*/function () {
   _createClass(EventFormatter, [{
     key: "format",
     value: function format(event) {
-      if (['.', '\\'].includes(event.charAt(0))) {
-        return event.substring(1);
+      if (event.charAt(0) === '.' || event.charAt(0) === '\\') {
+        return event.substr(1);
       } else if (this.namespace) {
         event = this.namespace + '.' + event;
       }
@@ -2323,16 +2320,6 @@ var EventFormatter = /*#__PURE__*/function () {
 
   return EventFormatter;
 }();
-
-function isConstructor(obj) {
-  try {
-    new obj();
-  } catch (err) {
-    if (err.message.includes('is not a constructor')) return false;
-  }
-
-  return true;
-}
 
 /**
  * This class represents a Pusher channel.
@@ -2499,7 +2486,7 @@ var PusherPrivateChannel = /*#__PURE__*/function (_PusherChannel) {
     key: "whisper",
     value:
     /**
-     * Send a whisper event to other clients in the channel.
+     * Trigger client event on the channel.
      */
     function whisper(eventName, data) {
       this.pusher.channels.channels[this.name].trigger("client-".concat(eventName), data);
@@ -2529,7 +2516,7 @@ var PusherEncryptedPrivateChannel = /*#__PURE__*/function (_PusherChannel) {
     key: "whisper",
     value:
     /**
-     * Send a whisper event to other clients in the channel.
+     * Trigger client event on the channel.
      */
     function whisper(eventName, data) {
       this.pusher.channels.channels[this.name].trigger("client-".concat(eventName), data);
@@ -2544,8 +2531,8 @@ var PusherEncryptedPrivateChannel = /*#__PURE__*/function (_PusherChannel) {
  * This class represents a Pusher presence channel.
  */
 
-var PusherPresenceChannel = /*#__PURE__*/function (_PusherPrivateChannel) {
-  _inherits(PusherPresenceChannel, _PusherPrivateChannel);
+var PusherPresenceChannel = /*#__PURE__*/function (_PusherChannel) {
+  _inherits(PusherPresenceChannel, _PusherChannel);
 
   var _super = _createSuper(PusherPresenceChannel);
 
@@ -2582,16 +2569,6 @@ var PusherPresenceChannel = /*#__PURE__*/function (_PusherPrivateChannel) {
       return this;
     }
     /**
-     * Send a whisper event to other clients in the channel.
-     */
-
-  }, {
-    key: "whisper",
-    value: function whisper(eventName, data) {
-      this.pusher.channels.channels[this.name].trigger("client-".concat(eventName), data);
-      return this;
-    }
-    /**
      * Listen for someone leaving the channel.
      */
 
@@ -2603,10 +2580,20 @@ var PusherPresenceChannel = /*#__PURE__*/function (_PusherPrivateChannel) {
       });
       return this;
     }
+    /**
+     * Trigger client event on the channel.
+     */
+
+  }, {
+    key: "whisper",
+    value: function whisper(eventName, data) {
+      this.pusher.channels.channels[this.name].trigger("client-".concat(eventName), data);
+      return this;
+    }
   }]);
 
   return PusherPresenceChannel;
-}(PusherPrivateChannel);
+}(PusherChannel);
 
 /**
  * This class represents a Socket.io channel.
@@ -2799,7 +2786,7 @@ var SocketIoPrivateChannel = /*#__PURE__*/function (_SocketIoChannel) {
     key: "whisper",
     value:
     /**
-     * Send a whisper event to other clients in the channel.
+     * Trigger client event on the channel.
      */
     function whisper(eventName, data) {
       this.socket.emit('client event', {
@@ -2852,20 +2839,6 @@ var SocketIoPresenceChannel = /*#__PURE__*/function (_SocketIoPrivateChann) {
     value: function joining(callback) {
       this.on('presence:joining', function (member) {
         return callback(member.user_info);
-      });
-      return this;
-    }
-    /**
-     * Send a whisper event to other clients in the channel.
-     */
-
-  }, {
-    key: "whisper",
-    value: function whisper(eventName, data) {
-      this.socket.emit('client event', {
-        channel: this.name,
-        event: "client-".concat(eventName),
-        data: data
       });
       return this;
     }
@@ -2924,15 +2897,6 @@ var NullChannel = /*#__PURE__*/function (_Channel) {
   }, {
     key: "listen",
     value: function listen(event, callback) {
-      return this;
-    }
-    /**
-     * Listen for all events on the channel instance.
-     */
-
-  }, {
-    key: "listenToAll",
-    value: function listenToAll(callback) {
       return this;
     }
     /**
@@ -2995,7 +2959,7 @@ var NullPrivateChannel = /*#__PURE__*/function (_NullChannel) {
     key: "whisper",
     value:
     /**
-     * Send a whisper event to other clients in the channel.
+     * Trigger client event on the channel.
      */
     function whisper(eventName, data) {
       return this;
@@ -3006,40 +2970,11 @@ var NullPrivateChannel = /*#__PURE__*/function (_NullChannel) {
 }(NullChannel);
 
 /**
- * This class represents a null private channel.
- */
-
-var NullEncryptedPrivateChannel = /*#__PURE__*/function (_NullChannel) {
-  _inherits(NullEncryptedPrivateChannel, _NullChannel);
-
-  var _super = _createSuper(NullEncryptedPrivateChannel);
-
-  function NullEncryptedPrivateChannel() {
-    _classCallCheck(this, NullEncryptedPrivateChannel);
-
-    return _super.apply(this, arguments);
-  }
-
-  _createClass(NullEncryptedPrivateChannel, [{
-    key: "whisper",
-    value:
-    /**
-     * Send a whisper event to other clients in the channel.
-     */
-    function whisper(eventName, data) {
-      return this;
-    }
-  }]);
-
-  return NullEncryptedPrivateChannel;
-}(NullChannel);
-
-/**
  * This class represents a null presence channel.
  */
 
-var NullPresenceChannel = /*#__PURE__*/function (_NullPrivateChannel) {
-  _inherits(NullPresenceChannel, _NullPrivateChannel);
+var NullPresenceChannel = /*#__PURE__*/function (_NullChannel) {
+  _inherits(NullPresenceChannel, _NullChannel);
 
   var _super = _createSuper(NullPresenceChannel);
 
@@ -3068,15 +3003,6 @@ var NullPresenceChannel = /*#__PURE__*/function (_NullPrivateChannel) {
       return this;
     }
     /**
-     * Send a whisper event to other clients in the channel.
-     */
-
-  }, {
-    key: "whisper",
-    value: function whisper(eventName, data) {
-      return this;
-    }
-    /**
      * Listen for someone leaving the channel.
      */
 
@@ -3085,10 +3011,19 @@ var NullPresenceChannel = /*#__PURE__*/function (_NullPrivateChannel) {
     value: function leaving(callback) {
       return this;
     }
+    /**
+     * Trigger client event on the channel.
+     */
+
+  }, {
+    key: "whisper",
+    value: function whisper(eventName, data) {
+      return this;
+    }
   }]);
 
   return NullPresenceChannel;
-}(NullPrivateChannel);
+}(NullChannel);
 
 var Connector = /*#__PURE__*/function () {
   /**
@@ -3200,8 +3135,6 @@ var PusherConnector = /*#__PURE__*/function (_Connector) {
     value: function connect() {
       if (typeof this.options.client !== 'undefined') {
         this.pusher = this.options.client;
-      } else if (this.options.Pusher) {
-        this.pusher = new this.options.Pusher(this.options.key, this.options);
       } else {
         this.pusher = new Pusher(this.options.key, this.options);
       }
@@ -3539,15 +3472,6 @@ var NullConnector = /*#__PURE__*/function (_Connector) {
       return new NullPrivateChannel();
     }
     /**
-     * Get a private encrypted channel instance by name.
-     */
-
-  }, {
-    key: "encryptedPrivateChannel",
-    value: function encryptedPrivateChannel(name) {
-      return new NullEncryptedPrivateChannel();
-    }
-    /**
      * Get a presence channel instance by name.
      */
 
@@ -3629,20 +3553,14 @@ var Echo = /*#__PURE__*/function () {
   }, {
     key: "connect",
     value: function connect() {
-      if (this.options.broadcaster == 'reverb') {
-        this.connector = new PusherConnector(_extends(_extends({}, this.options), {
-          cluster: ''
-        }));
-      } else if (this.options.broadcaster == 'pusher') {
+      if (this.options.broadcaster == 'pusher') {
         this.connector = new PusherConnector(this.options);
       } else if (this.options.broadcaster == 'socket.io') {
         this.connector = new SocketIoConnector(this.options);
       } else if (this.options.broadcaster == 'null') {
         this.connector = new NullConnector(this.options);
-      } else if (typeof this.options.broadcaster == 'function' && isConstructor(this.options.broadcaster)) {
+      } else if (typeof this.options.broadcaster == 'function') {
         this.connector = new this.options.broadcaster(this.options);
-      } else {
-        throw new Error("Broadcaster ".concat(_typeof(this.options.broadcaster), " ").concat(this.options.broadcaster, " is not supported."));
       }
     }
     /**
@@ -3682,17 +3600,6 @@ var Echo = /*#__PURE__*/function () {
       this.connector.leaveChannel(channel);
     }
     /**
-     * Leave all channels.
-     */
-
-  }, {
-    key: "leaveAllChannels",
-    value: function leaveAllChannels() {
-      for (var channel in this.connector.channels) {
-        this.leaveChannel(channel);
-      }
-    }
-    /**
      * Listen for an event on a channel instance.
      */
 
@@ -3717,10 +3624,6 @@ var Echo = /*#__PURE__*/function () {
   }, {
     key: "encryptedPrivate",
     value: function encryptedPrivate(channel) {
-      if (this.connector instanceof SocketIoConnector) {
-        throw new Error("Broadcaster ".concat(_typeof(this.options.broadcaster), " ").concat(this.options.broadcaster, " does not support encrypted private channels."));
-      }
-
       return this.connector.encryptedPrivateChannel(channel);
     }
     /**
@@ -3828,13 +3731,13 @@ var Echo = /*#__PURE__*/function () {
 
 
 
-/***/ },
+/***/ }),
 
-/***/ "./node_modules/lodash/lodash.js"
+/***/ "./node_modules/lodash/lodash.js":
 /*!***************************************!*\
   !*** ./node_modules/lodash/lodash.js ***!
   \***************************************/
-(module, exports, __webpack_require__) {
+/***/ (function(module, exports, __webpack_require__) {
 
 /* module decorator */ module = __webpack_require__.nmd(module);
 var __WEBPACK_AMD_DEFINE_RESULT__;/**
@@ -3851,7 +3754,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/**
   var undefined;
 
   /** Used as the semantic version number. */
-  var VERSION = '4.17.23';
+  var VERSION = '4.17.21';
 
   /** Used as the size to enable large array optimizations. */
   var LARGE_ARRAY_SIZE = 200;
@@ -7605,7 +7508,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/**
           if (isArray(iteratee)) {
             return function(value) {
               return baseGet(value, iteratee.length === 1 ? iteratee[0] : iteratee);
-            };
+            }
           }
           return iteratee;
         });
@@ -8209,47 +8112,8 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/**
      */
     function baseUnset(object, path) {
       path = castPath(path, object);
-
-      // Prevent prototype pollution, see: https://github.com/lodash/lodash/security/advisories/GHSA-xxjr-mmjv-4gpg
-      var index = -1,
-          length = path.length;
-
-      if (!length) {
-        return true;
-      }
-
-      var isRootPrimitive = object == null || (typeof object !== 'object' && typeof object !== 'function');
-
-      while (++index < length) {
-        var key = path[index];
-
-        // skip non-string keys (e.g., Symbols, numbers)
-        if (typeof key !== 'string') {
-          continue;
-        }
-
-        // Always block "__proto__" anywhere in the path if it's not expected
-        if (key === '__proto__' && !hasOwnProperty.call(object, '__proto__')) {
-          return false;
-        }
-
-        // Block "constructor.prototype" chains
-        if (key === 'constructor' &&
-            (index + 1) < length &&
-            typeof path[index + 1] === 'string' &&
-            path[index + 1] === 'prototype') {
-
-          // Allow ONLY when the path starts at a primitive root, e.g., _.unset(0, 'constructor.prototype.a')
-          if (isRootPrimitive && index === 0) {
-            continue;
-          }
-
-          return false;
-        }
-      }
-
-      var obj = parent(object, path);
-      return obj == null || delete obj[toKey(last(path))];
+      object = parent(object, path);
+      return object == null || delete object[toKey(last(path))];
     }
 
     /**
@@ -21075,31 +20939,30 @@ var __WEBPACK_AMD_DEFINE_RESULT__;/**
 		__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
   }
   // Check for `exports` after `define` in case a build optimizer adds it.
-  else // removed by dead control flow
-{}
+  else {}
 }.call(this));
 
 
-/***/ },
+/***/ }),
 
-/***/ "./resources/scss/main.scss"
+/***/ "./resources/scss/main.scss":
 /*!**********************************!*\
   !*** ./resources/scss/main.scss ***!
   \**********************************/
-(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 // extracted by mini-css-extract-plugin
 
 
-/***/ },
+/***/ }),
 
-/***/ "./node_modules/process/browser.js"
+/***/ "./node_modules/process/browser.js":
 /*!*****************************************!*\
   !*** ./node_modules/process/browser.js ***!
   \*****************************************/
-(module) {
+/***/ ((module) => {
 
 // shim for using process in browser
 var process = module.exports = {};
@@ -21287,16 +21150,16 @@ process.chdir = function (dir) {
 process.umask = function() { return 0; };
 
 
-/***/ },
+/***/ }),
 
-/***/ "./node_modules/pusher-js/dist/web/pusher.js"
+/***/ "./node_modules/pusher-js/dist/web/pusher.js":
 /*!***************************************************!*\
   !*** ./node_modules/pusher-js/dist/web/pusher.js ***!
   \***************************************************/
-(module) {
+/***/ ((module) => {
 
 /*!
- * Pusher JavaScript Library v7.6.0
+ * Pusher JavaScript Library v7.4.0
  * https://pusher.com/
  *
  * Copyright 2020, Pusher
@@ -21306,8 +21169,7 @@ process.umask = function() { return 0; };
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(true)
 		module.exports = factory();
-	else // removed by dead control flow
-{}
+	else {}
 })(window, function() {
 return /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
@@ -21848,11 +21710,11 @@ module.exports = __nested_webpack_require_19901__(3).default;
 
 /***/ }),
 /* 3 */
-/***/ (function(module, __nested_webpack_exports__, __nested_webpack_require_20105__) {
+/***/ (function(module, __webpack_exports__, __nested_webpack_require_20105__) {
 
 "use strict";
 // ESM COMPAT FLAG
-__nested_webpack_require_20105__.r(__nested_webpack_exports__);
+__nested_webpack_require_20105__.r(__webpack_exports__);
 
 // CONCATENATED MODULE: ./src/runtimes/web/dom/script_receiver_factory.ts
 var ScriptReceiverFactory = (function () {
@@ -21886,7 +21748,7 @@ var ScriptReceivers = new ScriptReceiverFactory('_pusher_script_', 'Pusher.Scrip
 
 // CONCATENATED MODULE: ./src/core/defaults.ts
 var Defaults = {
-    VERSION: "7.6.0",
+    VERSION: "7.4.0",
     PROTOCOL: 7,
     wsPort: 80,
     wssPort: 443,
@@ -22155,12 +22017,6 @@ var ajax = function (context, query, authOptions, authRequestType, callback) {
     for (var headerName in authOptions.headers) {
         xhr.setRequestHeader(headerName, authOptions.headers[headerName]);
     }
-    if (authOptions.headersProvider != null) {
-        var dynamicHeaders = authOptions.headersProvider();
-        for (var headerName in dynamicHeaders) {
-            xhr.setRequestHeader(headerName, dynamicHeaders[headerName]);
-        }
-    }
     xhr.onreadystatechange = function () {
         if (xhr.readyState === 4) {
             if (xhr.status === 200) {
@@ -22184,7 +22040,7 @@ var ajax = function (context, query, authOptions, authRequestType, callback) {
                         suffix = url_store.buildLogSuffix('authenticationEndpoint');
                         break;
                     case AuthRequestType.ChannelAuthorization:
-                        suffix = "Clients must be authorized to join private or presence channels. " + url_store.buildLogSuffix('authorizationEndpoint');
+                        suffix = "Clients must be authenticated to join private or presence channels. " + url_store.buildLogSuffix('authorizationEndpoint');
                         break;
                 }
                 callback(new HTTPAuthError(xhr.status, "Unable to retrieve auth string from " + authRequestType.toString() + " endpoint - " +
@@ -22600,8 +22456,7 @@ var logger_Logger = (function () {
 // CONCATENATED MODULE: ./src/runtimes/web/auth/jsonp_auth.ts
 
 var jsonp = function (context, query, authOptions, authRequestType, callback) {
-    if (authOptions.headers !== undefined ||
-        authOptions.headersProvider != null) {
+    if (authOptions.headers !== undefined) {
         logger.warn("To send headers with the " + authRequestType.toString() + " request, you must use AJAX, rather than JSONP.");
     }
     var callbackName = context.nextAuthCallbackID.toString();
@@ -23774,11 +23629,10 @@ var presence_channel_extends = ( false) || (function () {
     };
 })();
 var __awaiter = ( false) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
         function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
@@ -25176,7 +25030,7 @@ function replaceHost(url, hostname) {
     return urlParts[1] + hostname + urlParts[3];
 }
 function randomNumber(max) {
-    return runtime.randomInt(max);
+    return Math.floor(Math.random() * max);
 }
 function randomString(length) {
     var result = [];
@@ -25422,14 +25276,6 @@ var Runtime = {
         else if (window.detachEvent !== undefined) {
             window.detachEvent('onunload', listener);
         }
-    },
-    randomInt: function (max) {
-        var random = function () {
-            var crypto = window.crypto || window['msCrypto'];
-            var random = crypto.getRandomValues(new Uint32Array(1))[0];
-            return random / Math.pow(2, 32);
-        };
-        return Math.floor(random() * max);
     }
 };
 /* harmony default export */ var runtime = (Runtime);
@@ -25656,22 +25502,12 @@ var strategy_builder_UnsupportedStrategy = {
 
 var composeChannelQuery = function (params, authOptions) {
     var query = 'socket_id=' + encodeURIComponent(params.socketId);
-    for (var key in authOptions.params) {
+    for (var i in authOptions.params) {
         query +=
             '&' +
-                encodeURIComponent(key) +
+                encodeURIComponent(i) +
                 '=' +
-                encodeURIComponent(authOptions.params[key]);
-    }
-    if (authOptions.paramsProvider != null) {
-        var dynamicParams = authOptions.paramsProvider();
-        for (var key in dynamicParams) {
-            query +=
-                '&' +
-                    encodeURIComponent(key) +
-                    '=' +
-                    encodeURIComponent(dynamicParams[key]);
-        }
+                encodeURIComponent(authOptions.params[i]);
     }
     return query;
 };
@@ -25692,22 +25528,12 @@ var UserAuthenticator = function (authOptions) {
 var channel_authorizer_composeChannelQuery = function (params, authOptions) {
     var query = 'socket_id=' + encodeURIComponent(params.socketId);
     query += '&channel_name=' + encodeURIComponent(params.channelName);
-    for (var key in authOptions.params) {
+    for (var i in authOptions.params) {
         query +=
             '&' +
-                encodeURIComponent(key) +
+                encodeURIComponent(i) +
                 '=' +
-                encodeURIComponent(authOptions.params[key]);
-    }
-    if (authOptions.paramsProvider != null) {
-        var dynamicParams = authOptions.paramsProvider();
-        for (var key in dynamicParams) {
-            query +=
-                '&' +
-                    encodeURIComponent(key) +
-                    '=' +
-                    encodeURIComponent(dynamicParams[key]);
-        }
+                encodeURIComponent(authOptions.params[i]);
     }
     return query;
 };
@@ -25829,7 +25655,7 @@ function getEnableStatsConfig(opts) {
     return false;
 }
 function buildUserAuthenticator(opts) {
-    var userAuthentication = __assign(__assign({}, defaults.userAuthentication), opts.userAuthentication);
+    var userAuthentication = __assign({}, defaults.userAuthentication, opts.userAuthentication);
     if ('customHandler' in userAuthentication &&
         userAuthentication['customHandler'] != null) {
         return userAuthentication['customHandler'];
@@ -25839,7 +25665,7 @@ function buildUserAuthenticator(opts) {
 function buildChannelAuth(opts, pusher) {
     var channelAuthorization;
     if ('channelAuthorization' in opts) {
-        channelAuthorization = __assign(__assign({}, defaults.channelAuthorization), opts.channelAuthorization);
+        channelAuthorization = __assign({}, defaults.channelAuthorization, opts.channelAuthorization);
     }
     else {
         channelAuthorization = {
@@ -25866,51 +25692,6 @@ function buildChannelAuthorizer(opts, pusher) {
     return channel_authorizer(channelAuthorization);
 }
 
-// CONCATENATED MODULE: ./src/core/watchlist.ts
-var watchlist_extends = ( false) || (function () {
-    var extendStatics = function (d, b) {
-        extendStatics = Object.setPrototypeOf ||
-            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
-        return extendStatics(d, b);
-    };
-    return function (d, b) {
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
-
-
-var watchlist_WatchlistFacade = (function (_super) {
-    watchlist_extends(WatchlistFacade, _super);
-    function WatchlistFacade(pusher) {
-        var _this = _super.call(this, function (eventName, data) {
-            logger.debug("No callbacks on watchlist events for " + eventName);
-        }) || this;
-        _this.pusher = pusher;
-        _this.bindWatchlistInternalEvent();
-        return _this;
-    }
-    WatchlistFacade.prototype.handleEvent = function (pusherEvent) {
-        var _this = this;
-        pusherEvent.data.events.forEach(function (watchlistEvent) {
-            _this.emit(watchlistEvent.name, watchlistEvent);
-        });
-    };
-    WatchlistFacade.prototype.bindWatchlistInternalEvent = function () {
-        var _this = this;
-        this.pusher.connection.bind('message', function (pusherEvent) {
-            var eventName = pusherEvent.event;
-            if (eventName === 'pusher_internal:watchlist_events') {
-                _this.handleEvent(pusherEvent);
-            }
-        });
-    };
-    return WatchlistFacade;
-}(dispatcher));
-/* harmony default export */ var watchlist = (watchlist_WatchlistFacade);
-
 // CONCATENATED MODULE: ./src/core/utils/flat_promise.ts
 function flatPromise() {
     var resolve, reject;
@@ -25936,7 +25717,6 @@ var user_extends = ( false) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
-
 
 
 
@@ -25974,7 +25754,6 @@ var user_UserFacade = (function (_super) {
                 _this._newSigninPromiseIfNeeded();
             }
         });
-        _this.watchlist = new watchlist(pusher);
         _this.pusher.connection.bind('message', function (event) {
             var eventName = event.event;
             if (eventName === 'pusher:signin_success') {
@@ -26105,7 +25884,7 @@ var pusher_Pusher = (function () {
         this.config = getConfig(options, this);
         this.channels = factory.createChannels();
         this.global_emitter = new dispatcher();
-        this.sessionID = runtime.randomInt(1000000000);
+        this.sessionID = Math.floor(Math.random() * 1000000000);
         this.timeline = new timeline_timeline(this.key, this.sessionID, {
             cluster: this.config.cluster,
             features: Pusher.getClientFeatures(),
@@ -26271,7 +26050,7 @@ var pusher_Pusher = (function () {
     Pusher.auth_callbacks = runtime.auth_callbacks;
     return Pusher;
 }());
-/* harmony default export */ var core_pusher = __nested_webpack_exports__["default"] = (pusher_Pusher);
+/* harmony default export */ var core_pusher = __webpack_exports__["default"] = (pusher_Pusher);
 function checkAppKey(key) {
     if (key === null || key === undefined) {
         throw 'You must pass your app key when you instantiate Pusher.';
@@ -26285,18 +26064,18 @@ runtime.setup(pusher_Pusher);
 });
 //# sourceMappingURL=pusher.js.map
 
-/***/ },
+/***/ }),
 
-/***/ "./node_modules/axios/package.json"
+/***/ "./node_modules/axios/package.json":
 /*!*****************************************!*\
   !*** ./node_modules/axios/package.json ***!
   \*****************************************/
-(module) {
+/***/ ((module) => {
 
 "use strict";
-module.exports = /*#__PURE__*/JSON.parse('{"name":"axios","version":"0.21.4","description":"Promise based HTTP client for the browser and node.js","main":"index.js","scripts":{"test":"grunt test","start":"node ./sandbox/server.js","build":"NODE_ENV=production grunt build","preversion":"npm test","version":"npm run build && grunt version && git add -A dist && git add CHANGELOG.md bower.json package.json","postversion":"git push && git push --tags","examples":"node ./examples/server.js","coveralls":"cat coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js","fix":"eslint --fix lib/**/*.js"},"repository":{"type":"git","url":"https://github.com/axios/axios.git"},"keywords":["xhr","http","ajax","promise","node"],"author":"Matt Zabriskie","license":"MIT","bugs":{"url":"https://github.com/axios/axios/issues"},"homepage":"https://axios-http.com","devDependencies":{"coveralls":"^3.0.0","es6-promise":"^4.2.4","grunt":"^1.3.0","grunt-banner":"^0.6.0","grunt-cli":"^1.2.0","grunt-contrib-clean":"^1.1.0","grunt-contrib-watch":"^1.0.0","grunt-eslint":"^23.0.0","grunt-karma":"^4.0.0","grunt-mocha-test":"^0.13.3","grunt-ts":"^6.0.0-beta.19","grunt-webpack":"^4.0.2","istanbul-instrumenter-loader":"^1.0.0","jasmine-core":"^2.4.1","karma":"^6.3.2","karma-chrome-launcher":"^3.1.0","karma-firefox-launcher":"^2.1.0","karma-jasmine":"^1.1.1","karma-jasmine-ajax":"^0.1.13","karma-safari-launcher":"^1.0.0","karma-sauce-launcher":"^4.3.6","karma-sinon":"^1.0.5","karma-sourcemap-loader":"^0.3.8","karma-webpack":"^4.0.2","load-grunt-tasks":"^3.5.2","minimist":"^1.2.0","mocha":"^8.2.1","sinon":"^4.5.0","terser-webpack-plugin":"^4.2.3","typescript":"^4.0.5","url-search-params":"^0.10.0","webpack":"^4.44.2","webpack-dev-server":"^3.11.0"},"browser":{"./lib/adapters/http.js":"./lib/adapters/xhr.js"},"jsdelivr":"dist/axios.min.js","unpkg":"dist/axios.min.js","typings":"./index.d.ts","dependencies":{"follow-redirects":"^1.14.0"},"bundlesize":[{"path":"./dist/axios.min.js","threshold":"5kB"}]}');
+module.exports = JSON.parse('{"name":"axios","version":"0.21.4","description":"Promise based HTTP client for the browser and node.js","main":"index.js","scripts":{"test":"grunt test","start":"node ./sandbox/server.js","build":"NODE_ENV=production grunt build","preversion":"npm test","version":"npm run build && grunt version && git add -A dist && git add CHANGELOG.md bower.json package.json","postversion":"git push && git push --tags","examples":"node ./examples/server.js","coveralls":"cat coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js","fix":"eslint --fix lib/**/*.js"},"repository":{"type":"git","url":"https://github.com/axios/axios.git"},"keywords":["xhr","http","ajax","promise","node"],"author":"Matt Zabriskie","license":"MIT","bugs":{"url":"https://github.com/axios/axios/issues"},"homepage":"https://axios-http.com","devDependencies":{"coveralls":"^3.0.0","es6-promise":"^4.2.4","grunt":"^1.3.0","grunt-banner":"^0.6.0","grunt-cli":"^1.2.0","grunt-contrib-clean":"^1.1.0","grunt-contrib-watch":"^1.0.0","grunt-eslint":"^23.0.0","grunt-karma":"^4.0.0","grunt-mocha-test":"^0.13.3","grunt-ts":"^6.0.0-beta.19","grunt-webpack":"^4.0.2","istanbul-instrumenter-loader":"^1.0.0","jasmine-core":"^2.4.1","karma":"^6.3.2","karma-chrome-launcher":"^3.1.0","karma-firefox-launcher":"^2.1.0","karma-jasmine":"^1.1.1","karma-jasmine-ajax":"^0.1.13","karma-safari-launcher":"^1.0.0","karma-sauce-launcher":"^4.3.6","karma-sinon":"^1.0.5","karma-sourcemap-loader":"^0.3.8","karma-webpack":"^4.0.2","load-grunt-tasks":"^3.5.2","minimist":"^1.2.0","mocha":"^8.2.1","sinon":"^4.5.0","terser-webpack-plugin":"^4.2.3","typescript":"^4.0.5","url-search-params":"^0.10.0","webpack":"^4.44.2","webpack-dev-server":"^3.11.0"},"browser":{"./lib/adapters/http.js":"./lib/adapters/xhr.js"},"jsdelivr":"dist/axios.min.js","unpkg":"dist/axios.min.js","typings":"./index.d.ts","dependencies":{"follow-redirects":"^1.14.0"},"bundlesize":[{"path":"./dist/axios.min.js","threshold":"5kB"}]}');
 
-/***/ }
+/***/ })
 
 /******/ 	});
 /************************************************************************/
@@ -26309,12 +26088,6 @@ module.exports = /*#__PURE__*/JSON.parse('{"name":"axios","version":"0.21.4","de
 /******/ 		var cachedModule = __webpack_module_cache__[moduleId];
 /******/ 		if (cachedModule !== undefined) {
 /******/ 			return cachedModule.exports;
-/******/ 		}
-/******/ 		// Check if module exists (development only)
-/******/ 		if (__webpack_modules__[moduleId] === undefined) {
-/******/ 			var e = new Error("Cannot find module '" + moduleId + "'");
-/******/ 			e.code = 'MODULE_NOT_FOUND';
-/******/ 			throw e;
 /******/ 		}
 /******/ 		// Create a new module (and put it into the cache)
 /******/ 		var module = __webpack_module_cache__[moduleId] = {

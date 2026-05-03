@@ -772,16 +772,19 @@ class ProjectController extends AccountBaseController
      */
     public function taskChartData($id)
     {
-        $taskStatus = Cache::remember('task_board_status_' . company()->id, now()->addMinutes(30), fn() => TaskboardColumn::all());
-        $data['labels'] = $taskStatus->pluck('column_name');
-        $data['colors'] = $taskStatus->pluck('label_color');
-        $data['values'] = [];
+        return Cache::remember('project_task_chart_' . company()->id . '_' . $id, now()->addMinutes(2), function () use ($id) {
+            $taskStatus = Cache::remember('task_board_status_' . company()->id, now()->addMinutes(30), fn() => TaskboardColumn::all());
+            $counts = Task::where('project_id', $id)
+                ->select('board_column_id', DB::raw('COUNT(*) as total'))
+                ->groupBy('board_column_id')
+                ->pluck('total', 'board_column_id');
 
-        foreach ($taskStatus as $label) {
-            $data['values'][] = Task::where('project_id', $id)->where('tasks.board_column_id', $label->id)->count();
-        }
-
-        return $data;
+            return [
+                'labels' => $taskStatus->pluck('column_name'),
+                'colors' => $taskStatus->pluck('label_color'),
+                'values' => $taskStatus->map(fn($column) => (int) ($counts[$column->id] ?? 0))->values()->all(),
+            ];
+        });
     }
 
     /**
@@ -1006,20 +1009,37 @@ class ProjectController extends AccountBaseController
     public function invoiceList(Request $request, $id)
     {
         $options = '<option value="">--</option>';
+        $hasMoreInvoices = false;
 
         $viewPermission = user()->permission('view_invoices');
 
         if (($viewPermission == 'all' || $viewPermission == 'added')) {
+            $perPage = min(200, max(25, (int) $request->get('per_page', 100)));
+            $page = max(1, (int) $request->get('page', 1));
 
             if ($id != 0) {
-                $invoices = Invoice::with('payment', 'currency')->where('project_id', $id)->where('send_status', 1)->pending()->get();
+                $invoiceQuery = Invoice::with(['payment', 'currency'])
+                    ->where('project_id', $id)
+                    ->where('send_status', 1)
+                    ->pending()
+                    ->orderByDesc('id');
             }
             else {
-                $invoices = Invoice::with('payment')->where('send_status', 1)
+                $invoiceQuery = Invoice::with(['payment', 'currency'])->where('send_status', 1)
                     ->where(function ($q) {
                         $q->where('status', 'unpaid')
                             ->orWhere('status', 'partial');
-                    })->get();
+                    })
+                    ->orderByDesc('id');
+            }
+
+            if ($request->has('page') || $request->has('per_page')) {
+                $invoicePaginator = $invoiceQuery->paginate($perPage, ['*'], 'page', $page);
+                $invoices = collect($invoicePaginator->items());
+                $hasMoreInvoices = $invoicePaginator->hasMorePages();
+            }
+            else {
+                $invoices = $invoiceQuery->get();
             }
 
             foreach ($invoices as $item) {
@@ -1056,7 +1076,7 @@ class ProjectController extends AccountBaseController
 
         $exchangeRate = Currency::where('id', $request->currencyId)->pluck('exchange_rate')->toArray();
 
-        return Reply::dataOnly(['status' => 'success', 'data' => $options, 'account' => $bankData, 'exchangeRate' => $exchangeRate]);
+        return Reply::dataOnly(['status' => 'success', 'data' => $options, 'account' => $bankData, 'exchangeRate' => $exchangeRate, 'hasMoreInvoices' => $hasMoreInvoices]);
     }
 
     /**

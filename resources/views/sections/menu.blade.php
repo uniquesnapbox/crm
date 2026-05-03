@@ -1,3 +1,7 @@
+@php
+    $currentRouteName = $currentRouteName ?? optional(request()->route())->getName() ?? '';
+@endphp
+
 <ul>
     <!-- NAV ITEM - DASHBOARD COLLAPSE MENU-->
     @if (in_array('admin', user_roles())
