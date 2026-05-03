@@ -388,23 +388,23 @@ class GlobalSetting extends BaseModel
 
     public function getLogoUrlAttribute()
     {
-        return asset('img/USB CRM-logo.png');
+        return $this->resolvedBrandLogoUrl();
 
     }
 
     public function defaultLogo()
     {
-        return asset('img/USB CRM-logo.png');
+        return $this->resolvedBrandLogoUrl();
     }
 
     public function getLightLogoUrlAttribute()
     {
-        return asset('img/USB CRM-logo.png');
+        return $this->resolvedBrandLogoUrl();
     }
 
     public function getDarkLogoUrlAttribute()
     {
-        return asset('img/USB CRM-logo.png');
+        return $this->resolvedBrandLogoUrl();
     }
 
     public function getLoginBackgroundUrlAttribute()
@@ -421,7 +421,7 @@ class GlobalSetting extends BaseModel
     {
         return Attribute::make(
             get: function () {
-                return asset('img/USB CRM-logo.png');
+                return $this->resolvedBrandLogoUrl();
             },
         );
 
@@ -431,7 +431,7 @@ class GlobalSetting extends BaseModel
     {
         return Attribute::make(
             get: function () {
-                return asset('img/USB CRM-logo.png');
+                return $this->resolvedBrandLogoUrl();
             },
         );
     }
@@ -440,7 +440,7 @@ class GlobalSetting extends BaseModel
     {
         return Attribute::make(
             get: function () {
-                return asset('img/USB CRM-logo.png');
+                return $this->resolvedBrandLogoUrl();
             },
         );
 
@@ -450,10 +450,29 @@ class GlobalSetting extends BaseModel
     {
         return Attribute::make(
             get: function () {
-                return asset('img/USB CRM-logo.png');
+                return $this->resolvedBrandLogoUrl();
             },
         );
 
+    }
+
+    private function resolvedBrandLogoUrl(): string
+    {
+        $candidates = [
+            'img/USB CRM-logo.png',
+            'img/square-logo-header.png',
+            'img/full-logo-header.png',
+            'img/worksuite-logo.png',
+            'img/logo.png',
+        ];
+
+        foreach ($candidates as $path) {
+            if (file_exists(public_path($path))) {
+                return asset($path);
+            }
+        }
+
+        return asset('favicon.png');
     }
 
     public function maskedLoginBackgroundUrl(): Attribute

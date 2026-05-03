@@ -23,6 +23,7 @@ use Illuminate\Foundation\Auth\Access\Authorizable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 use Laravel\Fortify\TwoFactorAuthenticatable;
@@ -275,15 +276,42 @@ class User extends BaseModel implements AuthenticatableContract, AuthorizableCon
     public function getImageUrlAttribute()
     {
         $gravatarHash = !is_null($this->email) ? md5(strtolower(trim($this->email))) : md5($this->id);
+        $fallbackImage = asset('img/avatar.png');
 
-        return ($this->image) ? asset_url_local_s3('avatar/' . $this->image) : 'https://www.gravatar.com/avatar/' . $gravatarHash . '.png?s=200&d=mp';
+        if ($this->image) {
+            if (config('filesystems.default') === 'local') {
+                $localPath = public_path('user-uploads/avatar/' . $this->image);
+
+                return File::exists($localPath)
+                    ? asset_url_local_s3('avatar/' . $this->image)
+                    : $fallbackImage;
+            }
+
+            return asset_url_local_s3('avatar/' . $this->image);
+        }
+
+        return $fallbackImage;
     }
 
     public function maskedImageUrl(): Attribute
     {
         return Attribute::make(
             get: function () {
-                return ($this->image) ? $this->generateMaskedImageAppUrl('avatar/' . $this->image) : 'https://www.gravatar.com/avatar/' . md5($this->id) . '.png?s=200&d=mp';
+                $fallbackImage = asset('img/avatar.png');
+
+                if ($this->image) {
+                    if (config('filesystems.default') === 'local') {
+                        $localPath = public_path('user-uploads/avatar/' . $this->image);
+
+                        return File::exists($localPath)
+                            ? $this->generateMaskedImageAppUrl('avatar/' . $this->image)
+                            : $fallbackImage;
+                    }
+
+                    return $this->generateMaskedImageAppUrl('avatar/' . $this->image);
+                }
+
+                return $fallbackImage;
             },
         );
 
