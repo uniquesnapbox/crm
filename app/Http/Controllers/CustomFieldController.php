@@ -136,6 +136,9 @@ class CustomFieldController extends AccountBaseController
     {
         $this->customFieldGroups = CustomFieldGroup::all();
         $this->types = ['text', 'number', 'password', 'textarea', 'select', 'radio', 'date', 'checkbox', 'file'];
+        $this->selectedModuleId = (int) request('module_id', 0);
+        $this->lockModule = request()->boolean('lock_module');
+
         return view('custom-fields.create-custom-field-modal', $this->data);
     }
 

@@ -756,6 +756,7 @@ Route::group(['middleware' => 'auth:sanctum,web', 'prefix' => 'account'], functi
 
     // Ticket Custom Embed From
     Route::post('ticket-form/sort-fields', [TicketCustomFormController::class, 'sortFields'])->name('ticket-form.sort_fields');
+    Route::post('ticket-form/update-form-status', [TicketCustomFormController::class, 'updateFormStatus'])->name('ticket-form.update_form_status');
     Route::resource('ticket-form', TicketCustomFormController::class);
 
     Route::get('ticket-files/download/{id}', [TicketFileController::class, 'download'])->name('ticket-files.download');
