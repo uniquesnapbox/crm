@@ -33,13 +33,24 @@ class WhatsappSettingController extends AccountBaseController
         ]);
 
         $setting->status = 'active';
-        $setting->send_lead_created_message = 'yes';
+        $setting->send_lead_created_message = $request->has('send_lead_created_message') ? 'yes' : 'no';
+        $setting->send_lead_interest_message = $request->has('send_lead_interest_message') ? 'yes' : 'no';
+        $setting->send_ticket_message = $request->has('send_ticket_message') ? 'yes' : 'no';
+        $setting->send_ticket_assigned_staff_message = $request->has('send_ticket_assigned_staff_message') ? 'yes' : 'no';
+        $setting->send_ticket_assigned_client_message = $request->has('send_ticket_assigned_client_message') ? 'yes' : 'no';
+        $setting->send_ticket_resolved_client_message = $request->has('send_ticket_resolved_client_message') ? 'yes' : 'no';
+        $setting->send_task_assigned_message = $request->has('send_task_assigned_message') ? 'yes' : 'no';
+        $setting->send_task_daily_pending_message = $request->has('send_task_daily_pending_message') ? 'yes' : 'no';
+        $setting->send_task_completed_message = $request->has('send_task_completed_message') ? 'yes' : 'no';
         $setting->lead_created_template = trim((string) ($request->lead_created_template ?: WhatsappNotificationSetting::DEFAULT_LEAD_CREATED_TEMPLATE));
+        $setting->lead_interest_template = trim((string) ($request->lead_interest_template ?: WhatsappNotificationSetting::DEFAULT_LEAD_INTEREST_TEMPLATE));
         $setting->lead_created_sender_number = preg_replace('/\D+/', '', (string) $request->lead_created_sender_number);
-        $setting->ticket_assigned_staff_template = trim((string) ($request->ticket_assigned_staff_template ?: 'A new ticket has been assigned to you. Ticket #{{ticket_number}}: {{subject}}'));
-        $setting->ticket_assigned_client_template = trim((string) ($request->ticket_assigned_client_template ?: 'Your ticket #{{ticket_number}} has been forwarded to our team. We will get back to you soon.'));
-        $setting->ticket_resolved_client_template = trim((string) ($request->ticket_resolved_client_template ?: 'Your ticket #{{ticket_number}} has been resolved. If you need anything else, please let us know.'));
-        $setting->task_assigned_staff_template = trim((string) ($request->task_assigned_staff_template ?: 'A new task has been assigned to you. Task: {{task_heading}}'));
+        $setting->ticket_assigned_staff_template = trim((string) ($request->ticket_assigned_staff_template ?: WhatsappNotificationSetting::DEFAULT_TICKET_ASSIGNED_STAFF_TEMPLATE));
+        $setting->ticket_assigned_client_template = trim((string) ($request->ticket_assigned_client_template ?: WhatsappNotificationSetting::DEFAULT_TICKET_ASSIGNED_CLIENT_TEMPLATE));
+        $setting->ticket_resolved_client_template = trim((string) ($request->ticket_resolved_client_template ?: WhatsappNotificationSetting::DEFAULT_TICKET_RESOLVED_CLIENT_TEMPLATE));
+        $setting->task_assigned_staff_template = trim((string) ($request->task_assigned_staff_template ?: WhatsappNotificationSetting::DEFAULT_TASK_ASSIGNED_TEMPLATE));
+        $setting->task_daily_pending_template = trim((string) ($request->task_daily_pending_template ?: WhatsappNotificationSetting::DEFAULT_TASK_DAILY_PENDING_TEMPLATE));
+        $setting->task_completed_template = trim((string) ($request->task_completed_template ?: WhatsappNotificationSetting::DEFAULT_TASK_COMPLETED_TEMPLATE));
         $setting->save();
 
         session()->forget('whatsapp_setting');

@@ -51,7 +51,12 @@ class LeadObserver
     {
         if (!isRunningInConsoleOrSeeding()) {
             $this->logLeadCreated($leadContact);
-            app(LeadWhatsAppNotificationService::class)->sendLeadCreatedMessage($leadContact);
+            $leadWhatsAppService = app(LeadWhatsAppNotificationService::class);
+            $leadWhatsAppService->sendLeadCreatedMessage($leadContact);
+
+            if (filled((string) $leadContact->products_services)) {
+                $leadWhatsAppService->sendLeadProductInterestMessage($leadContact);
+            }
 
             try {
                 event(new LeadEvent($leadContact, 'NewLeadCreated'));
@@ -68,6 +73,10 @@ class LeadObserver
     public function updated(Lead $lead): void
     {
         $this->logLeadFieldChanges($lead);
+
+        if (!isRunningInConsoleOrSeeding() && $lead->wasChanged('products_services') && filled((string) $lead->products_services)) {
+            app(LeadWhatsAppNotificationService::class)->sendLeadProductInterestMessage($lead);
+        }
     }
 
     public function deleting(Lead $leadContact)

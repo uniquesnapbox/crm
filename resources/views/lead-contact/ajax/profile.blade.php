@@ -710,8 +710,6 @@
                                         <option value="high" @selected($leadContact->interest_level === 'high')>High</option>
                                         <option value="very_high" @selected($leadContact->interest_level === 'very_high')>Very High</option>
                                     </select>
-                                    <button type="button" class="btn-inline-add js-inline-create-option"
-                                        data-fixed="1" data-message="Interest level has fixed values." title="Fixed list">+</button>
                                 </div>
                                 <small class="text-muted d-none js-inline-save-state"></small>
                             </div>
@@ -751,8 +749,6 @@
                                         <option value="connected" @selected($leadContact->contact_status === 'connected')>Connected</option>
                                         <option value="not_connected" @selected($leadContact->contact_status === 'not_connected')>Not Connected</option>
                                     </select>
-                                    <button type="button" class="btn-inline-add js-inline-create-option"
-                                        data-fixed="1" data-message="Lead contact status has fixed values." title="Fixed list">+</button>
                                 </div>
                                 <small class="text-muted d-none js-inline-save-state"></small>
                             @else
@@ -1038,6 +1034,22 @@
                 } else {
                     Swal.fire({ icon: 'info', title: 'Info', text: infoMessage });
                 }
+                return;
+            }
+
+            // Product create endpoint returns JSON payload for Right Modal flow.
+            // Opening it with $.ajaxModal shows raw JSON, so route it via openRightModal handler.
+            if (createUrl.indexOf('products/create') !== -1) {
+                const $tempLink = $('<a/>', {
+                    href: createUrl,
+                    class: 'openRightModal d-none js-temp-right-modal-link'
+                });
+
+                $('body').append($tempLink);
+                $tempLink.trigger('click');
+                setTimeout(function() {
+                    $tempLink.remove();
+                }, 0);
                 return;
             }
 

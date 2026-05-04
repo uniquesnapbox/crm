@@ -8,6 +8,7 @@ use App\Models\LeadStatus;
 use App\Models\CustomField;
 use App\Models\CustomFieldGroup;
 use App\Models\Lead;
+use App\Models\User;
 use Yajra\DataTables\Html\Button;
 use Yajra\DataTables\Html\Column;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +22,7 @@ class LeadContactDataTable extends BaseDataTable
     private $addFollowUpPermission;
     private $changeLeadStatusPermission;
     private $viewLeadPermission;
+    private $employees;
 
     /**
      * @var LeadStatus[]|\Illuminate\Database\Eloquent\Collection
@@ -37,6 +39,7 @@ class LeadContactDataTable extends BaseDataTable
         $this->changeLeadStatusPermission = user()->permission('change_deal_stages');
         $this->viewLeadFollowUpPermission = user()->permission('view_lead_follow_up');
         $this->status = LeadStatus::get();
+        $this->employees = User::allEmployees();
     }
 
     /**
@@ -89,48 +92,12 @@ class LeadContactDataTable extends BaseDataTable
         $datatables->addColumn('lead_value', fn($row) => currency_format($row->value, $row->currency_id));
         $datatables->addColumn('name', fn($row) => $row->client_name);
         $datatables->addColumn('added_by', fn($row) => $row->addedBy->name ?? '--');
-        $datatables->addColumn('assigned_to', fn($row) => $row->assignedTo->name ?? '--');
+        $datatables->addColumn('assigned_to', fn($row) => $this->renderAssignedToColumn($row));
         $datatables->addColumn('email', fn($row) => $row->client_email);
         $datatables->addColumn('mobile', fn($row) => $row->mobile ?: '--');
         $datatables->addColumn('category_name', fn($row) => $row->category?->category_name);
-        $datatables->addColumn('lead_status', function ($row) {
-            $leadStatus = trim((string) ($row->lead_status_type ?? ''));
-            $contactStatus = trim((string) ($row->contact_status ?? ''));
-
-            if ($leadStatus !== '') {
-                $statusText = e($leadStatus);
-                $labelColor = $row->lead_status_color ?: '#4f6fad';
-            } else {
-                $mapped = match ($contactStatus) {
-                    'connected' => ['Connected', '#16a34a'],
-                    'not_connected' => ['Not Connected', '#dc2626'],
-                    'pending' => ['Pending', '#ca8a04'],
-                    default => ['Not Set', '#8f9bb3'],
-                };
-
-                $statusText = e($mapped[0]);
-                $labelColor = $mapped[1];
-            }
-
-            return '<span class="badge" style="background:' . e($labelColor) . '; color:#fff; font-weight:600; border-radius:999px; padding:3px 10px;">' . $statusText . '</span>';
-        });
-        $datatables->addColumn('interest_level', function ($row) {
-            $interestLevel = trim((string) ($row->interest_level ?? ''));
-
-            if ($interestLevel === '') {
-                return '<span class="badge badge-light" style="border-radius:999px; padding:3px 10px;">--</span>';
-            }
-
-            $mapped = match ($interestLevel) {
-                'low' => ['Low', '#64748b'],
-                'medium' => ['Medium', '#2563eb'],
-                'high' => ['High', '#ea580c'],
-                'very_high' => ['Very High', '#16a34a'],
-                default => [str($interestLevel)->replace('_', ' ')->title(), '#4f6fad'],
-            };
-
-            return '<span class="badge" style="background:' . e($mapped[1]) . '; color:#fff; font-weight:600; border-radius:999px; padding:3px 10px;">' . e($mapped[0]) . '</span>';
-        });
+        $datatables->addColumn('lead_status', fn($row) => $this->renderLeadStatusColumn($row));
+        $datatables->addColumn('interest_level', fn($row) => $this->renderInterestLevelColumn($row));
 
         $datatables->editColumn('client_name', function ($row) {
             if ($row->client_id != null && $row->client_id != '') {
@@ -162,7 +129,7 @@ class LeadContactDataTable extends BaseDataTable
 
         $customFieldColumns = CustomField::customFieldData($datatables, Lead::CUSTOM_FIELD_MODEL);
 
-        $datatables->rawColumns(array_merge(['action', 'client_name', 'check', 'lead_status', 'interest_level'], $customFieldColumns));
+        $datatables->rawColumns(array_merge(['action', 'client_name', 'check', 'lead_status', 'interest_level', 'assigned_to'], $customFieldColumns));
 
         return $datatables;
     }
@@ -288,7 +255,6 @@ class LeadContactDataTable extends BaseDataTable
                     $("body").tooltip({
                         selector: \'[data-toggle="tooltip"]\'
                     });
-                    $(".statusChange").selectpicker();
                 }',
             ]);
 
@@ -326,6 +292,7 @@ class LeadContactDataTable extends BaseDataTable
             __('app.email') . ' ' . __('modules.lead.email') => ['data' => 'export_email', 'name' => 'leads.client_email', 'title' => __('app.lead') . ' ' . __('modules.lead.email'), 'exportable' => true, 'visible' => false],
             __('modules.lead.leadCategory') => ['data' => 'category_name', 'name' => 'category_name', 'exportable' => true, 'visible' => false, 'title' => __('modules.lead.leadCategory')],
             __('app.addedBy') => ['data' => 'added_by', 'name' => 'added_by', 'exportable' => true, 'title' => __('app.addedBy')],
+            __('modules.tasks.assignTo') => ['data' => 'assigned_to', 'name' => 'leads.assigned_to', 'exportable' => false, 'title' => __('modules.tasks.assignTo')],
             __('app.createdOn') => ['data' => 'created_at', 'name' => 'leads.created_at', 'title' => __('app.createdOn')],
         ];
 
@@ -341,6 +308,123 @@ class LeadContactDataTable extends BaseDataTable
 
         return array_merge($data, CustomFieldGroup::customFieldsDataMerge(new Lead()), $action);
 
+    }
+
+    private function canInlineEdit($row): bool
+    {
+        return $this->editLeadPermission == 'all'
+            || ($this->editLeadPermission == 'added' && user()->id == $row->added_by)
+            || ($this->editLeadPermission == 'owned' && user()->id == $row->assigned_to)
+            || ($this->editLeadPermission == 'both' && (user()->id == $row->added_by || user()->id == $row->assigned_to))
+            || user()->id == $row->added_by
+            || user()->id == $row->assigned_to;
+    }
+
+    private function renderLeadStatusColumn($row): string
+    {
+        if (!$this->canInlineEdit($row)) {
+            $leadStatus = trim((string) ($row->lead_status_type ?? ''));
+            $contactStatus = trim((string) ($row->contact_status ?? ''));
+
+            if ($leadStatus !== '') {
+                $statusText = e($leadStatus);
+                $labelColor = $row->lead_status_color ?: '#4f6fad';
+            } else {
+                $mapped = match ($contactStatus) {
+                    'connected' => ['Connected', '#16a34a'],
+                    'not_connected' => ['Not Connected', '#dc2626'],
+                    'pending' => ['Pending', '#ca8a04'],
+                    default => ['Not Set', '#8f9bb3'],
+                };
+
+                $statusText = e($mapped[0]);
+                $labelColor = $mapped[1];
+            }
+
+            return '<span class="badge" style="background:' . e($labelColor) . '; color:#fff; font-weight:600; border-radius:999px; padding:3px 10px;">' . $statusText . '</span>';
+        }
+
+        $url = route('lead-contact.quick_update', $row->id);
+        $selectedValue = (string) ($row->status_id ?? '');
+        $options = '<option value="">Not Set</option>';
+
+        foreach ($this->status as $status) {
+            $statusId = (string) $status->id;
+            $selected = $selectedValue === $statusId ? ' selected' : '';
+            $options .= '<option value="' . e($statusId) . '"' . $selected . '>' . e($status->type) . '</option>';
+        }
+
+        return '<div class="lead-inline-select-wrap">' .
+            '<select class="form-control form-control-sm js-lead-table-inline-select" style="min-width:140px;" data-field="status_id" data-prev-value="' . e($selectedValue) . '" data-url="' . e($url) . '" data-id="' . (int) $row->id . '">' .
+            $options .
+            '</select>' .
+            '</div>';
+    }
+
+    private function renderInterestLevelColumn($row): string
+    {
+        $interestLevel = trim((string) ($row->interest_level ?? ''));
+
+        if (!$this->canInlineEdit($row)) {
+            if ($interestLevel === '') {
+                return '<span class="badge badge-light" style="border-radius:999px; padding:3px 10px;">--</span>';
+            }
+
+            $mapped = match ($interestLevel) {
+                'low' => ['Low', '#64748b'],
+                'medium' => ['Medium', '#2563eb'],
+                'high' => ['High', '#ea580c'],
+                'very_high' => ['Very High', '#16a34a'],
+                default => [str($interestLevel)->replace('_', ' ')->title(), '#4f6fad'],
+            };
+
+            return '<span class="badge" style="background:' . e($mapped[1]) . '; color:#fff; font-weight:600; border-radius:999px; padding:3px 10px;">' . e($mapped[0]) . '</span>';
+        }
+
+        $url = route('lead-contact.quick_update', $row->id);
+        $selectedValue = $interestLevel;
+        $options = [
+            '' => '--',
+            'low' => 'Low',
+            'medium' => 'Medium',
+            'high' => 'High',
+            'very_high' => 'Very High',
+        ];
+
+        $htmlOptions = '';
+        foreach ($options as $value => $label) {
+            $selected = $selectedValue === $value ? ' selected' : '';
+            $htmlOptions .= '<option value="' . e($value) . '"' . $selected . '>' . e($label) . '</option>';
+        }
+
+        return '<div class="lead-inline-select-wrap">' .
+            '<select class="form-control form-control-sm js-lead-table-inline-select" style="min-width:120px;" data-field="interest_level" data-prev-value="' . e($selectedValue) . '" data-url="' . e($url) . '" data-id="' . (int) $row->id . '">' .
+            $htmlOptions .
+            '</select>' .
+            '</div>';
+    }
+
+    private function renderAssignedToColumn($row): string
+    {
+        if (!$this->canInlineEdit($row)) {
+            return e($row->assignedTo->name ?? '--');
+        }
+
+        $url = route('lead-contact.quick_update', $row->id);
+        $selectedValue = (string) ($row->assigned_to ?? '');
+        $options = '<option value="">Unassigned</option>';
+
+        foreach ($this->employees as $employee) {
+            $employeeId = (string) $employee->id;
+            $selected = $selectedValue === $employeeId ? ' selected' : '';
+            $options .= '<option value="' . e($employeeId) . '"' . $selected . '>' . e($employee->name) . '</option>';
+        }
+
+        return '<div class="lead-inline-select-wrap">' .
+            '<select class="form-control form-control-sm js-lead-table-inline-select" style="min-width:150px;" data-field="assigned_to" data-prev-value="' . e($selectedValue) . '" data-url="' . e($url) . '" data-id="' . (int) $row->id . '">' .
+            $options .
+            '</select>' .
+            '</div>';
     }
 
 }

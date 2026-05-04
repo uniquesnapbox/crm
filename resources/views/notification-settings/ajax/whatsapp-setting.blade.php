@@ -1,3 +1,60 @@
+<style>
+    .wa-section-card {
+        border: 1px solid #e9ecef;
+        border-radius: 10px;
+        background: #fff;
+        padding: 14px;
+    }
+
+    .wa-section-title {
+        font-size: 15px;
+        font-weight: 600;
+        color: #2f3a4a;
+        margin-bottom: 2px;
+    }
+
+    .wa-section-subtitle {
+        font-size: 12px;
+        color: #6c757d;
+        margin-bottom: 10px;
+    }
+
+    .wa-msg-card {
+        border: 1px solid #e8ebf0;
+        border-radius: 8px;
+        background: #fafbfd;
+        padding: 12px;
+        height: 100%;
+    }
+
+    .wa-msg-card .form-group {
+        margin-top: 0 !important;
+        margin-bottom: 8px !important;
+    }
+
+    .wa-msg-card .form-group:last-child {
+        margin-bottom: 0 !important;
+    }
+
+    .wa-msg-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #2f3a4a;
+        margin-bottom: 2px;
+    }
+
+    .wa-placeholder {
+        font-size: 12px;
+        color: #6c757d;
+        line-height: 1.35;
+        margin-top: 4px;
+    }
+
+    .wa-grid-gap {
+        row-gap: 12px;
+    }
+</style>
+
 <div class="col-xl-8 col-lg-12 col-md-12 ntfcn-tab-content-left w-100 p-4 ">
     <div class="row" id="whatsapp-row">
         <div class="col-lg-12">
@@ -43,63 +100,153 @@
                         fieldId="lead_created_sender_number"
                         :fieldValue="$whatsappSettings->lead_created_sender_number ?: config('app.admin_whatsapp', '')"
                         :fieldPlaceholder="'Defaults to admin WhatsApp number'" />
-                    <div class="text-muted f-12 mt-1">
-                        If left empty, the system uses <code>ADMIN_WHATSAPP</code>. This number is also used as the WhatsApp service session key.
-                    </div>
+                    <div class="wa-placeholder">If left empty, system uses <code>ADMIN_WHATSAPP</code> and the same value is used as session key.</div>
                 </div>
 
-                <div class="col-lg-12 mt-3">
-                    <x-forms.textarea :fieldLabel="'Lead Creation Message Template'" fieldName="lead_created_template"
-                        fieldId="lead_created_template" fieldRequired="true"
-                        :fieldValue="$whatsappSettings->lead_created_template ?: \App\Models\WhatsappNotificationSetting::DEFAULT_LEAD_CREATED_TEMPLATE"
-                        fieldPlaceholder="Hello @{{client_name}}, thank you for your interest." />
-                    <div class="text-muted f-12 mt-1">
-                        Available placeholders: <code>@{{client_name}}</code>, <code>@{{company_name}}</code>, <code>@{{email}}</code>, <code>@{{mobile}}</code>, <code>@{{lead_id}}</code>, <code>@{{created_by}}</code>
-                    </div>
-                    <div class="text-muted f-12 mt-1">
-                        The actual sending account must be logged in inside the WhatsApp service session for this same sender number.
+                <div class="col-lg-12 mt-4">
+                    <div class="wa-section-title">Lead Messages</div>
+                    <div class="wa-section-subtitle">Messages sent on lead creation and product-interest updates.</div>
+                    <div class="row wa-grid-gap">
+                        <div class="col-md-6">
+                            <div class="wa-msg-card">
+                                <div class="wa-msg-title">Lead Creation Message</div>
+                                <x-forms.toggle-switch class="mb-2 mt-0"
+                                    :checked="($whatsappSettings->send_lead_created_message ?? 'yes') === 'yes'"
+                                    :fieldLabel="'Enable'" fieldName="send_lead_created_message"
+                                    fieldId="send_lead_created_message" />
+                                <x-forms.textarea :fieldLabel="'Template'" fieldName="lead_created_template"
+                                    fieldId="lead_created_template" fieldRequired="true"
+                                    :fieldValue="$whatsappSettings->lead_created_template ?: \App\Models\WhatsappNotificationSetting::DEFAULT_LEAD_CREATED_TEMPLATE"
+                                    fieldPlaceholder="Hello @{{client_name}}, thank you for your interest." />
+                                <div class="wa-placeholder">
+                                    Placeholders: <code>@{{client_name}}</code>, <code>@{{company_name}}</code>, <code>@{{email}}</code>, <code>@{{mobile}}</code>, <code>@{{lead_id}}</code>, <code>@{{created_by}}</code>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="wa-msg-card">
+                                <div class="wa-msg-title">Lead Product-Interest Message</div>
+                                <x-forms.toggle-switch class="mb-2 mt-0"
+                                    :checked="($whatsappSettings->send_lead_interest_message ?? 'yes') === 'yes'"
+                                    :fieldLabel="'Enable'" fieldName="send_lead_interest_message"
+                                    fieldId="send_lead_interest_message" />
+                                <x-forms.textarea :fieldLabel="'Template'" fieldName="lead_interest_template"
+                                    fieldId="lead_interest_template" fieldRequired="true"
+                                    :fieldValue="$whatsappSettings->lead_interest_template ?: \App\Models\WhatsappNotificationSetting::DEFAULT_LEAD_INTEREST_TEMPLATE"
+                                    fieldPlaceholder="Hello @{{client_name}}, thank you for sharing your interest in @{{products_services}}." />
+                                <div class="wa-placeholder">
+                                    Placeholders: <code>@{{client_name}}</code>, <code>@{{products_services}}</code>, <code>@{{company_name}}</code>, <code>@{{mobile}}</code>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 <div class="col-lg-12 mt-4">
-                    <h5 class="text-dark-grey f-15 mb-3">Ticket WhatsApp Templates</h5>
-                </div>
-
-                <div class="col-lg-12 mt-2">
-                    <x-forms.textarea :fieldLabel="'Ticket Assigned Message for Staff'" fieldName="ticket_assigned_staff_template"
-                        fieldId="ticket_assigned_staff_template" fieldRequired="true"
-                        :fieldValue="$whatsappSettings->ticket_assigned_staff_template ?: 'A new ticket has been assigned to you. Ticket #{{ticket_number}}: {{subject}}'"
-                        fieldPlaceholder="A new ticket has been assigned to you. Ticket #@{{ticket_number}}: @{{subject}}" />
-                </div>
-
-                <div class="col-lg-12 mt-3">
-                    <x-forms.textarea :fieldLabel="'Ticket Assigned Message for Client'" fieldName="ticket_assigned_client_template"
-                        fieldId="ticket_assigned_client_template" fieldRequired="true"
-                        :fieldValue="$whatsappSettings->ticket_assigned_client_template ?: 'Your ticket #{{ticket_number}} has been forwarded to our team. We will get back to you soon.'"
-                        fieldPlaceholder="Your ticket #@{{ticket_number}} has been forwarded to our team." />
-                </div>
-
-                <div class="col-lg-12 mt-3">
-                    <x-forms.textarea :fieldLabel="'Ticket Resolved Message for Client'" fieldName="ticket_resolved_client_template"
-                        fieldId="ticket_resolved_client_template" fieldRequired="true"
-                        :fieldValue="$whatsappSettings->ticket_resolved_client_template ?: 'Your ticket #{{ticket_number}} has been resolved. If you need anything else, please let us know.'"
-                        fieldPlaceholder="Your ticket #@{{ticket_number}} has been resolved." />
-                    <div class="text-muted f-12 mt-1">
-                        Available placeholders: <code>@{{ticket_number}}</code>, <code>@{{subject}}</code>, <code>@{{status}}</code>, <code>@{{priority}}</code>, <code>@{{agent_name}}</code>, <code>@{{client_name}}</code>
+                    <div class="wa-section-title">Ticket Messages</div>
+                    <div class="wa-section-subtitle">Messages for ticket assignment and ticket resolution.</div>
+                    <x-forms.toggle-switch class="mb-2 mt-0"
+                        :checked="($whatsappSettings->send_ticket_message ?? 'yes') === 'yes'"
+                        :fieldLabel="'Enable Ticket WhatsApp Messages'" fieldName="send_ticket_message"
+                        fieldId="send_ticket_message" />
+                    <div class="row wa-grid-gap">
+                        <div class="col-md-6">
+                            <div class="wa-msg-card">
+                                <div class="wa-msg-title">Assigned Message for Staff</div>
+                                <x-forms.toggle-switch class="mb-2 mt-0"
+                                    :checked="($whatsappSettings->send_ticket_assigned_staff_message ?? 'yes') === 'yes'"
+                                    :fieldLabel="'Enable'" fieldName="send_ticket_assigned_staff_message"
+                                    fieldId="send_ticket_assigned_staff_message" />
+                                <x-forms.textarea :fieldLabel="'Template'" fieldName="ticket_assigned_staff_template"
+                                    fieldId="ticket_assigned_staff_template" fieldRequired="true"
+                                    :fieldValue="$whatsappSettings->ticket_assigned_staff_template ?: \App\Models\WhatsappNotificationSetting::DEFAULT_TICKET_ASSIGNED_STAFF_TEMPLATE"
+                                    fieldPlaceholder="A new ticket has been assigned to you. Ticket #@{{ticket_number}}: @{{subject}}" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="wa-msg-card">
+                                <div class="wa-msg-title">Resolved Message for Client</div>
+                                <x-forms.toggle-switch class="mb-2 mt-0"
+                                    :checked="($whatsappSettings->send_ticket_resolved_client_message ?? 'yes') === 'yes'"
+                                    :fieldLabel="'Enable'" fieldName="send_ticket_resolved_client_message"
+                                    fieldId="send_ticket_resolved_client_message" />
+                                <x-forms.textarea :fieldLabel="'Template'" fieldName="ticket_resolved_client_template"
+                                    fieldId="ticket_resolved_client_template" fieldRequired="true"
+                                    :fieldValue="$whatsappSettings->ticket_resolved_client_template ?: \App\Models\WhatsappNotificationSetting::DEFAULT_TICKET_RESOLVED_CLIENT_TEMPLATE"
+                                    fieldPlaceholder="Your ticket #@{{ticket_number}} has been resolved." />
+                                <div class="wa-placeholder">
+                                    Placeholders: <code>@{{ticket_number}}</code>, <code>@{{subject}}</code>, <code>@{{status}}</code>, <code>@{{priority}}</code>, <code>@{{agent_name}}</code>, <code>@{{client_name}}</code>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="wa-msg-card">
+                                <div class="wa-msg-title">Assigned Message for Client</div>
+                                <x-forms.toggle-switch class="mb-2 mt-0"
+                                    :checked="($whatsappSettings->send_ticket_assigned_client_message ?? 'yes') === 'yes'"
+                                    :fieldLabel="'Enable'" fieldName="send_ticket_assigned_client_message"
+                                    fieldId="send_ticket_assigned_client_message" />
+                                <x-forms.textarea :fieldLabel="'Template'" fieldName="ticket_assigned_client_template"
+                                    fieldId="ticket_assigned_client_template" fieldRequired="true"
+                                    :fieldValue="$whatsappSettings->ticket_assigned_client_template ?: \App\Models\WhatsappNotificationSetting::DEFAULT_TICKET_ASSIGNED_CLIENT_TEMPLATE"
+                                    fieldPlaceholder="Your ticket #@{{ticket_number}} has been forwarded to our team." />
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 <div class="col-lg-12 mt-4">
-                    <h5 class="text-dark-grey f-15 mb-3">Task WhatsApp Templates</h5>
-                </div>
-
-                <div class="col-lg-12 mt-2">
-                    <x-forms.textarea :fieldLabel="'Task Assigned Message for Staff'" fieldName="task_assigned_staff_template"
-                        fieldId="task_assigned_staff_template" fieldRequired="true"
-                        :fieldValue="$whatsappSettings->task_assigned_staff_template ?: \App\Models\WhatsappNotificationSetting::DEFAULT_TASK_ASSIGNED_TEMPLATE"
-                        fieldPlaceholder="A new task has been assigned to you. Task: @{{task_heading}}" />
-                    <div class="text-muted f-12 mt-1">
-                        Available placeholders: <code>@{{task_heading}}</code>, <code>@{{task_id}}</code>, <code>@{{project_name}}</code>, <code>@{{due_date}}</code>, <code>@{{task_status}}</code>, <code>@{{assigned_by}}</code>
+                    <div class="wa-section-title">Task Messages</div>
+                    <div class="wa-section-subtitle">Messages for assignment, pending summary, and completion.</div>
+                    <div class="row wa-grid-gap">
+                        <div class="col-md-6">
+                            <div class="wa-msg-card">
+                                <div class="wa-msg-title">Assigned Message for Staff</div>
+                                <x-forms.toggle-switch class="mb-2 mt-0"
+                                    :checked="($whatsappSettings->send_task_assigned_message ?? 'yes') === 'yes'"
+                                    :fieldLabel="'Enable'" fieldName="send_task_assigned_message"
+                                    fieldId="send_task_assigned_message" />
+                                <x-forms.textarea :fieldLabel="'Template'" fieldName="task_assigned_staff_template"
+                                    fieldId="task_assigned_staff_template" fieldRequired="true"
+                                    :fieldValue="$whatsappSettings->task_assigned_staff_template ?: \App\Models\WhatsappNotificationSetting::DEFAULT_TASK_ASSIGNED_TEMPLATE"
+                                    fieldPlaceholder="A new task has been assigned to you. Task: @{{task_heading}}" />
+                                <div class="wa-placeholder">
+                                    Placeholders: <code>@{{task_heading}}</code>, <code>@{{task_id}}</code>, <code>@{{project_name}}</code>, <code>@{{due_date}}</code>, <code>@{{task_status}}</code>, <code>@{{assigned_by}}</code>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="wa-msg-card">
+                                <div class="wa-msg-title">Daily Pending Task Summary</div>
+                                <x-forms.toggle-switch class="mb-2 mt-0"
+                                    :checked="($whatsappSettings->send_task_daily_pending_message ?? 'yes') === 'yes'"
+                                    :fieldLabel="'Enable'" fieldName="send_task_daily_pending_message"
+                                    fieldId="send_task_daily_pending_message" />
+                                <x-forms.textarea :fieldLabel="'Template'" fieldName="task_daily_pending_template"
+                                    fieldId="task_daily_pending_template" fieldRequired="true"
+                                    :fieldValue="$whatsappSettings->task_daily_pending_template ?: \App\Models\WhatsappNotificationSetting::DEFAULT_TASK_DAILY_PENDING_TEMPLATE"
+                                    fieldPlaceholder="Good morning @{{user_name}}, you have @{{pending_count}} pending task(s): @{{task_list}}" />
+                                <div class="wa-placeholder">
+                                    Placeholders: <code>@{{user_name}}</code>, <code>@{{pending_count}}</code>, <code>@{{task_list}}</code>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="wa-msg-card">
+                                <div class="wa-msg-title">Task Completed Message</div>
+                                <x-forms.toggle-switch class="mb-2 mt-0"
+                                    :checked="($whatsappSettings->send_task_completed_message ?? 'yes') === 'yes'"
+                                    :fieldLabel="'Enable'" fieldName="send_task_completed_message"
+                                    fieldId="send_task_completed_message" />
+                                <x-forms.textarea :fieldLabel="'Template'" fieldName="task_completed_template"
+                                    fieldId="task_completed_template" fieldRequired="true"
+                                    :fieldValue="$whatsappSettings->task_completed_template ?: \App\Models\WhatsappNotificationSetting::DEFAULT_TASK_COMPLETED_TEMPLATE"
+                                    fieldPlaceholder="Task completed: @{{task_heading}}" />
+                                <div class="wa-placeholder">
+                                    Placeholders: <code>@{{task_heading}}</code>, <code>@{{task_id}}</code>, <code>@{{project_name}}</code>, <code>@{{completed_on}}</code>, <code>@{{completed_by}}</code>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

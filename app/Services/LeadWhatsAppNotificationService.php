@@ -16,9 +16,9 @@ class LeadWhatsAppNotificationService
 
     public function sendLeadCreatedMessage(Lead $lead): void
     {
-        $setting = WhatsappNotificationSetting::where('company_id', $lead->company_id)->first();
+        $setting = $this->settings($lead);
 
-        if (!$setting) {
+        if (!$setting || !$setting->isLeadCreatedMessageEnabled()) {
             return;
         }
 
@@ -32,17 +32,11 @@ class LeadWhatsAppNotificationService
             return;
         }
 
-        $message = $this->renderTemplate(
-            $setting->lead_created_template ?: WhatsappNotificationSetting::DEFAULT_LEAD_CREATED_TEMPLATE,
-            $lead
+        $sent = $this->sendUsingTemplate(
+            $lead,
+            $setting,
+            $setting->lead_created_template ?: WhatsappNotificationSetting::DEFAULT_LEAD_CREATED_TEMPLATE
         );
-
-        if ($message === '') {
-            return;
-        }
-
-        $senderNumber = $setting->resolved_lead_created_sender_number;
-        $sent = $this->gatewayService->sendMessage($lead->mobile, $message, $senderNumber);
         $error = $this->gatewayService->getLastError();
 
         if ($sent) {
@@ -68,6 +62,31 @@ class LeadWhatsAppNotificationService
         }
     }
 
+    public function sendLeadProductInterestMessage(Lead $lead): void
+    {
+        $setting = $this->settings($lead);
+
+        if (!$setting || !$setting->isLeadInterestMessageEnabled() || blank($lead->products_services) || blank($lead->mobile)) {
+            return;
+        }
+
+        $sent = $this->sendUsingTemplate(
+            $lead,
+            $setting,
+            $setting->lead_interest_template ?: WhatsappNotificationSetting::DEFAULT_LEAD_INTEREST_TEMPLATE
+        );
+
+        if (!$sent) {
+            Log::warning('Lead product-interest WhatsApp notification failed.', [
+                'lead_id' => $lead->id,
+                'company_id' => $lead->company_id,
+                'mobile' => $lead->mobile,
+                'sender_number' => $setting->resolved_lead_created_sender_number,
+                'error' => $this->gatewayService->getLastError(),
+            ]);
+        }
+    }
+
     private function renderTemplate(string $template, Lead $lead): string
     {
         $placeholders = [
@@ -77,8 +96,35 @@ class LeadWhatsAppNotificationService
             '{{mobile}}' => (string) $lead->mobile,
             '{{lead_id}}' => (string) $lead->id,
             '{{created_by}}' => (string) optional($lead->addedBy)->name,
+            '{{products_services}}' => (string) ($lead->products_services ?: ''),
         ];
 
         return trim(strtr($template, $placeholders));
+    }
+
+    private function settings(Lead $lead): ?WhatsappNotificationSetting
+    {
+        $setting = WhatsappNotificationSetting::where('company_id', $lead->company_id)->first();
+
+        if (!$setting || $setting->status !== 'active') {
+            return null;
+        }
+
+        return $setting;
+    }
+
+    private function sendUsingTemplate(Lead $lead, WhatsappNotificationSetting $setting, string $template): bool
+    {
+        $message = $this->renderTemplate($template, $lead);
+
+        if ($message === '') {
+            return false;
+        }
+
+        return $this->gatewayService->sendMessage(
+            (string) $lead->mobile,
+            $message,
+            $setting->resolved_lead_created_sender_number
+        );
     }
 }

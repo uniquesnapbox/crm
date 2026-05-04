@@ -38,7 +38,7 @@ class NewLeadCreated extends BaseNotification
             array_push($via, 'mail');
         }
 
-        if ($this->canSendWhatsApp($notifiable, $this->emailSetting)) {
+        if ($this->canSendWhatsApp($notifiable, $this->emailSetting, 'lead')) {
             array_push($via, WascriptChannel::class);
         }
 

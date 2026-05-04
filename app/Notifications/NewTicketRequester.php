@@ -52,7 +52,7 @@ class NewTicketRequester extends BaseNotification
             array_push($via, OneSignalChannel::class);
         }
 
-        if ($this->canSendWhatsApp($notifiable, $this->emailSetting)) {
+        if ($this->canSendWhatsApp($notifiable, $this->emailSetting, 'ticket')) {
             array_push($via, WascriptChannel::class);
         }
 

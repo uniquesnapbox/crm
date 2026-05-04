@@ -4,9 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Helper\Reply;
 use App\Models\EmailNotificationSetting;
-use App\Models\PusherSetting;
-use App\Models\PushNotificationSetting;
-use App\Models\SlackSetting;
 use App\Models\SmtpSetting;
 use App\Models\WhatsappNotificationSetting;
 
@@ -37,42 +34,37 @@ class NotificationSettingController extends AccountBaseController
     public function index()
     {
         $tab = request('tab');
+        $allowedTabs = ['email-setting', 'whatsapp-setting'];
+
+        if (!in_array($tab, $allowedTabs, true)) {
+            $tab = 'email-setting';
+        }
 
         $this->emailSettings = EmailNotificationSetting::all();
-
-        $this->slackSettings = SlackSetting::first() ?: new SlackSetting([
-            'status' => 'inactive',
-            'slack_webhook' => null,
-            'slack_logo_url' => null,
-        ]);
-        $this->pushSettings = PushNotificationSetting::first() ?: new PushNotificationSetting([
-            'status' => 'inactive',
-            'onesignal_app_id' => null,
-            'onesignal_rest_api_key' => null,
-        ]);
-        $this->pusherSettings = PusherSetting::first() ?: new PusherSetting([
-            'status' => 0,
-            'pusher_app_id' => null,
-            'pusher_app_key' => null,
-            'pusher_app_secret' => null,
-            'pusher_cluster' => null,
-            'force_tls' => 0,
-            'taskboard' => 0,
-            'messages' => 0,
-        ]);
         $this->whatsappSettings = WhatsappNotificationSetting::first() ?: new WhatsappNotificationSetting([
             'status' => 'inactive',
             'base_url' => 'https://api-whatsapp.wascript.com.br',
             'api_token' => null,
             'default_country_code' => null,
             'test_number' => null,
-            'send_lead_created_message' => 'no',
+            'send_lead_created_message' => 'yes',
+            'send_lead_interest_message' => 'yes',
+            'send_ticket_message' => 'yes',
+            'send_ticket_assigned_staff_message' => 'yes',
+            'send_ticket_assigned_client_message' => 'yes',
+            'send_ticket_resolved_client_message' => 'yes',
+            'send_task_assigned_message' => 'yes',
+            'send_task_daily_pending_message' => 'yes',
+            'send_task_completed_message' => 'yes',
             'lead_created_template' => WhatsappNotificationSetting::DEFAULT_LEAD_CREATED_TEMPLATE,
+            'lead_interest_template' => WhatsappNotificationSetting::DEFAULT_LEAD_INTEREST_TEMPLATE,
             'lead_created_sender_number' => config('app.admin_whatsapp', ''),
-            'ticket_assigned_staff_template' => 'A new ticket has been assigned to you. Ticket #{{ticket_number}}: {{subject}}',
-            'ticket_assigned_client_template' => 'Your ticket #{{ticket_number}} has been forwarded to our team. We will get back to you soon.',
-            'ticket_resolved_client_template' => 'Your ticket #{{ticket_number}} has been resolved. If you need anything else, please let us know.',
-            'task_assigned_staff_template' => 'A new task has been assigned to you. Task: {{task_heading}}',
+            'ticket_assigned_staff_template' => WhatsappNotificationSetting::DEFAULT_TICKET_ASSIGNED_STAFF_TEMPLATE,
+            'ticket_assigned_client_template' => WhatsappNotificationSetting::DEFAULT_TICKET_ASSIGNED_CLIENT_TEMPLATE,
+            'ticket_resolved_client_template' => WhatsappNotificationSetting::DEFAULT_TICKET_RESOLVED_CLIENT_TEMPLATE,
+            'task_assigned_staff_template' => WhatsappNotificationSetting::DEFAULT_TASK_ASSIGNED_TEMPLATE,
+            'task_daily_pending_template' => WhatsappNotificationSetting::DEFAULT_TASK_DAILY_PENDING_TEMPLATE,
+            'task_completed_template' => WhatsappNotificationSetting::DEFAULT_TASK_COMPLETED_TEMPLATE,
             'last_send_status' => null,
             'last_error_message' => null,
             'last_http_status' => null,
@@ -84,26 +76,6 @@ class NotificationSettingController extends AccountBaseController
         ]);
 
         switch ($tab) {
-        case 'slack-setting':
-            $this->checkedAll = $this->emailSettings->count() == $this->emailSettings->filter(function ($value) {
-                    return $value->send_slack == 'yes';
-            })->count();
-
-            $this->view = 'notification-settings.ajax.slack-setting';
-            break;
-
-        case 'push-notification-setting':
-            $this->checkedAll = $this->emailSettings->count() == $this->emailSettings->filter(function ($value) {
-                    return $value->send_push == 'yes';
-            })->count();
-
-            $this->view = 'notification-settings.ajax.push-notification-setting';
-            break;
-
-        case 'pusher-setting':
-            $this->view = 'notification-settings.ajax.pusher-setting';
-            break;
-
         case 'whatsapp-setting':
             $this->view = 'notification-settings.ajax.whatsapp-setting';
             break;

@@ -503,7 +503,7 @@ class LeadContactController extends AccountBaseController
         $rawValue = $request->input('value');
         $value = is_string($rawValue) ? trim($rawValue) : $rawValue;
 
-        if (in_array($field, ['source_id', 'category_id', 'status_id'], true)) {
+        if (in_array($field, ['source_id', 'category_id', 'status_id', 'assigned_to'], true)) {
             $value = ($value === '' || is_null($value)) ? null : (int) $value;
         }
 
@@ -525,6 +525,16 @@ class LeadContactController extends AccountBaseController
 
         if ($field === 'status_id' && !is_null($value)) {
             abort_unless(LeadStatus::whereKey($value)->exists(), 422, 'Invalid lead status selected.');
+        }
+
+        if ($field === 'assigned_to') {
+            if (!is_null($value)) {
+                $isEmployee = User::allEmployees()
+                    ->pluck('id')
+                    ->contains((int) $value);
+
+                abort_unless($isEmployee, 422, 'Invalid assignee selected.');
+            }
         }
 
         if ($field === 'client_name') {
@@ -604,7 +614,7 @@ class LeadContactController extends AccountBaseController
 
         $currentValue = $leadContact->{$field};
         if ((is_null($currentValue) ? '' : (string) $currentValue) === (is_null($value) ? '' : (string) $value)) {
-            $leadContact->loadMissing(['leadSource', 'category', 'leadStatus']);
+            $leadContact->loadMissing(['leadSource', 'category', 'leadStatus', 'assignedTo']);
 
             return Reply::successWithData(__('messages.updateSuccess'), [
                 'field' => $field,
@@ -613,13 +623,14 @@ class LeadContactController extends AccountBaseController
                 'category' => $leadContact->category?->category_name,
                 'lead_status' => $leadContact->leadStatus?->type,
                 'statusColor' => $leadContact->leadStatus?->label_color,
+                'assigned_to_name' => $leadContact->assignedTo?->name,
             ]);
         }
 
         $leadContact->{$field} = $value;
         $leadContact->save();
 
-        $leadContact->loadMissing(['leadSource', 'category', 'leadStatus']);
+        $leadContact->loadMissing(['leadSource', 'category', 'leadStatus', 'assignedTo']);
 
         return Reply::successWithData(__('messages.updateSuccess'), [
             'field' => $field,
@@ -628,6 +639,7 @@ class LeadContactController extends AccountBaseController
             'category' => $leadContact->category?->category_name,
             'lead_status' => $leadContact->leadStatus?->type,
             'statusColor' => $leadContact->leadStatus?->label_color,
+            'assigned_to_name' => $leadContact->assignedTo?->name,
         ]);
     }
 

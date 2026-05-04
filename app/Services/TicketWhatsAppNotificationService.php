@@ -17,15 +17,15 @@ class TicketWhatsAppNotificationService
     {
         $setting = $this->settings($ticket);
 
-        if (!$setting) {
+        if (!$setting || $setting->status !== 'active' || !$setting->isTicketMessageEnabled()) {
             return;
         }
 
         $senderNumber = $setting->resolved_lead_created_sender_number;
 
-        if ($ticket->agent) {
+        if ($ticket->agent && $setting->isTicketAssignedStaffMessageEnabled()) {
             $staffMessage = $this->renderTemplate(
-                $setting->ticket_assigned_staff_template ?: 'A new ticket has been assigned to you. Ticket #{{ticket_number}}: {{subject}}',
+                $setting->ticket_assigned_staff_template ?: WhatsappNotificationSetting::DEFAULT_TICKET_ASSIGNED_STAFF_TEMPLATE,
                 $ticket
             );
 
@@ -38,9 +38,9 @@ class TicketWhatsAppNotificationService
             );
         }
 
-        if ($ticket->requester) {
+        if ($ticket->requester && $setting->isTicketAssignedClientMessageEnabled()) {
             $clientMessage = $this->renderTemplate(
-                $setting->ticket_assigned_client_template ?: 'Your ticket #{{ticket_number}} has been forwarded to our team. We will get back to you soon.',
+                $setting->ticket_assigned_client_template ?: WhatsappNotificationSetting::DEFAULT_TICKET_ASSIGNED_CLIENT_TEMPLATE,
                 $ticket
             );
 
@@ -58,13 +58,19 @@ class TicketWhatsAppNotificationService
     {
         $setting = $this->settings($ticket);
 
-        if (!$setting || !$ticket->requester) {
+        if (
+            !$setting
+            || $setting->status !== 'active'
+            || !$setting->isTicketMessageEnabled()
+            || !$setting->isTicketResolvedClientMessageEnabled()
+            || !$ticket->requester
+        ) {
             return;
         }
 
         $senderNumber = $setting->resolved_lead_created_sender_number;
         $message = $this->renderTemplate(
-            $setting->ticket_resolved_client_template ?: 'Your ticket #{{ticket_number}} has been resolved. If you need anything else, please let us know.',
+            $setting->ticket_resolved_client_template ?: WhatsappNotificationSetting::DEFAULT_TICKET_RESOLVED_CLIENT_TEMPLATE,
             $ticket
         );
 

@@ -19,6 +19,7 @@ use App\Console\Commands\SendAttendanceReminder;
 use App\Console\Commands\SendAutoTaskReminder;
 use App\Console\Commands\SendEventReminder;
 use App\Console\Commands\SendAutoFollowUpReminder;
+use App\Console\Commands\SendDailyPendingTaskWhatsappSummary;
 use App\Console\Commands\SendFollowupMessages;
 use App\Console\Commands\SendDailyTimelogReport;
 use App\Console\Commands\SendProjectReminder;
@@ -59,6 +60,7 @@ class Kernel extends ConsoleKernel
         AutoCreateRecurringTasks::class,
         SyncUserPermissions::class,
         SendAutoFollowUpReminder::class,
+        SendDailyPendingTaskWhatsappSummary::class,
         SendFollowupMessages::class,
         FetchTicketEmails::class,
         AddMissingRolePermission::class,
@@ -118,6 +120,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('app:leaves-quota-renew')->dailyAt('02:30');
         $schedule->command('log:clean --keep-last')->dailyAt('02:40');
         $schedule->command('inactive-employee')->dailyAt('02:50');
+        $schedule->command('send-daily-pending-task-whatsapp-summary')->dailyAt('08:00');
         $schedule->command('daily-schedule-reminder')->daily();
 
         // Hourly

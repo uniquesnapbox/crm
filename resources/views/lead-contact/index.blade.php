@@ -22,6 +22,12 @@
             min-width: 30px;
             padding: 0.2rem 0.45rem;
         }
+
+        #lead-contact-table .lead-inline-select-wrap .form-control {
+            height: 30px;
+            font-size: 12px;
+            border-radius: 8px;
+        }
     </style>
 @endpush
 
@@ -285,7 +291,7 @@ $addLeadCustomFormPermission = user()->permission('manage_lead_custom_forms');
         });
 
         $('body').on('click', '#lead-contact-table tbody tr.lead-table-row', function(e) {
-            if ($(e.target).closest('a,button,input,label,.select-picker,.dropdown,.dropdown-menu,.swal2-container').length) {
+            if ($(e.target).closest('a,button,input,select,option,label,.select-picker,.js-lead-table-inline-select,.dropdown,.dropdown-menu,.swal2-container').length) {
                 return;
             }
 
@@ -295,6 +301,44 @@ $addLeadCustomFormPermission = user()->permission('manage_lead_custom_forms');
             }
 
             window.location.href = leadShowRouteTemplate.replace(':id', rowId);
+        });
+
+        $('body').on('change', '.js-lead-table-inline-select', function() {
+            const $field = $(this);
+            const url = $field.data('url');
+            const field = ($field.data('field') || '').toString();
+            const value = ($field.val() || '').toString();
+            const previousValue = ($field.attr('data-prev-value') || '').toString();
+
+            if (!url || !field || value === previousValue) {
+                return;
+            }
+
+            $field.prop('disabled', true);
+
+            $.easyAjax({
+                url: url,
+                type: 'POST',
+                data: {
+                    _token: "{{ csrf_token() }}",
+                    field: field,
+                    value: value
+                },
+                success: function(response) {
+                    if (response.status === 'success') {
+                        $field.attr('data-prev-value', value);
+                        showTable();
+                    } else {
+                        $field.val(previousValue);
+                    }
+                },
+                error: function() {
+                    $field.val(previousValue);
+                },
+                complete: function() {
+                    $field.prop('disabled', false);
+                }
+            });
         });
 
         $( document ).ready(function() {

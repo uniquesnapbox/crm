@@ -142,7 +142,7 @@ class BaseNotification extends Notification implements ShouldQueue
         return (!is_null($notifiable->employeeDetail->slack_username) && ($notifiable->employeeDetail->slack_username != ''));
     }
 
-    protected function canSendWhatsApp($notifiable, $emailSetting): bool
+    protected function canSendWhatsApp($notifiable, $emailSetting, ?string $section = null): bool
     {
         if (!$emailSetting || $emailSetting->send_whatsapp !== 'yes') {
             return false;
@@ -151,6 +151,18 @@ class BaseNotification extends Notification implements ShouldQueue
         $setting = WhatsappNotificationSetting::where('company_id', $notifiable->company_id)->first();
 
         if (!$setting || $setting->status !== 'active' || empty($setting->api_token)) {
+            return false;
+        }
+
+        if ($section === 'lead' && !$setting->isLeadMessageEnabled()) {
+            return false;
+        }
+
+        if ($section === 'ticket' && !$setting->isTicketMessageEnabled()) {
+            return false;
+        }
+
+        if ($section === 'task' && !$setting->isTaskMessageEnabled()) {
             return false;
         }
 

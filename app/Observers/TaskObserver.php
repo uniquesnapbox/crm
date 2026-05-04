@@ -232,6 +232,12 @@ class TaskObserver
 
             self::createEmployeeActivity(user()->id, 'task-updated', $task->id, 'task');
 
+            if ($task->wasChanged('board_column_id') && $task->boardColumn && $task->boardColumn->slug === 'completed') {
+                app(TaskWhatsAppNotificationService::class)->sendCompletedNotifications(
+                    $task->fresh(['boardColumn', 'project', 'addedByUser', 'users'])
+                );
+            }
+
             if ($task->isDirty('board_column_id')) {
 
                 if ($task->boardColumn->slug == 'completed') {
