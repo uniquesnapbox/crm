@@ -62,7 +62,11 @@
         const activeTab = "{{ $activeTab }}";
         $('.' + activeTab).addClass('active');
 
-       $("body").on("click", "#editSettings .nav a", function(event) {
+        $("body").on("click", "#editSettings .nav a", function(event) {
+            if (typeof $.easyAjax !== "function") {
+                return true;
+            }
+
             event.preventDefault();
 
             $('.nav-item').removeClass('active');
@@ -71,16 +75,34 @@
             const requestUrl = this.href;
 
             $.easyAjax({
+                type: "GET",
                 url: requestUrl,
                 blockUI: true,
                 container: "#nav-tabContent",
                 historyPush: true,
                 success: function(response) {
-                    if (response.status === "success") {
-                        $('#nav-tabContent .flex-wrap').html('');
-                        $('#nav-tabContent .flex-wrap').html(response.html);
-                        init('#nav-tabContent');
+                    if (response.status === "success" && typeof response.html !== "undefined") {
+                        const $contentWrap = $('#nav-tabContent .tab-pane > .d-flex.flex-wrap.justify-content-between');
+
+                        if ($contentWrap.length) {
+                            $contentWrap.html(response.html);
+                        }
+                        else {
+                            $('#nav-tabContent .tab-pane').html(response.html);
+                        }
+
+                        if (typeof init === "function") {
+                            init('#nav-tabContent');
+                        }
+                        return;
                     }
+
+                    // Fallback: if AJAX payload is not in expected format, open tab URL normally.
+                    window.location.href = requestUrl;
+                },
+                error: function() {
+                    // Fallback: network/JSON issues should not leave settings panel blank.
+                    window.location.href = requestUrl;
                 }
             });
         });

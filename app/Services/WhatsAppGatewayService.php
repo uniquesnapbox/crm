@@ -118,7 +118,7 @@ class WhatsAppGatewayService
         }
     }
 
-    public function getQr(?string $sessionKey = null): array
+    public function getQr(?string $sessionKey = null, bool $forceRefresh = false): array
     {
         $baseUrl = rtrim((string) config('services.whatsapp_service.base_url'), '/');
         $apiKey = (string) config('services.whatsapp_service.api_key');
@@ -138,6 +138,7 @@ class WhatsAppGatewayService
             $response = $this->client($baseUrl, $apiKey, $timeout)
                 ->get('/qr', [
                     'sessionKey' => $session,
+                    'refresh' => $forceRefresh ? 1 : 0,
                 ]);
 
             return $this->mapJsonResponse($response, 'Unable to load WhatsApp QR.', [

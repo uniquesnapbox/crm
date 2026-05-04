@@ -54,11 +54,31 @@ class WhatsappSettingController extends AccountBaseController
             'company_id' => company()->id,
         ]);
 
-        $sessionKey = preg_replace('/\D+/', '', (string) $setting->lead_created_sender_number);
-        $sessionKey = $sessionKey !== '' ? $sessionKey : trim((string) config('services.whatsapp_service.session', 'default'));
+        $preferredSessionKey = preg_replace('/\D+/', '', (string) $setting->lead_created_sender_number);
+        $fallbackSessionKey = trim((string) config('services.whatsapp_service.session', 'default'));
+        $fallbackSessionKey = $fallbackSessionKey !== '' ? $fallbackSessionKey : 'default';
+        $sessionKey = $preferredSessionKey !== '' ? $preferredSessionKey : $fallbackSessionKey;
+
+        $forceRefresh = request()->boolean('refresh');
 
         $health = $gatewayService->getHealth();
-        $qr = $gatewayService->getQr($sessionKey);
+        $qr = $gatewayService->getQr($sessionKey, $forceRefresh);
+
+        // If sender-number-based session has no QR/status, fall back to configured default session.
+        $qrStatus = (string) ($qr['data']['status'] ?? '');
+        $qrValue = (string) ($qr['data']['qr'] ?? '');
+        $needsFallback = $preferredSessionKey !== ''
+            && $preferredSessionKey !== $fallbackSessionKey
+            && (
+                !($qr['success'] ?? false)
+                || $qrValue === ''
+                || in_array($qrStatus, ['unknown', 'disconnected'], true)
+            );
+
+        if ($needsFallback) {
+            $sessionKey = $fallbackSessionKey;
+            $qr = $gatewayService->getQr($sessionKey, $forceRefresh);
+        }
 
         $qrData = $qr['data']['qr'] ?? null;
         $qrImage = null;
@@ -88,5 +108,33 @@ class WhatsappSettingController extends AccountBaseController
             'sessionKey' => $sessionKey,
             'baseUrl' => config('services.whatsapp_service.base_url'),
         ]);
+    }
+
+    public function sendTestNotification(WhatsAppGatewayService $gatewayService)
+    {
+        $setting = WhatsappNotificationSetting::firstOrNew([
+            'company_id' => company()->id,
+        ]);
+
+        $mobile = preg_replace('/\D+/', '', (string) ($setting->test_number ?? ''));
+
+        if ($mobile === '') {
+            return Reply::error('Please set a test number first.');
+        }
+
+        $sessionKey = preg_replace('/\D+/', '', (string) $setting->lead_created_sender_number);
+        $sessionKey = $sessionKey !== '' ? $sessionKey : trim((string) config('services.whatsapp_service.session', 'default'));
+
+        $sent = $gatewayService->sendMessage(
+            $mobile,
+            'This is a test WhatsApp notification from CRM.',
+            $sessionKey
+        );
+
+        if (!$sent) {
+            return Reply::error((string) ($gatewayService->getLastError() ?: 'Unable to send test WhatsApp message.'));
+        }
+
+        return Reply::success('Test WhatsApp notification sent successfully.');
     }
 }

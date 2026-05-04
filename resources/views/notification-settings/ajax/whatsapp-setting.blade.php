@@ -29,7 +29,7 @@
                             <div class="alert alert-warning d-none" id="whatsapp-connection-error"></div>
 
                             <div class="text-center border rounded p-3 bg-white" id="whatsapp-qr-wrapper">
-                                <img src="" alt="WhatsApp QR" id="whatsapp-qr-image" class="img-fluid d-none" style="max-height: 280px;">
+                                <img src="" alt="WhatsApp QR" id="whatsapp-qr-image" class="img-fluid d-none" style="max-height: 360px; image-rendering: pixelated;">
                                 <div class="text-muted f-13" id="whatsapp-qr-placeholder">
                                     QR will appear here when the WhatsApp service requests login.
                                 </div>
@@ -115,7 +115,10 @@
 </div>
 
 <script>
-    function loadWhatsAppConnectionStatus() {
+    let whatsappQrPoller = null;
+    let whatsappQrPollTick = 0;
+
+    function loadWhatsAppConnectionStatus(forceRefresh = false) {
         const $serviceStatus = $('#whatsapp-service-status');
         const $sessionStatus = $('#whatsapp-session-status');
         const $meta = $('#whatsapp-connection-meta');
@@ -127,8 +130,10 @@
         $sessionStatus.removeClass('badge-success badge-danger badge-warning').addClass('badge-secondary').text('Checking session...');
         $error.addClass('d-none').text('');
 
+        const statusUrl = "{{ route('whatsapp-settings.connection-status') }}" + (forceRefresh ? "?refresh=1" : "");
+
         $.easyAjax({
-            url: "{{ route('whatsapp-settings.connection-status') }}",
+            url: statusUrl,
             type: "GET",
             container: "#editSettings",
             success: function (response) {
@@ -176,7 +181,7 @@
     }
 
     $('body').on('click', '#refresh-whatsapp-connection', function() {
-        loadWhatsAppConnectionStatus();
+        loadWhatsAppConnectionStatus(true);
     });
 
     $('body').on('click', '#save-whatsapp-form', function() {
@@ -192,5 +197,15 @@
         })
     });
 
-    loadWhatsAppConnectionStatus();
+    loadWhatsAppConnectionStatus(true);
+
+    if (whatsappQrPoller) {
+        clearInterval(whatsappQrPoller);
+    }
+
+    whatsappQrPoller = setInterval(function () {
+        whatsappQrPollTick++;
+        const force = whatsappQrPollTick % 3 === 0; // force refresh roughly every 45 seconds
+        loadWhatsAppConnectionStatus(force);
+    }, 15000);
 </script>

@@ -2081,12 +2081,17 @@ window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 
 
 window.Pusher = __webpack_require__(/*! pusher-js */ "./node_modules/pusher-js/dist/web/pusher.js");
-window.Echo = new laravel_echo__WEBPACK_IMPORTED_MODULE_0__["default"]({
-  broadcaster: 'pusher',
-  key: process.env.MIX_PUSHER_APP_KEY,
-  cluster: process.env.MIX_PUSHER_APP_CLUSTER,
-  forceTLS: true
-});
+var pusherKey = process.env.MIX_PUSHER_APP_KEY;
+var pusherCluster = process.env.MIX_PUSHER_APP_CLUSTER;
+
+if (pusherKey && pusherKey !== 'null' && pusherKey !== 'undefined') {
+  window.Echo = new laravel_echo__WEBPACK_IMPORTED_MODULE_0__["default"]({
+    broadcaster: 'pusher',
+    key: pusherKey,
+    cluster: pusherCluster,
+    forceTLS: true
+  });
+}
 
 /***/ }),
 
@@ -36979,7 +36984,7 @@ var pathArray = window.location.pathname.split("account/");
 if (typeof pathArray[1] !== "undefined") {
     var currentRoute = pathArray[1].split("/");
     currentRoute = currentRoute[0];
-    var element = $("#sideMenuScroll li a")
+    var element = $("#appSideMenuScroll li a")
         .filter(function () {
             return this.href == currentUrl.href;
         })
@@ -36989,7 +36994,7 @@ if (typeof pathArray[1] !== "undefined") {
         .addClass("openIt");
 
     // active left main menu item
-    var element2 = $("#sideMenuScroll li a").filter(function () {
+    var element2 = $("#appSideMenuScroll li a").filter(function () {
         var pathArray = this.href.split("account/");
         if (currentRoute == pathArray[1]) {
             return true;
@@ -37234,3 +37239,4 @@ $(document).ready(function () {
 $('#mobile_menu_collapse').on('click', '.dropdown-item', function() {
     $("#dropdownMenuLink").dropdown("toggle");
 });
+
