@@ -1,5 +1,12 @@
 @php
     $currentRouteName = $currentRouteName ?? optional(request()->route())->getName() ?? '';
+    $routeMatches = static fn(array $patterns) => collect($patterns)->contains(fn($pattern) => request()->routeIs($pattern));
+    $isDashboardMenuActive = $routeMatches(['dashboard', 'dashboard.advanced']);
+    $isLeadMenuActive = $routeMatches(['lead-contact.*', 'calendar.*']);
+    $isHrMenuActive = $routeMatches(['employees.*', 'leaves.*', 'shifts.*', 'attendances.*', 'account.live-tracking', 'holidays.*', 'designations.*', 'departments.*', 'appreciations.*', 'awards.*']);
+    $isWorkMenuActive = $routeMatches(['contracts.*', 'documents.*', 'document-templates.*', 'projects.*', 'tasks.*', 'timelogs.*']);
+    $isFinanceMenuActive = $routeMatches(['proposals.*', 'estimates.*', 'invoices.*', 'payments.*', 'creditnotes.*', 'expenses.*', 'bankaccounts.*']);
+    $isReportsMenuActive = $routeMatches(['task-report.*', 'time-log-report.*', 'finance-report.*', 'income-expense-report.*', 'leave-report.*', 'attendance-report.*', 'expense-report.*', 'sales-report.*']);
 @endphp
 
 <ul>
@@ -12,7 +19,7 @@
     || $sidebarUserPermissions['view_ticket_dashboard'] == 4
     || $sidebarUserPermissions['view_finance_dashboard'] == 4
     )
-        <x-menu-item icon="house" :text="__('app.menu.dashboard')">
+        <x-menu-item icon="house" :text="__('app.menu.dashboard')" :active="$isDashboardMenuActive">
             <x-slot name="iconPath">
                 <path fill-rule="evenodd"
                       d="M2 13.5V7h1v6.5a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5V7h1v6.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 13.5zm11-11V6l-2-2V2.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5z" />
@@ -39,7 +46,7 @@
 
     <!-- NAV ITEM - HR COLLAPASE MENU -->
     @if (!in_array('client', user_roles()) && in_array('leads', user_modules()) && ($sidebarUserPermissions['view_lead'] != 5 && $sidebarUserPermissions['view_lead'] != 'none'))
-        <x-menu-item icon="person" :text="__('app.menu.lead')">
+        <x-menu-item icon="person" :text="__('app.menu.lead')" :active="$isLeadMenuActive">
             <x-slot name="iconPath">
                 <path
                     d="M15 14s1 0 1-1-1-4-5-4-5 3-5 4 1 1 1 1h8zm-7.978-1A.261.261 0 0 1 7 12.996c.001-.264.167-1.03.76-1.72C8.312 10.629 9.282 10 11 10c1.717 0 2.687.63 3.24 1.276.593.69.758 1.457.76 1.72l-.008.002a.274.274 0 0 1-.014.002H7.022zM11 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm3-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM6.936 9.28a5.88 5.88 0 0 0-1.23-.247A7.35 7.35 0 0 0 5 9c-4 0-5 3-5 4 0 .667.333 1 1 1h4.216A2.238 2.238 0 0 1 5 13c0-1.01.377-2.042 1.09-2.904.243-.294.526-.569.846-.816zM4.92 10A5.493 5.493 0 0 0 4 13H1c0-.26.164-1.03.76-1.724.545-.636 1.492-1.256 3.16-1.275zM1.5 5.5a3 3 0 1 1 6 0 3 3 0 0 1-6 0zm3-2a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" />
@@ -70,7 +77,7 @@
 
 <!-- NAV ITEM - HR COLLAPASE MENU -->
     @if (!in_array('client', user_roles()) && (in_array('employees', user_modules()) || in_array('leaves', user_modules()) || in_array('attendance', user_modules()) || in_array('holidays', user_modules())) && ($sidebarUserPermissions['view_employees'] != 5 || $sidebarUserPermissions['view_leave'] != 5 || $sidebarUserPermissions['view_attendance'] != 5 || $sidebarUserPermissions['view_holiday'] != 5) && ($sidebarUserPermissions['view_employees'] != 'none' || $sidebarUserPermissions['view_leave'] != 'none' || $sidebarUserPermissions['view_attendance'] != 'none' || $sidebarUserPermissions['view_holiday'] != 'none' || $sidebarUserPermissions['view_shift_roster'] != 'none'))
-        <x-menu-item icon="people" :text="__('app.menu.hr')">
+        <x-menu-item icon="people" :text="__('app.menu.hr')" :active="$isHrMenuActive">
             <x-slot name="iconPath">
                 <path
                     d="M15 14s1 0 1-1-1-4-5-4-5 3-5 4 1 1 1 1h8zm-7.978-1A.261.261 0 0 1 7 12.996c.001-.264.167-1.03.76-1.72C8.312 10.629 9.282 10 11 10c1.717 0 2.687.63 3.24 1.276.593.69.758 1.457.76 1.72l-.008.002a.274.274 0 0 1-.014.002H7.022zM11 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm3-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM6.936 9.28a5.88 5.88 0 0 0-1.23-.247A7.35 7.35 0 0 0 5 9c-4 0-5 3-5 4 0 .667.333 1 1 1h4.216A2.238 2.238 0 0 1 5 13c0-1.01.377-2.042 1.09-2.904.243-.294.526-.569.846-.816zM4.92 10A5.493 5.493 0 0 0 4 13H1c0-.26.164-1.03.76-1.724.545-.636 1.492-1.256 3.16-1.275zM1.5 5.5a3 3 0 1 1 6 0 3 3 0 0 1-6 0zm3-2a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" />
@@ -116,7 +123,7 @@
 
 <!-- NAV ITEM - WORK COLLAPSE MENU -->
     @if ((in_array('contracts', user_modules()) || in_array('projects', user_modules()) || in_array('tasks', user_modules()) || in_array('timelogs', user_modules())) && ($sidebarUserPermissions['view_contract'] != 5 || $sidebarUserPermissions['view_projects'] != 5 || $sidebarUserPermissions['view_tasks'] != 5 || $sidebarUserPermissions['view_timelogs'] != 5) && ($sidebarUserPermissions['view_contract'] != 'none' || $sidebarUserPermissions['view_projects'] != 'none' || $sidebarUserPermissions['view_tasks'] != 'none' || $sidebarUserPermissions['view_timelogs'] != 'none'))
-        <x-menu-item icon="briefcase" :text="__('app.menu.work')">
+        <x-menu-item icon="briefcase" :text="__('app.menu.work')" :active="$isWorkMenuActive">
             <x-slot name="iconPath">
                 <path
                     d="M6.5 1A1.5 1.5 0 0 0 5 2.5V3H1.5A1.5 1.5 0 0 0 0 4.5v8A1.5 1.5 0 0 0 1.5 14h13a1.5 1.5 0 0 0 1.5-1.5v-8A1.5 1.5 0 0 0 14.5 3H11v-.5A1.5 1.5 0 0 0 9.5 1h-3zm0 1h3a.5.5 0 0 1 .5.5V3H6v-.5a.5.5 0 0 1 .5-.5zm1.886 6.914L15 7.151V12.5a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5V7.15l6.614 1.764a1.5 1.5 0 0 0 .772 0zM1.5 4h13a.5.5 0 0 1 .5.5v1.616L8.129 7.948a.5.5 0 0 1-.258 0L1 6.116V4.5a.5.5 0 0 1 .5-.5z" />
@@ -150,7 +157,7 @@
 
 <!-- NAV ITEM - FINANCE COLLAPASE MENU -->
     @if ((in_array('estimates', user_modules()) || in_array('invoices', user_modules()) || in_array('payments', user_modules()) || in_array('expenses', user_modules()) || in_array('bankaccount', user_modules())) && ($sidebarUserPermissions['view_estimates'] != 5 || $sidebarUserPermissions['view_invoices'] != 5 || $sidebarUserPermissions['view_payments'] != 5 || $sidebarUserPermissions['view_expenses'] != 5 || $sidebarUserPermissions['view_lead_proposals'] != 5 || $sidebarUserPermissions['view_bankaccount'] != 5) && ($sidebarUserPermissions['view_estimates'] != 'none' || $sidebarUserPermissions['view_invoices'] != 'none' || $sidebarUserPermissions['view_payments'] != 'none' || $sidebarUserPermissions['view_expenses'] != 'none' || $sidebarUserPermissions['view_lead_proposals'] != 'none' || $sidebarUserPermissions['view_bankaccount'] != 'none'))
-        <x-menu-item icon="cash-coin" :active="($currentRouteName === 'payments.index')"
+        <x-menu-item icon="cash-coin" :active="$isFinanceMenuActive"
                      :text="__('app.menu.finance')">
             <x-slot name="iconPath">
                 <path
@@ -321,7 +328,7 @@
 
 <!-- NAV ITEM - NOTICES -->
     @if (in_array('reports', user_modules()) && ($sidebarUserPermissions['view_task_report'] == 4 || $sidebarUserPermissions['view_time_log_report'] == 4 || (isset($sidebarUserPermissions['view_expense_report']) && $sidebarUserPermissions['view_expense_report'] == 4) || $sidebarUserPermissions['view_finance_report'] != 5 || $sidebarUserPermissions['view_income_expense_report'] == 4 || $sidebarUserPermissions['view_leave_report'] != 5 || $sidebarUserPermissions['view_attendance_report'] == 4 || $sidebarUserPermissions['view_lead_report'] == 4 || $sidebarUserPermissions['view_sales_report'] == 4) && ($sidebarUserPermissions['view_task_report'] != 'none' || $sidebarUserPermissions['view_time_log_report'] != 'none' || $sidebarUserPermissions['view_finance_report'] != 'none' || $sidebarUserPermissions['view_income_expense_report'] != 'none' || $sidebarUserPermissions['view_leave_report'] != 'none' || $sidebarUserPermissions['view_attendance_report'] != 'none' || $sidebarUserPermissions['view_lead_report'] != 'none' || $sidebarUserPermissions['view_sales_report'] != 'none' || (isset($sidebarUserPermissions['view_expense_report']) && $sidebarUserPermissions['view_expense_report'] != 'none')))
-        <x-menu-item icon="graph-up" :text="__('app.menu.reports')">
+        <x-menu-item icon="graph-up" :text="__('app.menu.reports')" :active="$isReportsMenuActive">
             <x-slot name="iconPath">
                 <path
                     d="M7.5 1.018a7 7 0 0 0-4.79 11.566L7.5 7.793V1.018zm1 0V7.5h6.482A7.001 7.001 0 0 0 8.5 1.018zM14.982 8.5H8.207l-4.79 4.79A7 7 0 0 0 14.982 8.5zM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8z" />

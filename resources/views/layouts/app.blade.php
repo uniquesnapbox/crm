@@ -178,9 +178,23 @@
 
 <body id="body" class="{{ user()->dark_theme ? 'dark-theme' : '' }} {{ user()->rtl ? 'rtl' : '' }}">
 <script>
-    if (checkMiniSidebar == "yes" || checkMiniSidebar == "") {
-        $('body').addClass('sidebar-toggled');
-    }
+    (function () {
+        const desktopBreakpoint = 769;
+        const shouldMiniSidebar = checkMiniSidebar === "yes" || checkMiniSidebar === "";
+        const isDesktopViewport = window.innerWidth >= desktopBreakpoint;
+
+        if (shouldMiniSidebar && isDesktopViewport) {
+            $('body').addClass('sidebar-toggled');
+        } else {
+            $('body').removeClass('sidebar-toggled');
+        }
+
+        window.addEventListener('resize', function () {
+            if (window.innerWidth < desktopBreakpoint) {
+                $('body').removeClass('sidebar-toggled');
+            }
+        });
+    })();
 </script>
 {{-- include topbar --}}
 @include('sections.topbar')

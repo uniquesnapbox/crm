@@ -25,7 +25,7 @@ class MenuItem extends Component
         $this->text = $text;
         $this->icon = $icon;
         $this->link = $link;
-        $this->active = $active;
+        $this->active = (bool) $active || (!is_null($link) && url()->current() === $link);
         $this->addon = $addon;
         $this->count = $count;
     }

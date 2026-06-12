@@ -119,7 +119,67 @@
 <!-- SIDEBAR END -->
 
 <script>
+    function directAccordionContents(item) {
+        return Array.prototype.filter.call(item.children, function(child) {
+            return child.classList.contains('accordionItemContent');
+        });
+    }
+
+    function setAccordionOpen(item, open) {
+        item.classList.toggle('openIt', open);
+        item.classList.toggle('closeIt', !open);
+
+        directAccordionContents(item).forEach(function(content) {
+            content.style.display = open ? 'block' : 'none';
+            content.style.height = open ? 'auto' : '0';
+            content.style.float = 'none';
+            content.style.transform = open ? 'none' : 'scaleY(0)';
+            content.style.visibility = open ? 'visible' : 'hidden';
+            content.style.opacity = open ? '1' : '0';
+        });
+    }
+
+    function syncSidebarAccordionState() {
+        document.querySelectorAll('#appSideMenuScroll .accordionItem').forEach(function(item) {
+            setAccordionOpen(item, item.classList.contains('openIt'));
+        });
+    }
+
+    function toggleSidebarAccordion(event, element) {
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            if (typeof event.stopImmediatePropagation === 'function') {
+                event.stopImmediatePropagation();
+            }
+        }
+
+        document.body.classList.remove('sidebar-toggled');
+
+        const currentItem = element.closest('.accordionItem');
+        const wasOpen = currentItem.classList.contains('openIt');
+
+        document.querySelectorAll('#appSideMenuScroll .accordionItem').forEach(function(item) {
+            setAccordionOpen(item, false);
+        });
+
+        if (!wasOpen) {
+            setAccordionOpen(currentItem, true);
+        }
+
+        return false;
+    }
+
+    document.addEventListener('click', function(event) {
+        const heading = event.target.closest('#appSideMenuScroll .accordionItemHeading');
+
+        if (heading) {
+            toggleSidebarAccordion(event, heading);
+        }
+    }, true);
+
     $(document).ready(function() {
+        syncSidebarAccordionState();
 
         $('.invite-member').click(function() {
             const url = "{{ route('employees.invite_member') }}";
@@ -172,21 +232,37 @@
 
         // Fallback accordion behavior (independent of bundled main.js handlers)
         $(document).on('click', '#appSideMenuScroll .accordionItemHeading', function(e) {
-            e.preventDefault();
-            const $currentItem = $(this).closest('.accordionItem');
-            const wasOpen = $currentItem.hasClass('openIt');
-
-            $('#appSideMenuScroll .accordionItem').removeClass('openIt').addClass('closeIt');
-
-            if (!wasOpen) {
-                $currentItem.removeClass('closeIt').addClass('openIt');
-            }
+            return toggleSidebarAccordion(e, this);
         });
 
     });
 </script>
 
 <style>
+    #appSideMenuScroll .accordionItem.closeIt > .accordionItemContent {
+        display: none !important;
+        height: 0 !important;
+        float: none !important;
+        transform: none !important;
+        width: 100% !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+    }
+
+    #appSideMenuScroll .accordionItem.openIt > .accordionItemContent {
+        display: block !important;
+        height: auto !important;
+        float: none !important;
+        transform: none !important;
+        width: 100% !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+
+    body.sidebar-toggled #appSideMenuScroll .accordionItem.openIt > .accordionItemContent {
+        display: block !important;
+    }
+
     /* Hard safeguard against invisible overlays intercepting sidebar clicks */
     aside .main-sidebar,
     aside .main-sidebar * {

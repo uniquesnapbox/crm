@@ -1,6 +1,6 @@
 <!-- COLLAPSE - INFORMATION -->
 @if ($permission)
-    <a class="f-14 text-lightest" href="{{ $link }}" title="{{ $text }}">{{ $text }}
+    <a class="f-14 text-lightest {{ $active ? 'active' : '' }}" href="{{ $link }}" title="{{ $text }}">{{ $text }}
         @if ($addon)
             <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor"
                  class="bi bi-gift ml-1 text-yellow" viewBox="0 0 16 16" data-toggle="tooltip"
