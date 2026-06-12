@@ -32,8 +32,13 @@ class StoreClientRequest extends CoreRequest
             'password' => 'nullable|required_if:login,enable|min:8',
             'slack_username' => 'nullable',
             'website' => 'nullable|url',
-            'country' => 'required_with:mobile',
-            'mobile' => 'nullable|numeric'
+            'country' => 'nullable|exists:countries,id',
+            'mobile' => 'required|numeric',
+            'address' => 'required|string',
+            'assigned_to' => 'nullable|exists:users,id',
+            'client_type' => 'nullable|in:hot,warm,cold',
+            'last_contact_date' => 'nullable|date',
+            'next_followup_date' => 'nullable|date'
         ];
 
         $rules = $this->customFieldRules($rules);

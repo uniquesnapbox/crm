@@ -31,9 +31,14 @@ class UpdateClientRequest extends CoreRequest
             'name'  => 'required',
             'email' => 'nullable|email:rfc,strict|required_if:login,enable|unique:users,email,'.$this->route('client').',id,company_id,' . company()->id,
             'website' => 'nullable|url',
-            'country' => 'required_with:mobile',
+            'country' => 'nullable|exists:countries,id',
             'password' => 'nullable|min:8',
-            'mobile' => 'nullable|numeric'
+            'mobile' => 'required|numeric',
+            'address' => 'required|string',
+            'assigned_to' => 'nullable|exists:users,id',
+            'client_type' => 'nullable|in:hot,warm,cold',
+            'last_contact_date' => 'nullable|date',
+            'next_followup_date' => 'nullable|date'
         ];
 
         $rules = $this->customFieldRules($rules);

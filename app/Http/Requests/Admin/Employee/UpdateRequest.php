@@ -30,20 +30,36 @@ class UpdateRequest extends CoreRequest
     {
         $detailID = EmployeeDetails::where('user_id', $this->route('employee'))->first();
         $setting = company();
+        $employeeIdRule = 'nullable|max:50|unique:employee_details,employee_id,null,id,company_id,' . company()->id;
+
+        if ($detailID) {
+            $employeeIdRule = 'nullable|max:50|unique:employee_details,employee_id,' . $detailID->id . ',id,company_id,' . company()->id;
+        }
+
         $rules = [
-            'employee_id' => 'required|max:50|unique:employee_details,employee_id,'.$detailID->id.',id,company_id,' . company()->id,
+            'employee_id' => $employeeIdRule,
             'name'  => 'required|max:50',
-            'hourly_rate' => 'nullable|numeric',
+            'mobile' => 'required|max:20',
+            'address' => 'required|max:2000',
+            'country' => 'nullable|exists:countries,id',
+            'country_phonecode' => 'nullable|max:10',
+            'office_phone' => 'nullable|max:30',
+            'website' => 'nullable|url|max:191',
+            'hourly_rate' => 'nullable|numeric|min:0',
             'department' => 'required',
             'designation' => 'required',
+            'role' => 'nullable|exists:roles,id',
             'joining_date' => 'required',
-            'last_date' => 'nullable|required_if:status,deactive|date_format:"' . $setting->date_format . '"|after_or_equal:joining_date',
-            'date_of_birth' => 'nullable|date_format:"' . $setting->date_format . '"|before_or_equal:'.now($setting->timezone)->toDateString(),
-            'probation_end_date' => 'nullable|date_format:"' . $setting->date_format . '"|after_or_equal:joining_date',
-            'notice_period_start_date' => 'nullable|required_with:notice_period_end_date|date_format:"' . $setting->date_format . '"',
-            'notice_period_end_date' => 'nullable|required_with:notice_period_start_date|date_format:"' . $setting->date_format . '"|after_or_equal:notice_period_start_date',
-            'internship_end_date' => 'nullable|date_format:"' . $setting->date_format . '"|after_or_equal:joining_date',
-            'contract_end_date' => 'nullable|date_format:"' . $setting->date_format . '"|after_or_equal:joining_date',
+            'date_of_birth' => 'required|date_format:"' . $setting->date_format . '"|before_or_equal:' . now($setting->timezone)->toDateString(),
+            'reporting_to' => 'nullable|exists:users,id',
+            'notice_period' => 'nullable|integer|min:0|max:365',
+            'employee_type' => 'required|in:office_staff,sales_staff',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
+            'office_latitude' => 'nullable|numeric|between:-90,90',
+            'office_longitude' => 'nullable|numeric|between:-180,180',
+            'allowed_radius' => 'nullable|integer|min:1|max:100000',
+            'image' => 'nullable|image',
         ];
 
         if (isWorksuite()) {
@@ -57,19 +73,14 @@ class UpdateRequest extends CoreRequest
             ];
         }
 
-        if ($detailID) {
-            $rules['slack_username'] = 'nullable|unique:employee_details,slack_username,'.$detailID->id.',id,company_id,' . company()->id;
-        }
-        else {
-            $rules['slack_username'] = 'nullable|unique:employee_details,slack_username,null,id,company_id,' . company()->id;
-        }
-
         if (request()->password != '') {
             $rules['password'] = 'required|min:8|max:50';
         }
 
         if (request()->telegram_user_id) {
-            $rules['telegram_user_id'] = 'nullable|unique:users,telegram_user_id,' . $detailID->user_id.',id,company_id,' . company()->id;
+            $rules['telegram_user_id'] = $detailID
+                ? 'nullable|unique:users,telegram_user_id,' . $detailID->user_id . ',id,company_id,' . company()->id
+                : 'nullable|unique:users,telegram_user_id,null,id,company_id,' . company()->id;
         }
 
         $rules = $this->customFieldRules($rules);

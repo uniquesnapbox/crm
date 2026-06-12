@@ -24,6 +24,7 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 use Laravel\Fortify\TwoFactorAuthenticatable;
@@ -278,19 +279,11 @@ class User extends BaseModel implements AuthenticatableContract, AuthorizableCon
         $gravatarHash = !is_null($this->email) ? md5(strtolower(trim($this->email))) : md5($this->id);
         $fallbackImage = asset('img/avatar.png');
 
-        if ($this->image) {
-            if (config('filesystems.default') === 'local') {
-                $localPath = public_path('user-uploads/avatar/' . $this->image);
-
-                return File::exists($localPath)
-                    ? asset_url_local_s3('avatar/' . $this->image)
-                    : $fallbackImage;
-            }
-
-            return asset_url_local_s3('avatar/' . $this->image);
+        if (!$this->image || !$this->hasAvatarFile()) {
+            return $fallbackImage;
         }
 
-        return $fallbackImage;
+        return asset_url_local_s3('avatar/' . $this->image);
     }
 
     public function maskedImageUrl(): Attribute
@@ -299,22 +292,33 @@ class User extends BaseModel implements AuthenticatableContract, AuthorizableCon
             get: function () {
                 $fallbackImage = asset('img/avatar.png');
 
-                if ($this->image) {
-                    if (config('filesystems.default') === 'local') {
-                        $localPath = public_path('user-uploads/avatar/' . $this->image);
-
-                        return File::exists($localPath)
-                            ? $this->generateMaskedImageAppUrl('avatar/' . $this->image)
-                            : $fallbackImage;
-                    }
-
-                    return $this->generateMaskedImageAppUrl('avatar/' . $this->image);
+                if (!$this->image || !$this->hasAvatarFile()) {
+                    return $fallbackImage;
                 }
 
-                return $fallbackImage;
+                return $this->generateMaskedImageAppUrl('avatar/' . $this->image);
             },
         );
 
+    }
+
+    private function hasAvatarFile(): bool
+    {
+        $path = 'avatar/' . $this->image;
+        $disk = config('filesystems.default');
+        $cacheKey = 'avatar-file-exists-' . md5($disk . '|' . $path);
+
+        return Cache::remember($cacheKey, now()->addMinutes(30), function () use ($disk, $path) {
+            if (in_array($disk, StorageSetting::S3_COMPATIBLE_STORAGE)) {
+                try {
+                    return Storage::disk($disk)->exists($path);
+                } catch (\Throwable) {
+                    return false;
+                }
+            }
+
+            return File::exists(public_path('user-uploads/' . $path));
+        });
     }
 
     public function hasGravatar($email)

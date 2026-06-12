@@ -1622,9 +1622,12 @@ class AttendanceController extends AccountBaseController
             }
         }
 
+        $employeeDetail = $user->employeeDetail;
+        $enforceGeofence = $this->shouldEnforceGeofence($employeeDetail);
+
         // Check user by location
-        if (attendance_setting()->radius_check == 'yes') {
-            $checkRadius = $this->isWithinRadius($request);
+        if ($enforceGeofence) {
+            $checkRadius = $this->isWithinRadius($request, $employeeDetail);
             if (!$checkRadius) {
                 return ['type' => 'error', 'message' => __('messages.notAnValidLocation')];
 

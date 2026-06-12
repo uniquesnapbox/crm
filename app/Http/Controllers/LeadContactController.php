@@ -328,17 +328,23 @@ class LeadContactController extends AccountBaseController
         // salutation removed
         $leadContact->client_name = $request->client_name;
         $leadContact->client_email = $request->client_email;
-        $leadContact->note = trim_editor($request->note);
+        if ($request->has('note')) {
+            $leadContact->note = trim_editor($request->note);
+        }
         $leadContact->source_id = $request->source_id;
         $leadContact->status_id = $request->status_id;
         $leadContact->client_id = $existingUser?->id;
-        $leadContact->company_name = $request->company_name;
+        if ($request->has('company_name')) {
+            $leadContact->company_name = $request->company_name;
+        }
         $leadContact->website = $request->website;
         $leadContact->address = $request->address;
-        $leadContact->cell = $request->cell;
+        if ($request->has('cell')) {
+            $leadContact->cell = $request->cell;
+        }
         $leadContact->office = $request->office;
         // city, state, postal_code removed
-        $leadContact->country = $request->country;
+        $leadContact->country = $request->country ?: 'India';
         $leadContact->mobile = $this->normalizeMobileByCountry($request->mobile, $request->country);
         $leadContact->interest_level = $request->interest_level;
         $leadContact->deal_size = $request->deal_size;
@@ -348,6 +354,8 @@ class LeadContactController extends AccountBaseController
         $leadContact->added_by = $request->added_by ?? user()->id; // save added_by, fallback to current user
         $leadContact->assigned_to = $this->resolvedAssignedTo($request);
         $leadContact->save();
+
+        $followUpCreated = $this->createLeadFormFollowUp($leadContact, $request);
 
         // To add custom fields data
         if ($request->custom_fields_data) {
@@ -369,7 +377,10 @@ class LeadContactController extends AccountBaseController
             return Reply::successWithData(__('messages.recordSaved'), ['html' => $html, 'add_more' => true]);
         }
 
-        if ($redirectUrl == '') {
+        if ($request->input('form_action') === 'schedule_follow_up' && $followUpCreated) {
+            $redirectUrl = route('lead-contact.show', $leadContact->id) . '?tab=follow-up';
+        }
+        elseif ($redirectUrl == '') {
             $redirectUrl = route('lead-contact.index');
         }
 
@@ -450,17 +461,25 @@ class LeadContactController extends AccountBaseController
         // salutation removed
         $leadContact->client_name = $request->client_name;
         $leadContact->client_email = $request->client_email;
-        $leadContact->note = trim_editor($request->note);
+        if ($request->has('note')) {
+            $leadContact->note = trim_editor($request->note);
+        }
         $leadContact->source_id = $request->source_id;
         $leadContact->status_id = $request->status_id;
-        $leadContact->category_id = $request->category_id;
-        $leadContact->company_name = $request->company_name;
+        if ($request->has('category_id')) {
+            $leadContact->category_id = $request->category_id;
+        }
+        if ($request->has('company_name')) {
+            $leadContact->company_name = $request->company_name;
+        }
         $leadContact->website = $request->website;
         $leadContact->address = $request->address;
-        $leadContact->cell = $request->cell;
+        if ($request->has('cell')) {
+            $leadContact->cell = $request->cell;
+        }
         $leadContact->office = $request->office;
         // city, state, postal_code removed
-        $leadContact->country = $request->country;
+        $leadContact->country = $request->country ?: 'India';
         $leadContact->mobile = $this->normalizeMobileByCountry($request->mobile, $request->country);
         $leadContact->interest_level = $request->interest_level;
         $leadContact->deal_size = $request->deal_size;
@@ -471,6 +490,8 @@ class LeadContactController extends AccountBaseController
         $leadContact->assigned_to = $this->resolvedAssignedTo($request, $leadContact);
         $leadContact->save();
 
+        $followUpCreated = $this->createLeadFormFollowUp($leadContact, $request);
+
         // To add custom fields data
         if ($request->custom_fields_data) {
             $leadContact->updateCustomFieldData($request->custom_fields_data);
@@ -479,6 +500,10 @@ class LeadContactController extends AccountBaseController
         // Handle "Save & Add More" action
         if ($request->add_more == 'true') {
             return Reply::successWithData(__('messages.updateSuccess'), ['redirectUrl' => route('lead-contact.create')]);
+        }
+
+        if ($request->input('form_action') === 'schedule_follow_up' && $followUpCreated) {
+            return Reply::successWithData(__('messages.updateSuccess'), ['redirectUrl' => route('lead-contact.show', $leadContact->id) . '?tab=follow-up']);
         }
 
         return Reply::successWithData(__('messages.updateSuccess'), ['redirectUrl' => route('lead-contact.index')]);
@@ -707,10 +732,13 @@ class LeadContactController extends AccountBaseController
         $lead = Lead::findOrFail($request->lead_id);
         abort_403(!$this->canAccessLead($lead));
 
+        $startTime = $this->normalizeCompanyTimeValue($request->start_time);
+        $request->merge(['start_time' => $startTime]);
+
         $request->validate([
             'lead_id' => 'required|exists:leads,id',
             'next_follow_up_date' => 'required|date_format:"' . company()->date_format . '"',
-            'start_time' => 'required',
+            'start_time' => 'required|date_format:"' . company()->time_format . '"',
             'remind_time' => 'nullable|required_if:send_reminder,yes|integer|min:1',
             'remind_type' => 'nullable|in:minute,hour,day',
         ]);
@@ -720,7 +748,7 @@ class LeadContactController extends AccountBaseController
         $followUp->remark = trim_editor($request->remark);
         $followUp->next_follow_up_date = Carbon::createFromFormat(
             company()->date_format . ' ' . company()->time_format,
-            $request->next_follow_up_date . ' ' . $request->start_time,
+            $request->next_follow_up_date . ' ' . $startTime,
             company()->timezone
         )->setTimezone('UTC');
         $followUp->send_reminder = $request->send_reminder === 'yes' ? 'yes' : 'no';
@@ -733,8 +761,7 @@ class LeadContactController extends AccountBaseController
         $followUp->last_updated_by = user()->id;
         $followUp->save();
 
-        $lead->next_follow_up = 'yes';
-        $lead->save();
+        $this->syncLeadFollowUpFlag($lead->id);
 
         $this->pushLeadHistory($lead->id, 'followup_created', [
             'title' => 'Follow-up Added',
@@ -752,12 +779,12 @@ class LeadContactController extends AccountBaseController
     {
         $this->editFollowUpPermission = user()->permission('edit_lead_follow_up');
         $this->follow = LeadFollowUp::with('lead')->findOrFail($id);
-        abort_403(!$this->canAccessLead(optional($this->follow->lead)));
+        abort_403(!$this->canAccessLead($this->follow->lead));
 
         abort_403(!($this->editFollowUpPermission == 'all'
             || ($this->editFollowUpPermission == 'added' && $this->follow->added_by == user()->id)
-            || ($this->editFollowUpPermission == 'owned' && $this->canAccessLead(optional($this->follow->lead)))
-            || ($this->editFollowUpPermission == 'both' && ($this->follow->added_by == user()->id || $this->canAccessLead(optional($this->follow->lead))))
+            || ($this->editFollowUpPermission == 'owned' && $this->canAccessLead($this->follow->lead))
+            || ($this->editFollowUpPermission == 'both' && ($this->follow->added_by == user()->id || $this->canAccessLead($this->follow->lead)))
         ));
 
         return view('lead-contact.followups.edit', $this->data);
@@ -767,17 +794,20 @@ class LeadContactController extends AccountBaseController
     {
         $this->editFollowUpPermission = user()->permission('edit_lead_follow_up');
         $followUp = LeadFollowUp::with('lead')->findOrFail($request->id);
-        abort_403(!$this->canAccessLead(optional($followUp->lead)));
+        abort_403(!$this->canAccessLead($followUp->lead));
+
+        $startTime = $this->normalizeCompanyTimeValue($request->start_time);
+        $request->merge(['start_time' => $startTime]);
 
         abort_403(!($this->editFollowUpPermission == 'all'
             || ($this->editFollowUpPermission == 'added' && $followUp->added_by == user()->id)
-            || ($this->editFollowUpPermission == 'owned' && $this->canAccessLead(optional($followUp->lead)))
-            || ($this->editFollowUpPermission == 'both' && ($followUp->added_by == user()->id || $this->canAccessLead(optional($followUp->lead))))
+            || ($this->editFollowUpPermission == 'owned' && $this->canAccessLead($followUp->lead))
+            || ($this->editFollowUpPermission == 'both' && ($followUp->added_by == user()->id || $this->canAccessLead($followUp->lead)))
         ));
 
         $request->validate([
             'next_follow_up_date' => 'required|date_format:"' . company()->date_format . '"',
-            'start_time' => 'required',
+            'start_time' => 'required|date_format:"' . company()->time_format . '"',
             'remind_time' => 'nullable|required_if:send_reminder,yes|integer|min:1',
             'remind_type' => 'nullable|in:minute,hour,day',
             'status' => 'required|in:pending,canceled,completed',
@@ -789,7 +819,7 @@ class LeadContactController extends AccountBaseController
         $followUp->remark = trim_editor($request->remark);
         $followUp->next_follow_up_date = Carbon::createFromFormat(
             company()->date_format . ' ' . company()->time_format,
-            $request->next_follow_up_date . ' ' . $request->start_time,
+            $request->next_follow_up_date . ' ' . $startTime,
             company()->timezone
         )->setTimezone('UTC');
         $followUp->send_reminder = $request->send_reminder === 'yes' ? 'yes' : 'no';
@@ -829,12 +859,12 @@ class LeadContactController extends AccountBaseController
     {
         $this->deleteFollowUpPermission = user()->permission('delete_lead_follow_up');
         $followUp = LeadFollowUp::with('lead')->findOrFail($id);
-        abort_403(!$this->canAccessLead(optional($followUp->lead)));
+        abort_403(!$this->canAccessLead($followUp->lead));
 
         abort_403(!($this->deleteFollowUpPermission == 'all'
             || ($this->deleteFollowUpPermission == 'added' && $followUp->added_by == user()->id)
-            || ($this->deleteFollowUpPermission == 'owned' && $this->canAccessLead(optional($followUp->lead)))
-            || ($this->deleteFollowUpPermission == 'both' && ($followUp->added_by == user()->id || $this->canAccessLead(optional($followUp->lead))))
+            || ($this->deleteFollowUpPermission == 'owned' && $this->canAccessLead($followUp->lead))
+            || ($this->deleteFollowUpPermission == 'both' && ($followUp->added_by == user()->id || $this->canAccessLead($followUp->lead)))
         ));
 
         $leadId = $followUp->lead_id;
@@ -855,12 +885,12 @@ class LeadContactController extends AccountBaseController
     {
         $this->editFollowUpPermission = user()->permission('edit_lead_follow_up');
         $followUp = LeadFollowUp::with('lead')->findOrFail($request->id);
-        abort_403(!$this->canAccessLead(optional($followUp->lead)));
+        abort_403(!$this->canAccessLead($followUp->lead));
 
         abort_403(!($this->editFollowUpPermission == 'all'
             || ($this->editFollowUpPermission == 'added' && $followUp->added_by == user()->id)
-            || ($this->editFollowUpPermission == 'owned' && $this->canAccessLead(optional($followUp->lead)))
-            || ($this->editFollowUpPermission == 'both' && ($followUp->added_by == user()->id || $this->canAccessLead(optional($followUp->lead))))
+            || ($this->editFollowUpPermission == 'owned' && $this->canAccessLead($followUp->lead))
+            || ($this->editFollowUpPermission == 'both' && ($followUp->added_by == user()->id || $this->canAccessLead($followUp->lead)))
         ));
 
         $oldStatus = (string) ($followUp->status ?: 'pending');
@@ -1049,6 +1079,7 @@ class LeadContactController extends AccountBaseController
 
     private function syncLeadFollowUpFlag(int $leadId): void
     {
+        // Some restored databases may not include this legacy flag column.
         if (!Schema::hasColumn('leads', 'next_follow_up')) {
             return;
         }
@@ -1165,6 +1196,79 @@ class LeadContactController extends AccountBaseController
         abort_unless(strlen($fullDigits) >= 7 && strlen($fullDigits) <= 15, 422, 'Mobile number must be in valid international format.');
 
         return '+' . $fullDigits;
+    }
+
+    private function shouldCreateLeadFormFollowUp(Request $request): bool
+    {
+        return $request->input('form_action') === 'schedule_follow_up'
+            || $request->filled('followup_date')
+            || $request->filled('reminder_time')
+            || filled(trim(strip_tags((string) $request->followup_note)));
+    }
+
+    private function parseLeadFormFollowUpDateTime(Request $request): ?Carbon
+    {
+        if (!$request->filled('followup_date')) {
+            return null;
+        }
+
+        $followUpTime = $request->filled('reminder_time')
+            ? $this->normalizeCompanyTimeValue($request->reminder_time)
+            : now(company()->timezone)->format(company()->time_format);
+
+        return Carbon::createFromFormat(
+            company()->date_format . ' ' . company()->time_format,
+            $request->followup_date . ' ' . $followUpTime,
+            company()->timezone
+        )->setTimezone('UTC');
+    }
+
+    private function createLeadFormFollowUp(Lead $lead, Request $request): bool
+    {
+        if (!$this->shouldCreateLeadFormFollowUp($request)) {
+            return false;
+        }
+
+        $this->addFollowUpPermission = user()->permission('add_lead_follow_up');
+        abort_403(!in_array($this->addFollowUpPermission, ['all', 'added']));
+
+        $followUp = new LeadFollowUp();
+        $followUp->lead_id = $lead->id;
+        $followUp->remark = trim_editor($request->followup_note);
+        $followUp->next_follow_up_date = $this->parseLeadFormFollowUpDateTime($request);
+        $followUp->send_reminder = 'no';
+        $followUp->remind_time = null;
+        $followUp->remind_type = null;
+        $followUp->status = 'pending';
+        $followUp->latitude = $request->latitude;
+        $followUp->longitude = $request->longitude;
+        $followUp->added_by = user()->id;
+        $followUp->last_updated_by = user()->id;
+        $followUp->save();
+
+        $this->syncLeadFollowUpFlag($lead->id);
+
+        return true;
+    }
+
+    private function normalizeCompanyTimeValue(?string $time): ?string
+    {
+        if (is_null($time)) {
+            return null;
+        }
+
+        $time = trim($time);
+        $companyTimeFormat = company()->time_format;
+
+        if ($companyTimeFormat === 'h:i a') {
+            return strtolower($time);
+        }
+
+        if ($companyTimeFormat === 'h:i A') {
+            return strtoupper($time);
+        }
+
+        return $time;
     }
 
     public function importLead()
