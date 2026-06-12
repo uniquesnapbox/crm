@@ -15,7 +15,7 @@ class SignUpSettingController extends AccountBaseController
         $this->pageTitle = __('app.menu.signUpSetting');
         $this->activeSettingMenu = 'sign_up_setting';
         $this->middleware(function ($request, $next) {
-            abort_403(user()->permission('manage_company_setting') !== 'all');
+            abort_403(!(in_array('admin', user_roles()) || user()->permission('manage_company_setting') === 'all'));
             return $next($request);
         });
     }

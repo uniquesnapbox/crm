@@ -47,13 +47,16 @@
                        placeholder="@lang('placeholders.password')" id="password">
             </div>
 
-            @if ($globalSetting->sign_up_terms == 'yes')
-                <div class="form-group text-left" >
-                    <input autocomplete="off" id="read_agreement"
-                        name="terms_and_conditions" type="checkbox" >
-                    <label for="read_agreement">@lang('app.acceptTerms') <a href="{{ $globalSetting->terms_link }}" target="_blank" id="terms_link" >@lang('app.termsAndCondition')</a></label>
-                </div>
-            @endif
+            <div class="form-group text-left">
+                <input autocomplete="off" id="read_agreement"
+                    name="terms_and_conditions" type="checkbox" required>
+                <label for="read_agreement">
+                    @lang('app.acceptTerms')
+                    <a href="{{ $globalSetting->terms_link ?? '#' }}" target="_blank" rel="noreferrer" id="terms_link">
+                        @lang('app.termsAndCondition')
+                    </a>
+                </label>
+            </div>
 
             <button type="button" id="submit-signup"
                     class="btn-primary f-w-500 rounded w-100 height-50 f-18">
@@ -67,12 +70,21 @@
 
     <x-slot name="scripts">
         <script>
-            $('#email_address').change(function () {
-                var email = $('#email_address').val() + '@' + $('#email_domain').val();
-                $('#user-email').val(email);
+            function syncRestrictedEmail() {
+                const localPart = ($('#email_address').val() || '').trim();
+                const domain = ($('#email_domain').val() || '').trim();
+
+                if (localPart && domain) {
+                    $('#user-email').val(localPart + '@' + domain);
+                }
+            }
+
+            $('#email_address').on('input change blur', function () {
+                syncRestrictedEmail();
             });
 
             $('#submit-signup').click(function () {
+                syncRestrictedEmail();
 
                 var url = "{{ route('accept_invite') . '?invite=' . $invite->invitation_code }}";
                 $.easyAjax({
