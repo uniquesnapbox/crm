@@ -353,7 +353,6 @@ class WhatsAppManager extends EventEmitter {
     const key = sessionKey || this.config.defaultSession;
     return this.qrCodeUpdatedAt.get(key) || null;
   }
-
   async sendMessage({ to, message, channelKey, attachment = null }) {
     const key = channelKey || this.config.defaultSession;
     const client = await this.ensureClient(key);
