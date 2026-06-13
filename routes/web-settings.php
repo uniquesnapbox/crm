@@ -250,6 +250,8 @@ Route::group(['middleware' => 'auth', 'prefix' => 'account/settings'], function 
 
 Route::group(['middleware' => 'auth', 'prefix' => 'account'], function () {
 
+    Route::redirect('sign-up-settings', '/account/settings/sign-up-settings');
+
     Route::resource('company-settings', SettingsController::class)->only(['edit', 'update', 'index', 'change_language']);
 
     // Update App
