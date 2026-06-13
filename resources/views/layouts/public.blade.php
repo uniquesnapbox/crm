@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="{{ asset('vendor/css/simple-line-icons.css') }}">
 
     <!-- Template CSS -->
-    <link type="text/css" rel="stylesheet" media="all" href="{{ asset('css/main.css') }}">
+    <link type="text/css" rel="stylesheet" media="all" href="{{ asset('css/main.css') }}?v={{ filemtime(public_path('css/main.css')) }}">
     <link rel='stylesheet' href="{{ asset('vendor/css/dragula.css') }}" type='text/css' />
     <link rel='stylesheet' href="{{ asset('vendor/css/drag.css') }}" type='text/css' />
 
@@ -76,6 +76,13 @@
 
     <script src="{{ asset('vendor/jquery/jquery.min.js') }}"></script>
     <script src="{{ asset('vendor/jquery/modernizr.min.js') }}"></script>
+    <script>
+        window.company = @json($company ?? global_setting());
+        window.init = window.init || function () {};
+        var company = window.company;
+    </script>
+    <script src="{{ asset('vendor/moment/moment-with-locales.min.js') }}"></script>
+    <script src="{{ asset('vendor/moment/moment-timezone-with-data-10-year-range.js') }}"></script>
 
     <script>
         var checkMiniSidebar = localStorage.getItem("mini-sidebar");
@@ -96,6 +103,25 @@
         <div class="preloader-container d-flex justify-content-center align-items-center">
             <div class="spinner-border" role="status" aria-hidden="true"></div>
         </div>
+        <script>
+            // Fail-safe: never leave the UI blocked behind the preloader.
+            (function () {
+                function hidePreloader() {
+                    var preloader = document.querySelector('.preloader-container');
+                    if (preloader) {
+                        preloader.style.display = 'none';
+                        preloader.classList.remove('d-flex');
+                    }
+                }
+
+                window.addEventListener('DOMContentLoaded', hidePreloader, { once: true });
+                window.addEventListener('load', hidePreloader, { once: true });
+                window.addEventListener('error', function () {
+                    setTimeout(hidePreloader, 0);
+                });
+                setTimeout(hidePreloader, 3000);
+            })();
+        </script>
 
 
         <x-app-title class="d-block d-lg-none" :pageTitle="$pageTitle"></x-app-title>
@@ -149,7 +175,11 @@
 </div>
 
 <!-- Global Required Javascript -->
-<script src="{{ asset('js/main.js') }}"></script>
+<script src="{{ asset('js/main.js') }}?v={{ filemtime(public_path('js/main.js')) }}"></script>
+<script>
+    window.company = window.company || @json($company ?? global_setting());
+    window.init = window.init || function () {};
+</script>
 
 <script>
     const MODAL_DEFAULT = '#myModalDefault';
@@ -159,7 +189,7 @@
     const RIGHT_MODAL = '#task-detail-1';
     const RIGHT_MODAL_CONTENT = '#right-modal-content';
     const RIGHT_MODAL_TITLE = '#right-modal-title';
-    const company = @json($company??global_setting());
+    var company = window.company;
     document.loading = '@lang('app.loading')';
 
     const datepickerConfig = {

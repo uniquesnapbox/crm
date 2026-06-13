@@ -10,7 +10,6 @@ use App\Models\User;
 use App\Scopes\ActiveScope;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class LeaveReportController extends AccountBaseController
 {
@@ -44,13 +43,13 @@ class LeaveReportController extends AccountBaseController
             if ($request->startDate !== null && $request->startDate != 'null' && $request->startDate != '') {
                 $this->startDate = $request->startDate;
                 $startDate = companyToDateString($request->startDate);
-                $query->where(DB::raw('DATE(leaves.`leave_date`)'), '>=', $startDate);
+                $query->where('leaves.leave_date', '>=', Carbon::parse($startDate, $this->company->timezone)->startOfDay()->toDateString());
             }
 
             if ($request->endDate !== null && $request->endDate != 'null' && $request->endDate != '') {
                 $this->endDate = $request->endDate;
                 $endDate = companyToDateString($request->endDate);
-                $query->where(DB::raw('DATE(leaves.`leave_date`)'), '<=', $endDate);
+                $query->where('leaves.leave_date', '<=', Carbon::parse($endDate, $this->company->timezone)->endOfDay()->toDateString());
             }
 
             switch ($view) {

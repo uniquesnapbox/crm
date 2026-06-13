@@ -4,7 +4,7 @@
 
     <!-- NAVBAR LEFT(MOBILE MENU COLLAPSE) START-->
     <div class="navbar-left float-left d-flex align-items-center">
-        <x-app-title class="d-none d-lg-flex" :pageTitle="$pageTitle"></x-app-title>
+        <x-app-title class="d-none d-lg-flex" :pageTitle="$pageTitle ?? 'Dashboard'"></x-app-title>
 
         <div class="d-block d-lg-none menu-collapse cursor-pointer position-relative" onclick="openMobileMenu()">
             <div class="mc-wrap">
@@ -14,7 +14,7 @@
             </div>
         </div>
 
-        @if (in_array('admin', user_roles()) && $checkListCompleted < $checkListTotal && App::environment('codecanyon'))
+        @if (isset($checkListCompleted, $checkListTotal) && in_array('admin', user_roles()) && $checkListCompleted < $checkListTotal && App::environment('codecanyon'))
             <div class="ml-3 d-none d-lg-block d-md-block">
                 <span class="f-12 mb-1"><a href="{{ route('checklist') }}" class="text-lightest ">
                         @lang('modules.accountSettings.setupProgress')</a>
@@ -71,9 +71,9 @@
                                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                 <i class="fa fa-clock f-16 text-dark-grey"></i>
                                     <span
-                                        class="badge badge-primary active-timer-count position-absolute {{ ($activeTimerCount == 0) ? 'd-none' : '' }}">{{ $activeTimerCount }}</span>
+                                        class="badge badge-primary active-timer-count position-absolute {{ (($activeTimerCount ?? 0) == 0) ? 'd-none' : '' }}">{{ $activeTimerCount ?? 0 }}</span>
                             </a>
-                        @if ($activeTimerCount == 0)
+                        @if (($activeTimerCount ?? 0) == 0)
                             <!-- DROPDOWN - INFORMATION -->
                                 <div class="dropdown-menu dropdown-menu-right" id="active-timer-list"
                                      aria-labelledby="dropdownMenuLink" tabindex="0">

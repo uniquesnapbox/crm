@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use App\Events\AutoFollowUpReminderEvent;
 use App\Models\Company;
-use App\Models\DealFollowUp;
+use App\Models\LeadFollowUp;
 use Illuminate\Console\Command;
 
 class SendAutoFollowUpReminder extends Command
@@ -44,7 +44,7 @@ class SendAutoFollowUpReminder extends Command
 
     public function sendFollowUpReminder($company)
     {
-        $followups = DealFollowUp::with('lead', 'lead.leadAgent', 'lead.leadAgent.user')
+        $followups = LeadFollowUp::with('lead', 'lead.leadAgent', 'lead.leadAgent.user')
             ->where('next_follow_up_date', '>=', now($company->timezone))
             ->whereHas('lead', function ($query) use ($company) {
                 $query->where('company_id', $company->id);

@@ -26,15 +26,15 @@ use App\Traits\ProjectDashboard;
 use App\Traits\TicketDashboard;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
-use Froiden\Envato\Traits\AppBoot;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Nwidart\Modules\Facades\Module;
 
 class DashboardController extends AccountBaseController
 {
 
-    use AppBoot, CurrencyExchange, OverviewDashboard, EmployeeDashboard, ProjectDashboard, ClientDashboard, HRDashboard, TicketDashboard, FinanceDashboard, ClientPanelDashboard;
+    use CurrencyExchange, OverviewDashboard, EmployeeDashboard, ProjectDashboard, ClientDashboard, HRDashboard, TicketDashboard, FinanceDashboard, ClientPanelDashboard;
 
     public function __construct()
     {
@@ -58,10 +58,6 @@ class DashboardController extends AccountBaseController
      */
     public function index()
     {
-
-
-        $this->isCheckScript();
-
         if (in_array('employee', user_roles())) {
             return $this->employeeDashboard();
         }
@@ -76,9 +72,12 @@ class DashboardController extends AccountBaseController
         $data = $request->all();
         unset($data['_token']);
         DashboardWidget::where('status', 1)->where('dashboard_type', $dashboardType)->update(['status' => 0]);
+        $enabledWidgets = array_keys($data);
 
-        foreach ($data as $key => $widget) {
-            DashboardWidget::where('widget_name', $key)->where('dashboard_type', $dashboardType)->update(['status' => 1]);
+        if (!empty($enabledWidgets)) {
+            DashboardWidget::where('dashboard_type', $dashboardType)
+                ->whereIn('widget_name', $enabledWidgets)
+                ->update(['status' => 1]);
         }
 
         return Reply::success(__('messages.updateSuccess'));
@@ -87,8 +86,6 @@ class DashboardController extends AccountBaseController
     public function checklist()
     {
         if (in_array('admin', user_roles())) {
-            $this->isCheckScript();
-
             return view('dashboard.checklist', $this->data);
         }
     }
@@ -300,9 +297,8 @@ class DashboardController extends AccountBaseController
                         $query->where('user_id', user()->id);
                     })
                     ->where(function ($q) use ($startDate, $endDate) {
-                        $q->whereBetween(DB::raw('DATE(tasks.`due_date`)'), [$startDate->toDateString(), $endDate->toDateString()]);
-
-                        $q->orWhereBetween(DB::raw('DATE(tasks.`start_date`)'), [$startDate->toDateString(), $endDate->toDateString()]);
+                        $q->whereBetween('tasks.due_date', [$startDate->toDateString(), $endDate->toDateString()]);
+                        $q->orWhereBetween('tasks.start_date', [$startDate->toDateString(), $endDate->toDateString()]);
                     })->get();
 
                 foreach ($tasks as $task) {
@@ -323,7 +319,7 @@ class DashboardController extends AccountBaseController
             if (in_array('tickets', $calendar_filter_array)) {
                 // tickets
                 $tickets = Ticket::where('user_id', user()->id)
-                    ->whereBetween(DB::raw('DATE(tickets.`updated_at`)'), [$startDate->toDateTimeString(), $endDate->endOfDay()->toDateTimeString()])->get();
+                    ->whereBetween('tickets.updated_at', [$startDate->startOfDay()->toDateTimeString(), $endDate->endOfDay()->toDateTimeString()])->get();
 
                 foreach ($tickets as $key => $ticket) {
                     $eventData[] = [
@@ -347,7 +343,7 @@ class DashboardController extends AccountBaseController
                     ->where('leaves.status', 'approved')
                     ->select('leaves.id', 'leaves.leave_date', 'leaves.status', 'leave_types.type_name', 'leave_types.color', 'leaves.leave_date', 'leaves.duration', 'leaves.status', 'leaves.user_id')
                     ->with('user')
-                    ->whereBetween(DB::raw('DATE(leaves.`leave_date`)'), [$startDate->toDateString(), $endDate->toDateString()])
+                    ->whereBetween('leaves.leave_date', [$startDate->toDateString(), $endDate->toDateString()])
                     ->get();
 
                 foreach ($leaves as $leave) {
@@ -376,7 +372,7 @@ class DashboardController extends AccountBaseController
         $startDate = $this->startDate->toDateString();
         $endDate = $this->endDate->toDateString();
 
-        $this->leadPipelines = LeadPipeline::all();
+        $this->leadPipelines = Cache::remember('lead_pipelines_' . company()->id, now()->addMinutes(30), fn() => LeadPipeline::all());
 
         $this->leadStatusChart = $this->leadStatusChart($startDate, $endDate, $pipelineId);
 

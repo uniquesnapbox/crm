@@ -5,9 +5,7 @@ namespace App\Http\Controllers;
 use App\Helper\Reply;
 use App\Models\LeadAgent;
 use App\Models\LeadCategory;
-use App\Models\LeadPipeline;
 use App\Models\LeadSource;
-use App\Models\PipelineStage;
 use App\Models\LeadStatus;
 use App\Models\User;
 
@@ -17,7 +15,7 @@ class LeadSettingController extends AccountBaseController
     public function __construct()
     {
         parent::__construct();
-        $this->pageTitle = 'modules.deal.leadSetting';
+        $this->pageTitle = 'Lead Settings';
         $this->activeSettingMenu = 'lead_settings';
         $this->middleware(function ($request, $next) {
             abort_403(!(user()->permission('manage_lead_setting') == 'all' && in_array('leads', user_modules())));
@@ -32,9 +30,7 @@ class LeadSettingController extends AccountBaseController
      */
     public function index()
     {
-        $this->pipelines = LeadPipeline::all();
         $this->leadSources = LeadSource::all();
-        $this->leadStages = PipelineStage::all();
         $this->leadAgents = User::whereHas('leadAgent')->with('leadAgent')->get();
         $this->leadCategories = LeadCategory::all();
 
@@ -47,8 +43,11 @@ class LeadSettingController extends AccountBaseController
 
         $tab = request('tab');
 
+        if ($tab === 'pipeline') {
+            $tab = 'source';
+        }
+
         $this->view = match ($tab) {
-            'pipeline' => 'lead-settings.ajax.pipeline',
             'agent' => 'lead-settings.ajax.agent',
             'category' => 'lead-settings.ajax.category',
             default => 'lead-settings.ajax.source',

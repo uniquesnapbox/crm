@@ -3,7 +3,7 @@
 namespace App\Traits;
 
 use App\Helper\Common;
-use Exception;
+use App\Models\GlobalSetting;
 
 trait HasMaskImage
 {
@@ -11,11 +11,12 @@ trait HasMaskImage
     private function generateMaskedImageAppUrl($path): string
     {
         $filePath = Common::encryptDecrypt($path) . '_masked.png';
-        try {
-            return route('file.getFile', ['type' => 'image', 'path' => $filePath]);
-        } catch (Exception $exception) {
-            return config('app.url') . '/file/image/' . $filePath;
-        }
+
+        return url()->temporarySignedRoute(
+            'file.getFile',
+            now()->addDays(GlobalSetting::SIGNED_ROUTE_EXPIRY),
+            ['type' => 'image', 'path' => $filePath]
+        );
     }
 
 }

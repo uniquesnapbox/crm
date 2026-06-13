@@ -51,8 +51,8 @@ class IncomeVsExpenseReportController extends AccountBaseController
         }
 
         $invoices = Payment::join('currencies', 'currencies.id', '=', 'payments.currency_id')
-            ->where(DB::raw('DATE(`paid_on`)'), '>=', $fromDate)
-            ->where(DB::raw('DATE(`paid_on`)'), '<=', $toDate)
+            ->whereDate('paid_on', '>=', $fromDate)
+            ->whereDate('paid_on', '<=', $toDate)
             ->where('payments.status', 'complete')
             ->orderBy('paid_on', 'ASC')
             ->get([
@@ -64,13 +64,15 @@ class IncomeVsExpenseReportController extends AccountBaseController
                 'payments.default_currency_id'
             ]);
 
+        $invoiceCurrencyRates = Currency::whereIn('id', $invoices->pluck('currency_id')->unique()->all())
+            ->pluck('exchange_rate', 'id');
+
         foreach ($invoices as $invoice) {
 
             if((is_null($invoice->default_currency_id) && is_null($invoice->exchange_rate)) ||
             (!is_null($invoice->default_currency_id) && Company()->currency_id != $invoice->default_currency_id))
             {
-                $currency = Currency::findOrFail($invoice->currency_id);
-                $exchangeRate = $currency->exchange_rate;
+                $exchangeRate = $invoiceCurrencyRates[$invoice->currency_id] ?? 1;
             }
             else {
                 $exchangeRate = $invoice->exchange_rate;
@@ -91,8 +93,8 @@ class IncomeVsExpenseReportController extends AccountBaseController
 
         $expenses = [];
         $expenseResults = Expense::join('currencies', 'currencies.id', '=', 'expenses.currency_id')
-            ->where(DB::raw('DATE(`purchase_date`)'), '>=', $fromDate)
-            ->where(DB::raw('DATE(`purchase_date`)'), '<=', $toDate)
+            ->whereDate('purchase_date', '>=', $fromDate)
+            ->whereDate('purchase_date', '<=', $toDate)
             ->where('expenses.status', 'approved')
             ->get([
                 'expenses.price',
@@ -103,13 +105,15 @@ class IncomeVsExpenseReportController extends AccountBaseController
                 'expenses.default_currency_id'
             ]);
 
+        $expenseCurrencyRates = Currency::whereIn('id', $expenseResults->pluck('currency_id')->unique()->all())
+            ->pluck('exchange_rate', 'id');
+
         foreach ($expenseResults as $expenseResult) {
 
             if((is_null($expenseResult->default_currency_id) && is_null($expenseResult->exchange_rate)) ||
             (!is_null($expenseResult->default_currency_id) && Company()->currency_id != $expenseResult->default_currency_id))
             {
-                $currency = Currency::findOrFail($expenseResult->currency_id);
-                $exchangeRate = $currency->exchange_rate;
+                $exchangeRate = $expenseCurrencyRates[$expenseResult->currency_id] ?? 1;
             }
             else {
                 $exchangeRate = $expenseResult->exchange_rate;

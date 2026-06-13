@@ -38,33 +38,117 @@
     @stack('styles')
 
     <style>
-        :root {
-            --fc-border-color: #E8EEF3;
-            --fc-button-text-color: #99A5B5;
-            --fc-button-border-color: #99A5B5;
-            --fc-button-bg-color: #ffffff;
-            --fc-button-active-bg-color: #171f29;
-            --fc-today-bg-color: #f2f4f7;
-        }
-
-        .fc a[data-navlink] {
-            color: #99a5b5;
-        }
-
         body {
             overflow-x: hidden;
+            background:
+                radial-gradient(circle at top right, rgba(37, 99, 235, 0.08), transparent 38%),
+                radial-gradient(circle at bottom left, rgba(14, 165, 233, 0.08), transparent 42%),
+                #f4f7fb;
+            min-height: 100vh;
         }
 
-        img {
-            height: 50px;
-            margin-top: 20px;
+        .ticket-public-wrap {
+            max-width: 920px;
+            margin: 26px auto;
+            padding: 0 14px;
         }
 
-        .box {
-            margin-top: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        .ticket-public-wrap.ticket-public-wrap--narrow {
+            max-width: 720px;
+        }
+
+        .ticket-public-card {
+            background: #fff;
+            border: 1px solid #e6ecf4;
+            border-radius: 18px;
+            box-shadow: 0 20px 60px rgba(15, 23, 42, .08);
+            padding: 26px;
+        }
+
+        .ticket-public-head {
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        .ticket-public-logo {
+            height: 52px;
+            max-width: 220px;
+            object-fit: contain;
+            margin-bottom: 12px;
+        }
+
+        .ticket-public-title {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: #0f172a;
+            margin: 0;
+        }
+
+        .ticket-public-subtitle {
+            color: #64748b;
+            margin-top: 6px;
+            margin-bottom: 0;
+        }
+
+        .ticket-public-card .form-group label {
+            font-weight: 600;
+            color: #334155;
+        }
+
+        .ticket-public-card .form-control {
+            border-radius: 10px;
+            border: 1px solid #dbe4ef;
+            min-height: 42px;
+            background: #fff;
+            transition: border-color .2s ease, box-shadow .2s ease;
+        }
+
+        .ticket-public-card textarea.form-control {
+            min-height: 110px;
+        }
+
+        .ticket-public-card .form-control:focus {
+            border-color: #60a5fa;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, .12);
+        }
+
+        .ticket-public-card .bootstrap-select .dropdown-toggle {
+            min-height: 42px;
+            border-radius: 10px !important;
+            border: 1px solid #dbe4ef !important;
+        }
+
+        .ticket-public-card .form-actions {
+            border-top: 1px solid #e6ecf4;
+            padding-top: 16px;
+            margin-top: 6px !important;
+            margin-bottom: 0 !important;
+        }
+
+        .ticket-public-card .btn-primary {
+            border-radius: 10px;
+            padding: 9px 18px;
+            font-weight: 600;
+            background: #2563eb;
+            border-color: #2563eb;
+        }
+
+        .ticket-public-card .btn-secondary {
+            border-radius: 10px;
+            padding: 9px 18px;
+            font-weight: 600;
+        }
+
+        @media (max-width: 767.98px) {
+            .ticket-public-card {
+                padding: 18px;
+                border-radius: 14px;
+            }
+
+            .ticket-public-title {
+                font-size: 20px;
+            }
         }
     </style>
 
@@ -80,23 +164,35 @@
 
 <body>
 <!-- change dark theme class according to application dark theme setting -->
-<div class="box">
-    <div class="@if($styled==1) col-md-6 @else col-md-12 @endif">
+<div class="ticket-public-wrap @if($styled==1) ticket-public-wrap--narrow @endif">
+    <div class="ticket-public-card">
+        <div class="ticket-public-head">
         @if($withLogo==1)
-            <div class="text-center">
-                <img src="{{ $company->logo_url }}" alt="{{ $company->company_name }}"
-                     class="text-center"/>
-            </div>
+            <img src="{{ $company->logo_url }}" alt="{{ $company->company_name }}" class="ticket-public-logo"/>
         @endif
+            <h1 class="ticket-public-title">Support Ticket Form</h1>
+            <p class="ticket-public-subtitle">Fill in details below and our team will get back to you soon.</p>
+        </div>
+
+        @if (!($isTicketFormActive ?? true))
+            <div class="alert alert-warning mt-4 mb-4">
+                Ticket form is currently disabled. Please contact support team.
+            </div>
+        @else
         <x-form id="createTicket" method="POST">
             <div class="form-body">
                 <div class="row">
                     @foreach ($ticketFormFields as $item)
+                        @php
+                            $defaultLabelKey = 'modules.tickets.' . $item->field_name;
+                            $resolvedLabel = __($defaultLabelKey);
+                            $fieldLabel = $resolvedLabel === $defaultLabelKey ? $item->field_display_name : $resolvedLabel;
+                        @endphp
                         @if ($item->custom_fields_id === null)
                             @if ($item->field_type == 'textarea')
                                 <div class="col-lg-12">
                                     <x-forms.textarea :fieldId="$item->field_name"
-                                                      :fieldLabel="__('modules.tickets.'.$item->field_name)"
+                                                      :fieldLabel="$fieldLabel"
                                                       :fieldName="$item->field_name"
                                                       :fieldRequired="$item->required == 1">
                                     </x-forms.textarea>
@@ -105,7 +201,7 @@
                                 @if ($item->field_name == 'type')
                                     <div class="col-lg-12">
                                         <x-forms.select :fieldId="$item->field_name"
-                                                        :fieldLabel="__('modules.tickets.'.$item->field_name)"
+                                                        :fieldLabel="$fieldLabel"
                                                         :fieldName="$item->field_name" search="true" alignRight="true"
                                                         :fieldRequired="$item->required == 1">
                                             @forelse($types as $type)
@@ -119,7 +215,7 @@
                                 @elseif ($item->field_name == 'priority')
                                     <div class="col-lg-12">
                                         <x-forms.select :fieldId="$item->field_name"
-                                                        :fieldLabel="__('modules.tickets.'.$item->field_name)"
+                                                        :fieldLabel="$fieldLabel"
                                                         :fieldName="$item->field_name" search="true" alignRight="true"
                                                         :fieldRequired="$item->required == 1">
                                             <option value="low">@lang('app.low')</option>
@@ -131,7 +227,7 @@
                                 @else
                                     <div class="col-lg-12">
                                         <x-forms.select :fieldId="$item->field_name"
-                                                        :fieldLabel="__('modules.tickets.'.$item->field_name)"
+                                                        :fieldLabel="$fieldLabel"
                                                         :fieldName="$item->field_name" search="true" alignRight="true"
                                                         :fieldRequired="$item->required == 1">
                                             @foreach($groups as $group)
@@ -142,11 +238,19 @@
                                 @endif
                             @else
                                 <div class="col-md-12">
-                                    <x-forms.text :fieldId="$item->field_name"
-                                                  :fieldLabel="__('modules.tickets.'.$item->field_name)"
-                                                  :fieldName="$item->field_name" fieldPlaceholder=""
-                                                  :fieldRequired="$item->required == 1">
-                                    </x-forms.text>
+                                    @if ($item->field_name === 'mobile')
+                                        <x-forms.tel :fieldId="$item->field_name"
+                                                     :fieldLabel="$fieldLabel"
+                                                     :fieldName="$item->field_name" fieldPlaceholder=""
+                                                     :fieldRequired="$item->required == 1">
+                                        </x-forms.tel>
+                                    @else
+                                        <x-forms.text :fieldId="$item->field_name"
+                                                      :fieldLabel="$fieldLabel"
+                                                      :fieldName="$item->field_name" fieldPlaceholder=""
+                                                      :fieldRequired="$item->required == 1">
+                                        </x-forms.text>
+                                    @endif
                                 </div>
                             @endif
                         @else
@@ -294,6 +398,7 @@
                 <button type="reset" class="btn btn-secondary">@lang('app.reset')</button>
             </div>
         </x-form>
+        @endif
 
         <div class="row">
             <div class="col-sm-12">

@@ -406,6 +406,11 @@ class PublicUrlController extends Controller
 
     public function checkEnv()
     {
+        abort_unless(
+            config('app.debug') || app()->environment('local') || (auth()->check() && auth()->user()->hasRole('admin')),
+            403
+        );
+
         $plugins = Module::all(); /* @phpstan-ignore-line */
         $updateArray = [];
         $updateArrayEnabled = [];

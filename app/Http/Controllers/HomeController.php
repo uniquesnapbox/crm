@@ -772,6 +772,7 @@ class HomeController extends Controller
         Carbon::setLocale($this->company->locale);
         setlocale(LC_TIME, $this->company->locale . '_' . mb_strtoupper($this->company->locale));
 
+        $this->isTicketFormActive = (($this->company->ticket_form_status ?? 'active') === 'active');
 
         $this->groups = TicketGroup::where('company_id', $this->company->id)->get();
         $this->ticketFormFields = TicketCustomForm::with('customField')
@@ -795,6 +796,10 @@ class HomeController extends Controller
     {
         $company = Company::findOrFail($request->company_id);
 
+        if (($company->ticket_form_status ?? 'active') !== 'active') {
+            return Reply::error('Ticket form is currently disabled.');
+        }
+
         if (global_setting()->google_recaptcha_status == 'active') {
 
             // Checking is google recaptcha is valid
@@ -808,8 +813,13 @@ class HomeController extends Controller
         }
 
         /* $rules['g-recaptcha-response'] = 'required'; */
-        $existing_user = User::withoutGlobalScope(ActiveScope::class)->select('id', 'email')->where('email', $request->email)->first();
+        $existing_user = User::withoutGlobalScope(ActiveScope::class)
+            ->select('id', 'email', 'mobile')
+            ->where('email', $request->email)
+            ->first();
         $newUser = $existing_user;
+        $mobileNumber = trim((string) ($request->mobile ?? ''));
+        $mobileNumber = $mobileNumber === '' ? null : preg_replace('/[^\d+]/', '', $mobileNumber);
 
         if (!$existing_user) {
             $password = str_random(8);
@@ -818,6 +828,7 @@ class HomeController extends Controller
             $client->company_id = $request->company_id;
             $client->name = $request->name;
             $client->email = $request->email;
+            $client->mobile = $mobileNumber;
             $client->password = Hash::make($password);
             $client->save();
 
@@ -840,6 +851,10 @@ class HomeController extends Controller
             $this->logSearchEntry($client->id, $client->email, 'clients.edit', 'client');
 
             $newUser = $client;
+        }
+        elseif (!empty($mobileNumber) && empty($newUser->mobile)) {
+            $newUser->mobile = $mobileNumber;
+            $newUser->save();
         }
 
         // Create New Ticket
@@ -1168,6 +1183,11 @@ class HomeController extends Controller
 
     public function syncPermissions()
     {
+        abort_unless(
+            app()->environment(['local', 'staging']) || (Auth::check() && Auth::user()->hasRole('admin')),
+            403
+        );
+
         return Artisan::call('sync-user-permissions');
     }
 

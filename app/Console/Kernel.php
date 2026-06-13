@@ -19,6 +19,8 @@ use App\Console\Commands\SendAttendanceReminder;
 use App\Console\Commands\SendAutoTaskReminder;
 use App\Console\Commands\SendEventReminder;
 use App\Console\Commands\SendAutoFollowUpReminder;
+use App\Console\Commands\SendDailyPendingTaskWhatsappSummary;
+use App\Console\Commands\SendFollowupMessages;
 use App\Console\Commands\SendDailyTimelogReport;
 use App\Console\Commands\SendProjectReminder;
 use App\Console\Commands\UpdateExchangeRates;
@@ -27,6 +29,8 @@ use App\Console\Commands\SendMonthlyAttendanceReport;
 use App\Console\Commands\SyncUserPermissions;
 use App\Console\Commands\SendTimeTracker;
 use App\Console\Commands\InActiveEmployee;
+use App\Console\Commands\PrewarmDashboardCache;
+use App\Console\Commands\PerformanceReport;
 use DateTimeZone;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
@@ -56,6 +60,8 @@ class Kernel extends ConsoleKernel
         AutoCreateRecurringTasks::class,
         SyncUserPermissions::class,
         SendAutoFollowUpReminder::class,
+        SendDailyPendingTaskWhatsappSummary::class,
+        SendFollowupMessages::class,
         FetchTicketEmails::class,
         AddMissingRolePermission::class,
         BirthdayReminderCommand::class,
@@ -65,6 +71,8 @@ class Kernel extends ConsoleKernel
         LeavesQuotaRenew::class,
         ClearLogs::class,
         InActiveEmployee::class,
+        PerformanceReport::class,
+        PrewarmDashboardCache::class,
     ];
 
     /**
@@ -97,6 +105,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('sync-user-permissions')->everyMinute();
         // $schedule->command('fetch-ticket-emails')->everyMinute(); // phpcs:ignore
         $schedule->command('send-auto-followup-reminder')->everyMinute();
+        $schedule->command('send-followup-messages')->everyMinute();
         $schedule->command('send-time-tracker')->everyMinute();
 
         // Daily added different time to reduce server load
@@ -111,6 +120,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('app:leaves-quota-renew')->dailyAt('02:30');
         $schedule->command('log:clean --keep-last')->dailyAt('02:40');
         $schedule->command('inactive-employee')->dailyAt('02:50');
+        $schedule->command('send-daily-pending-task-whatsapp-summary')->dailyAt('08:00');
         $schedule->command('daily-schedule-reminder')->daily();
 
         // Hourly
@@ -122,9 +132,13 @@ class Kernel extends ConsoleKernel
         $schedule->command('send-monthly-attendance-report')->monthly();
 
         $schedule->command('queue:flush')->weekly();
+        $schedule->command('queue:prune-failed --hours=168')->dailyAt('03:10');
+        $schedule->command('perf:report --hours=24 --top=10 --prune')->hourly()->withoutOverlapping();
+        $schedule->command('dashboard:prewarm-cache --users=20')->everyMinute()->withoutOverlapping();
 
-        // Schedule the queue:work command to run without overlapping and with 3 tries
-        $schedule->command('queue:work database --tries=3 --stop-when-empty')->withoutOverlapping();
+        // Queue worker with queue priority and bounded run time.
+        $schedule->command('queue:work database --queue=high,default,low --sleep=3 --tries=3 --max-time=3600 --stop-when-empty')
+            ->withoutOverlapping();
     }
 
     /**

@@ -77,6 +77,35 @@
         </div>
 
         <div class="more-filter-items">
+            <label class="f-14 text-dark-grey mb-12 text-capitalize" for="filter_status_id">@lang('modules.lead.leadStatus')</label>
+            <div class="select-filter mb-4">
+                <div class="select-others">
+                    <select class="form-control select-picker" id="filter_status_id" data-live-search="true" data-container="body" data-size="8">
+                        <option value="all">@lang('app.all')</option>
+                        @foreach ($statuses as $status)
+                            <option value="{{ $status->id }}">{{ $status->type }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="more-filter-items">
+            <label class="f-14 text-dark-grey mb-12 text-capitalize" for="filter_interest_level">Interest Level</label>
+            <div class="select-filter mb-4">
+                <div class="select-others">
+                    <select class="form-control select-picker" id="filter_interest_level" data-container="body" data-size="8">
+                        <option value="all">@lang('app.all')</option>
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                        <option value="very_high">Very High</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="more-filter-items">
             <label class="f-14 text-dark-grey mb-12 text-capitalize" for="usr">@lang('modules.lead.leadSource')</label>
             <div class="select-filter mb-4">
                 <div class="select-others">
@@ -104,13 +133,27 @@
             </div>
         </div>
 
+        <div class="more-filter-items">
+            <label class="f-14 text-dark-grey mb-12 text-capitalize" for="filter_assigned_to">@lang('modules.tasks.assignTo')</label>
+            <div class="select-filter mb-4">
+                <div class="select-others">
+                <select class="form-control select-picker" id="filter_assigned_to" data-live-search="true" data-container="body" data-size="8">
+                    <option value="all">@lang('app.all')</option>
+                    @foreach ($employees as $item)
+                        <x-user-option :user="$item" />
+                    @endforeach
+                </select>
+                </div>
+            </div>
+        </div>
+
     </x-filters.more-filter-box>
     <!-- MORE FILTERS END -->
 </x-filters.filter-box>
 
 @push('scripts')
     <script>
-        $('#type, #followUp, #agent_id, #filter_category_id, #filter_source_id, #filter_status_id, #date_filter_on, #min, #max, #filter_addedBy')
+        $('#type, #filter_assigned_to, #filter_category_id, #filter_status_id, #filter_interest_level, #filter_source_id, #date_filter_on, #min, #max, #filter_addedBy')
             .on('change keyup', function() {
                 if ($('#type').val() != "all") {
                     $('#reset-filters').removeClass('d-none');
@@ -127,10 +170,19 @@
                 } else if ($('#filter_source_id').val() != "all") {
                     $('#reset-filters').removeClass('d-none');
                     showTable();
+                } else if ($('#filter_status_id').val() != "all") {
+                    $('#reset-filters').removeClass('d-none');
+                    showTable();
+                } else if ($('#filter_interest_level').val() != "all") {
+                    $('#reset-filters').removeClass('d-none');
+                    showTable();
                 } else if ($('#date_filter_on').val() != "created_at") {
                     $('#reset-filters').removeClass('d-none');
                     showTable();
                 } else if ($('#filter_addedBy').val() != "all") {
+                    $('#reset-filters').removeClass('d-none');
+                    showTable();
+                } else if ($('#filter_assigned_to').val() != "all") {
                     $('#reset-filters').removeClass('d-none');
                     showTable();
                 } else {

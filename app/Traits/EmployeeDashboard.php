@@ -3,16 +3,13 @@
 namespace App\Traits;
 
 use Carbon\Carbon;
-use App\Models\Deal;
 use App\Models\Task;
-use App\Models\User;
 use App\Helper\Reply;
 use App\Models\Event;
 use App\Models\Leave;
 use App\Models\Notice;
 use App\Models\Ticket;
 use App\Models\Holiday;
-use App\Models\Project;
 use Carbon\CarbonPeriod;
 use App\Models\LeadAgent;
 use App\Models\Attendance;
@@ -33,7 +30,7 @@ use App\Models\ProjectTimeLogBreak;
 use App\Models\EmployeeShiftSchedule;
 use App\Http\Requests\ClockIn\ClockInRequest;
 use App\Models\Company;
-use App\Models\EmployeeShift;
+use Illuminate\Support\Facades\Cache;
 
 /**
  *
@@ -47,9 +44,12 @@ trait EmployeeDashboard
     public function employeeDashboard()
     {
         $user = user();
+        $companyId = company()->id;
+        $today = now(company()->timezone)->toDateString();
+        $dashboardCacheTtl = now()->addSeconds(60);
 
         $completedTaskColumn = TaskboardColumn::completeColumn();
-        $showClockIn = AttendanceSetting::first();
+        $showClockIn = Cache::remember('attendance_setting_' . $companyId, now()->addMinutes(1), fn() => AttendanceSetting::first());
 
         $this->attendanceSettings = $this->attendanceShift($showClockIn);
 
@@ -66,19 +66,12 @@ trait EmployeeDashboard
             $officeEndTime->addDay();
         }
 
-        $this->cannotLogin = false;
-        $date = now()->format('Y-m-d');
-
-        $attendance = Attendance::where('user_id', $this->user->id)
-            ->whereDate('clock_in_time', $date)
-            ->get();
-
-        foreach ($attendance as $item) {
-            if (now()->between($item->clock_in_time, $item->clock_out_time)) {
-                $this->cannotLogin = true;
-                break;
-            }
-        }
+        $this->cannotLogin = Attendance::where('user_id', $this->user->id)
+            ->whereBetween('clock_in_time', [$today . ' 00:00:00', $today . ' 23:59:59'])
+            ->whereNotNull('clock_out_time')
+            ->where('clock_in_time', '<=', now())
+            ->where('clock_out_time', '>=', now())
+            ->exists();
 
         if ($showClockIn->employee_clock_in_out == 'no' || $this->attendanceSettings->shift_name == 'Day Off') {
             $this->cannotLogin = true;
@@ -112,6 +105,17 @@ trait EmployeeDashboard
         $this->viewLeavePermission = user()->permission('view_leave');
         $this->viewNoticePermission = user()->permission('view_notice');
         $this->editTimelogPermission = user()->permission('edit_timelogs');
+        $this->widgets = Cache::remember('private_dashboard_widgets_' . $companyId, now()->addMinutes(1), fn() => DashboardWidget::where('dashboard_type', 'private-dashboard')->get());
+        $this->activeWidgets = $this->widgets->filter(fn($value) => $value->status == '1')->pluck('widget_name')->toArray();
+        $dashboardUserCardRelations = function ($query) {
+            return $query->without(['clientDetails', 'leaves', 'roles'])
+                ->select('id', 'name', 'image', 'salutation', 'status')
+                ->with([
+                    'session:id,user_id,last_activity',
+                    'employeeDetail:id,user_id,designation_id',
+                    'employeeDetail.designation:id,name',
+                ]);
+        };
 
         // Getting Attendance setting data
 
@@ -147,217 +151,252 @@ trait EmployeeDashboard
             return $eventData;
         }
 
-        $this->totalProjects = Project::select('projects.id')
-            ->where('completion_percent', '<>', 100)
-            ->join('project_members', 'project_members.project_id', '=', 'projects.id')
-            ->where('project_members.user_id', $this->user->id)
-            ->distinct()
-            ->count('projects.id');
+        $stats = Cache::remember(
+            'employee_dashboard_core_stats_' . $companyId . '_' . $this->user->id . '_' . $today,
+            $dashboardCacheTtl,
+            function () use ($companyId, $completedTaskColumn, $today) {
+                return DB::table('users')
+                    ->selectRaw(
+                        '(SELECT COUNT(DISTINCT p.id) FROM projects p INNER JOIN project_members pm ON pm.project_id = p.id WHERE pm.user_id = ? AND p.company_id = ? AND p.completion_percent <> 100) AS total_projects',
+                        [$this->user->id, $companyId]
+                    )
+                    ->selectRaw(
+                        '(SELECT IFNULL(SUM(ptl.total_minutes), 0) FROM project_time_logs ptl WHERE ptl.user_id = ? AND ptl.company_id = ?) AS total_hours_logged',
+                        [$this->user->id, $companyId]
+                    )
+                    ->selectRaw(
+                        '(SELECT COUNT(DISTINCT t.id) FROM tasks t INNER JOIN task_users tu ON tu.task_id = t.id WHERE tu.user_id = ? AND t.company_id = ? AND t.board_column_id <> ?) AS in_process_tasks',
+                        [$this->user->id, $companyId, $completedTaskColumn->id]
+                    )
+                    ->selectRaw(
+                        '(SELECT COUNT(DISTINCT t.id) FROM tasks t INNER JOIN task_users tu ON tu.task_id = t.id WHERE tu.user_id = ? AND t.company_id = ? AND t.board_column_id <> ? AND t.due_date IS NOT NULL AND t.due_date < ?) AS due_tasks',
+                        [$this->user->id, $companyId, $completedTaskColumn->id, $today]
+                    )
+                    ->selectRaw(
+                        '(SELECT COUNT(DISTINCT p.id) FROM projects p INNER JOIN project_members pm ON pm.project_id = p.id WHERE pm.user_id = ? AND p.company_id = ? AND p.completion_percent <> 100 AND p.deadline IS NOT NULL AND p.deadline < ?) AS due_projects',
+                        [$this->user->id, $companyId, $today]
+                    )
+                    ->first();
+            }
+        );
 
-        $this->counts = User::select(
-            DB::raw('(select IFNULL(sum(project_time_logs.total_minutes),0) from `project_time_logs` where user_id = ' . $this->user->id . ') as totalHoursLogged '),
-            DB::raw('(select count(tasks.id) from `tasks` inner join task_users on task_users.task_id=tasks.id where tasks.board_column_id=' . $completedTaskColumn->id . ' and task_users.user_id = ' . $this->user->id . ') as totalCompletedTasks')
-        )
-            ->first();
+        $this->totalProjects = (int) ($stats->total_projects ?? 0);
+        $this->inProcessTasks = (int) ($stats->in_process_tasks ?? 0);
+        $this->dueTasks = (int) ($stats->due_tasks ?? 0);
+        $this->dueProjects = (int) ($stats->due_projects ?? 0);
 
         if (!is_null($this->viewNoticePermission) && $this->viewNoticePermission != 'none') {
             if ($this->viewNoticePermission == 'added') {
-                $this->notices = Notice::latest()->where('added_by', $this->user->id)
-                    ->select('id', 'heading', 'created_at')
-                    ->limit(10)
-                    ->get();
+                $this->notices = Cache::remember('employee_dashboard_notices_added_' . $companyId . '_' . $this->user->id, $dashboardCacheTtl, function () {
+                    return Notice::latest()->where('added_by', $this->user->id)
+                        ->select('id', 'heading', 'created_at')
+                        ->limit(10)
+                        ->get();
+                });
             }
             elseif ($this->viewNoticePermission == 'owned') {
-                $this->notices = Notice::latest()
-                    ->select('id', 'heading', 'created_at')
-                    ->where(['to' => 'employee', 'department_id' => null])
-                    ->orWhere(['department_id' => $this->user->employeeDetails->department_id])
-                    ->limit(10)
-                    ->get();
+                $this->notices = Cache::remember('employee_dashboard_notices_owned_' . $companyId . '_' . $this->user->id . '_' . ($this->user->employeeDetails->department_id ?? 0), $dashboardCacheTtl, function () {
+                    return Notice::latest()
+                        ->select('id', 'heading', 'created_at')
+                        ->where(['to' => 'employee', 'department_id' => null])
+                        ->orWhere(['department_id' => $this->user->employeeDetails->department_id])
+                        ->limit(10)
+                        ->get();
+                });
             }
             elseif ($this->viewNoticePermission == 'both') {
-                $this->notices = Notice::latest()
-                    ->select('id', 'heading', 'created_at')
-                    ->where('added_by', $this->user->id)
-                    ->orWhere(function ($q) {
-                        $q->where(['to' => 'employee', 'department_id' => null])
-                            ->orWhere(['department_id' => $this->user->employeeDetails->department_id]);
-                    })
-                    ->limit(10)
-                    ->get();
+                $this->notices = Cache::remember('employee_dashboard_notices_both_' . $companyId . '_' . $this->user->id . '_' . ($this->user->employeeDetails->department_id ?? 0), $dashboardCacheTtl, function () {
+                    return Notice::latest()
+                        ->select('id', 'heading', 'created_at')
+                        ->where('added_by', $this->user->id)
+                        ->orWhere(function ($q) {
+                            $q->where(['to' => 'employee', 'department_id' => null])
+                                ->orWhere(['department_id' => $this->user->employeeDetails->department_id]);
+                        })
+                        ->limit(10)
+                        ->get();
+                });
             }
             elseif ($this->viewNoticePermission == 'all') {
-                $this->notices = Notice::latest()
+                $this->notices = Cache::remember('employee_dashboard_notices_all_' . $companyId, $dashboardCacheTtl, fn() => Notice::latest()
                     ->select('id', 'heading', 'created_at')
                     ->limit(10)
-                    ->get();
+                    ->get());
             }
         }
 
-        $this->tickets = Ticket::where(function ($query) {
-            $query->where('status', '=', 'open')
-                ->orWhere('status', '=', 'pending');
-        })
-            ->where(function ($query) {
-                $query->where('user_id', user()->id)
-                    ->orWhere('agent_id', user()->id);
+        $this->tickets = Cache::remember('employee_dashboard_tickets_' . $companyId . '_' . $this->user->id, $dashboardCacheTtl, function () {
+            return Ticket::where(function ($query) {
+                $query->where('status', '=', 'open')
+                    ->orWhere('status', '=', 'pending');
             })
-            ->orderByDesc('updated_at')
-            ->limit(10)
-            ->get();
+                ->where(function ($query) {
+                    $query->where('user_id', user()->id)
+                        ->orWhere('agent_id', user()->id);
+                })
+                ->select('id', 'ticket_number', 'subject', 'status', 'updated_at', 'user_id', 'agent_id')
+                ->orderByDesc('updated_at')
+                ->limit(10)
+                ->get();
+        });
 
-        $checkTicketAgent = TicketAgentGroups::select('id')->where('agent_id', user()->id)->first();
+        $checkTicketAgent = Cache::remember('employee_dashboard_is_ticket_agent_' . $companyId . '_' . $this->user->id, now()->addMinutes(1), fn() => TicketAgentGroups::where('agent_id', user()->id)->exists());
 
-        if (!is_null($checkTicketAgent)) {
-            $this->totalOpenTickets = Ticket::with('agent')->whereHas('agent', function ($q) {
-                $q->where('id', user()->id);
-            })->where('status', 'open')->count();
+        if ($checkTicketAgent) {
+            $this->totalOpenTickets = Cache::remember('employee_dashboard_open_tickets_' . $companyId . '_' . $this->user->id, $dashboardCacheTtl, function () {
+                return Ticket::whereHas('agent', function ($q) {
+                    $q->where('id', user()->id);
+                })->where('status', 'open')->count();
+            });
         }
 
-        $tasks = $this->pendingTasks = Task::with('activeProject', 'boardColumn', 'labels')
-            ->join('task_users', 'task_users.task_id', '=', 'tasks.id')
-            ->where('task_users.user_id', $this->user->id)
-            ->where('tasks.board_column_id', '<>', $completedTaskColumn->id)
-            ->select('tasks.*')
-            ->groupBy('tasks.id')
-            ->orderBy('tasks.id', 'desc')
-            ->get();
-
-        $this->inProcessTasks = $tasks->count();
-
-        $this->dueTasks = $tasks->filter(function ($item) {
-            return !is_null($item->due_date) && $item->due_date->endOfDay()->isPast();
-        })->count();
-
-        $projects = Project::with('members')
-            ->where('completion_percent', '<>', '100')
-            ->leftJoin('project_members', 'project_members.project_id', 'projects.id')
-            ->leftJoin('users', 'project_members.user_id', 'users.id')
-            ->selectRaw('project_members.user_id, projects.deadline as due_date, projects.id')
-            ->where('project_members.user_id', $this->user->id)
-            ->groupBy('projects.id')
-            ->get();
-
-        $projects = $projects->whereNotNull('due_date');
-
-        $this->dueProjects = $projects->filter(function ($value) {
-            return now(company()->timezone)->gt($value->due_date);
-        })->count();
+        $this->pendingTasks = Cache::remember('employee_dashboard_pending_tasks_' . $companyId . '_' . $this->user->id . '_' . $today, $dashboardCacheTtl, function () use ($completedTaskColumn) {
+            return Task::query()
+                ->join('task_users', 'task_users.task_id', '=', 'tasks.id')
+                ->where('task_users.user_id', $this->user->id)
+                ->where('tasks.board_column_id', '<>', $completedTaskColumn->id)
+                ->with([
+                    'boardColumn:id,column_name,label_color',
+                    'labels:id,label_name,color',
+                ])
+                ->select('tasks.id', 'tasks.task_short_code', 'tasks.heading', 'tasks.board_column_id', 'tasks.due_date')
+                ->distinct()
+                ->orderByDesc('tasks.id')
+                ->limit(20)
+                ->get();
+        });
 
         // Getting Current Clock-in if exist
-        $this->currentClockIn = Attendance::where(DB::raw('DATE(clock_in_time)'), now()->format('Y-m-d'))
-            ->select('id', 'clock_in_time', 'clock_out_time')
-            ->where('user_id', $this->user->id)
-            ->whereNull('clock_out_time')
-            ->first();
+        $todayDate = now()->format('Y-m-d');
+        $this->currentClockIn = Cache::remember('employee_dashboard_current_clock_in_' . $companyId . '_' . $this->user->id . '_' . $todayDate, $dashboardCacheTtl, function () use ($todayDate) {
+            return Attendance::whereBetween('clock_in_time', [$todayDate . ' 00:00:00', $todayDate . ' 23:59:59'])
+                ->select('id', 'clock_in_time', 'clock_out_time')
+                ->where('user_id', $this->user->id)
+                ->whereNull('clock_out_time')
+                ->first();
+        });
 
         $currentDate = now(company()->timezone)->format('Y-m-d');
 
-        $this->checkTodayLeave = Leave::where('status', 'approved')
-            ->select('id')
-            ->where('leave_date', now(company()->timezone)->toDateString())
-            ->where('user_id', user()->id)
-            ->where('duration', '<>', 'half day')
-            ->first();
+        $this->checkTodayLeave = Cache::remember('employee_dashboard_today_leave_' . $companyId . '_' . $this->user->id . '_' . $todayDate, $dashboardCacheTtl, function () {
+            return Leave::where('status', 'approved')
+                ->select('id')
+                ->where('leave_date', now(company()->timezone)->toDateString())
+                ->where('user_id', user()->id)
+                ->where('duration', '<>', 'half day')
+                ->first();
+        });
 
         // Check Holiday by date
-        $this->checkTodayHoliday = Holiday::where('date', $currentDate)
-            ->where(function ($query) use ($user) {
-                $query->orWhere('department_id_json', 'like', '%"' . $user->employeeDetails->department_id . '"%')
-                    ->orWhereNull('department_id_json');
-            })
-            ->where(function ($query) use ($user) {
-                $query->orWhere('designation_id_json', 'like', '%"' . $user->employeeDetails->designation_id . '"%')
-                    ->orWhereNull('designation_id_json');
-            })
-            ->where(function ($query) use ($user) {
-                $query->orWhere('employment_type_json', 'like', '%"' . $user->employeeDetails->employment_type . '"%')
-                    ->orWhereNull('employment_type_json');
-            })
-            ->first();
+        $this->checkTodayHoliday = Cache::remember('employee_dashboard_today_holiday_' . $companyId . '_' . $this->user->id . '_' . $todayDate, $dashboardCacheTtl, function () use ($currentDate, $user) {
+            return Holiday::where('date', $currentDate)
+                ->where(function ($query) use ($user) {
+                    $query->orWhere('department_id_json', 'like', '%"' . $user->employeeDetails->department_id . '"%')
+                        ->orWhereNull('department_id_json');
+                })
+                ->where(function ($query) use ($user) {
+                    $query->orWhere('designation_id_json', 'like', '%"' . $user->employeeDetails->designation_id . '"%')
+                        ->orWhereNull('designation_id_json');
+                })
+                ->where(function ($query) use ($user) {
+                    $query->orWhere('employment_type_json', 'like', '%"' . $user->employeeDetails->employment_type . '"%')
+                        ->orWhereNull('employment_type_json');
+                })
+                ->first();
+        });
 
-        $this->myActiveTimer = ProjectTimeLog::with('task', 'user', 'project', 'breaks', 'activeBreak')
-            ->where('user_id', user()->id)
-            ->whereNull('end_time')
-            ->first();
+        $this->myActiveTimer = Cache::remember('employee_dashboard_active_timer_' . $companyId . '_' . $this->user->id, now()->addSeconds(20), function () {
+            return ProjectTimeLog::with([
+                'task:id,heading',
+                'project:id,client_id',
+                'breaks:id,project_time_log_id,start_time,end_time,total_minutes',
+                'activeBreak:id,project_time_log_id,start_time,end_time',
+            ])
+                ->select('id', 'user_id', 'task_id', 'project_id', 'start_time', 'end_time', 'added_by')
+                ->where('user_id', user()->id)
+                ->whereNull('end_time')
+                ->first();
+        });
 
         $currentDay = now(company()->timezone)->format('m-d');
 
-        $this->upcomingBirthdays = EmployeeDetails::whereHas('user', function ($query) {
-            return $query->where('status', 'active');
-        })
-            ->with('user')
-            ->select('*', 'date_of_birth', DB::raw('MONTH(date_of_birth) months'), DB::raw('DAY(date_of_birth) as day'))
-            ->whereNotNull('date_of_birth')
-            ->where(function ($query) use ($currentDay) {
-                $query->whereRaw('DATE_FORMAT(`date_of_birth`, "%m-%d") >= "' . $currentDay . '"')->orderBy('date_of_birth');
+        $this->upcomingBirthdays = Cache::remember('employee_dashboard_birthdays_' . $companyId . '_' . $today, $dashboardCacheTtl, function () use ($currentDay, $dashboardUserCardRelations) {
+            return EmployeeDetails::whereHas('user', function ($query) {
+                return $query->where('status', 'active');
             })
-            ->limit('5')
-            ->orderBy('months')
-            ->orderBy('day')
-            ->get()->values()->all();
+                ->with(['user' => $dashboardUserCardRelations])
+                ->select('employee_details.id', 'employee_details.user_id', 'employee_details.date_of_birth', DB::raw('MONTH(date_of_birth) months'), DB::raw('DAY(date_of_birth) as day'))
+                ->whereNotNull('date_of_birth')
+                ->where(function ($query) use ($currentDay) {
+                    $query->whereRaw('DATE_FORMAT(`date_of_birth`, "%m-%d") >= "' . $currentDay . '"')->orderBy('date_of_birth');
+                })
+                ->limit(5)
+                ->orderBy('months')
+                ->orderBy('day')
+                ->get()->values()->all();
+        });
 
-        $this->leave = Leave::with('user', 'type')->where('status', 'approved')
-            ->where('leave_date', today(company()->timezone)->toDateString())
-            ->get();
-
-
-        $this->workFromHome = Attendance::with('user')
-            ->select('id', 'user_id')
-            ->where('work_from_type', 'home')
-            ->where(DB::raw('DATE(attendances.clock_in_time)'), now()->toDateString())
-            ->groupBy('user_id')
-            ->get();
-
-        $this->leadAgent = LeadAgent::where('user_id', $this->user->id)->first();
-
-        // Deal Data
-        if (!is_null($this->leadAgent)) {
-
-            $this->deals = Deal::select('deals.*', 'pipeline_stages.slug')->with('leadAgent', 'leadStage')->whereHas('leadAgent', function ($q) {
-                $q->where('user_id', $this->user->id);
-            })->join('pipeline_stages', 'pipeline_stages.id', 'deals.pipeline_stage_id')
+        $this->leave = Cache::remember('employee_dashboard_leave_today_' . $companyId . '_' . $today, $dashboardCacheTtl, function () use ($dashboardUserCardRelations) {
+            return Leave::with([
+                'user' => $dashboardUserCardRelations,
+                'type:id,type_name,color',
+            ])
+                ->where('status', 'approved')
+                ->where('leave_date', today(company()->timezone)->toDateString())
                 ->get();
+        });
 
-            $this->convertedDeals = $this->deals->filter(function ($value) {
-                return $value->slug == 'win';
-            })->count();
+        $this->workFromHome = Cache::remember('employee_dashboard_wfh_' . $companyId . '_' . $today, $dashboardCacheTtl, function () use ($dashboardUserCardRelations) {
+            return Attendance::with(['user' => $dashboardUserCardRelations])
+                ->select('id', 'user_id')
+                ->where('work_from_type', 'home')
+                ->whereBetween('attendances.clock_in_time', [now()->toDateString() . ' 00:00:00', now()->toDateString() . ' 23:59:59'])
+                ->groupBy('user_id')
+                ->get();
+        });
 
-        }
+        $this->leadAgent = Cache::remember('employee_dashboard_lead_agent_' . $companyId . '_' . $this->user->id, now()->addMinutes(2), fn() => LeadAgent::where('user_id', $this->user->id)->first());
 
         $now = now(company()->timezone);
         $this->weekStartDate = $now->copy()->startOfWeek($showClockIn->week_start_from);
         $this->weekEndDate = $this->weekStartDate->copy()->addDays(7);
         $this->weekPeriod = CarbonPeriod::create($this->weekStartDate, $this->weekStartDate->copy()->addDays(6)); // Get All Dates from start to end date
 
-        $this->employeeShifts = EmployeeShiftSchedule::where('user_id', user()->id)
-            ->whereBetween(DB::raw('DATE(`date`)'), [$this->weekStartDate->format('Y-m-d'), $this->weekEndDate->format('Y-m-d')])
-            ->select(DB::raw('DATE_FORMAT(date, "%Y-%m-%d") as dates'), 'employee_shift_schedules.*')
-            ->with('shift', 'user', 'requestChange')
-            ->get();
+        $weekStartKey = $this->weekStartDate->format('Y-m-d');
+        $weekEndKey = $this->weekEndDate->format('Y-m-d');
+        $this->employeeShifts = Cache::remember('employee_dashboard_week_shifts_' . $companyId . '_' . $this->user->id . '_' . $weekStartKey, $dashboardCacheTtl, function () use ($weekStartKey, $weekEndKey) {
+            return EmployeeShiftSchedule::where('user_id', user()->id)
+                ->whereBetween('date', [$weekStartKey, $weekEndKey])
+                ->select(DB::raw('DATE_FORMAT(date, "%Y-%m-%d") as dates'), 'employee_shift_schedules.*')
+                ->with('shift', 'requestChange')
+                ->get();
+        });
 
         $this->employeeShiftDates = $this->employeeShifts->pluck('dates')->toArray();
 
         $currentWeekDates = [];
         $weekShifts = [];
 
-        $weekHolidays = Holiday::whereBetween(DB::raw('DATE(`date`)'),
-            [$this->weekStartDate->format('Y-m-d'), $this->weekEndDate->format('Y-m-d')])
-            ->select(DB::raw('DATE_FORMAT(`date`, "%Y-%m-%d") as hdate'), 'occassion')
-            ->get();
+        $weekHolidays = Cache::remember('employee_dashboard_week_holidays_' . $companyId . '_' . $weekStartKey, $dashboardCacheTtl, function () use ($weekStartKey, $weekEndKey) {
+            return Holiday::whereBetween('date', [$weekStartKey, $weekEndKey])
+                ->select(DB::raw('DATE_FORMAT(`date`, "%Y-%m-%d") as hdate'), 'occassion')
+                ->get();
+        });
 
         $holidayDates = $weekHolidays->pluck('hdate')->toArray();
 
-        $weekLeaves = Leave::with('type')
-            ->select(DB::raw('DATE_FORMAT(`leave_date`, "%Y-%m-%d") as ldate'), 'leaves.*')
-            ->where('user_id', user()->id)
-            ->whereBetween(DB::raw('DATE(`leave_date`)'), [$this->weekStartDate->format('Y-m-d'), $this->weekEndDate->format('Y-m-d')])
-            ->where('status', 'approved')
-            ->where('duration', '<>', 'half day')
-            ->get();
+        $weekLeaves = Cache::remember('employee_dashboard_week_leaves_' . $companyId . '_' . $this->user->id . '_' . $weekStartKey, $dashboardCacheTtl, function () use ($weekStartKey, $weekEndKey) {
+            return Leave::with('type')
+                ->select(DB::raw('DATE_FORMAT(`leave_date`, "%Y-%m-%d") as ldate'), 'leaves.*')
+                ->where('user_id', user()->id)
+                ->whereBetween('leave_date', [$weekStartKey, $weekEndKey])
+                ->where('status', 'approved')
+                ->where('duration', '<>', 'half day')
+                ->get();
+        });
 
         $leaveDates = $weekLeaves->pluck('ldate')->toArray();
-        $generalShift = Company::with(['attendanceSetting', 'attendanceSetting.shift'])->first();
+        $generalShift = Cache::remember('employee_dashboard_general_shift_' . $companyId, now()->addMinutes(5), fn() => Company::with(['attendanceSetting', 'attendanceSetting.shift'])->first());
 
         // phpcs:ignore
         for ($i = $this->weekStartDate->copy(); $i < $this->weekEndDate->copy(); $i->addDay()) {
@@ -409,98 +448,123 @@ trait EmployeeDashboard
 
         }
 
-        $this->upcomingAnniversaries = EmployeeDetails::whereHas('user', function ($query) {
-            return $query->where('status', 'active');
-        })
-            ->with('user')
-            ->select('employee_details.id', 'employee_details.user_id', 'employee_details.joining_date', DB::raw('MONTH(joining_date) months'), DB::raw('DAY(joining_date) as day'))
-            ->whereNotNull('joining_date')
-            ->where(function ($query) use ($currentDay) {
-                $query->whereRaw('DATE_FORMAT(`joining_date`, "%m-%d") = "' . $currentDay . '"')->orderBy('joining_date');
+        $this->upcomingAnniversaries = Cache::remember('employee_dashboard_anniversaries_' . $companyId . '_' . $today, $dashboardCacheTtl, function () use ($currentDay, $dashboardUserCardRelations) {
+            return EmployeeDetails::whereHas('user', function ($query) {
+                return $query->where('status', 'active');
             })
-            ->orderBy('months')
-            ->orderBy('day')
-            ->get()->values()->all();
+                ->with(['user' => $dashboardUserCardRelations])
+                ->select('employee_details.id', 'employee_details.user_id', 'employee_details.joining_date', DB::raw('MONTH(joining_date) months'), DB::raw('DAY(joining_date) as day'))
+                ->whereNotNull('joining_date')
+                ->where(function ($query) use ($currentDay) {
+                    $query->whereRaw('DATE_FORMAT(`joining_date`, "%m-%d") = "' . $currentDay . '"')->orderBy('joining_date');
+                })
+                ->orderBy('months')
+                ->orderBy('day')
+                ->get()->values()->all();
+        });
 
         $this->currentWeekDates = $currentWeekDates;
         $this->weekShifts = $weekShifts;
         $this->showClockIn = $showClockIn->show_clock_in_button;
         $this->event_filter = explode(',', user()->employeeDetails->calendar_view);
-        $this->widgets = DashboardWidget::where('dashboard_type', 'private-dashboard')->get();
-        $this->activeWidgets = $this->widgets->filter(function ($value, $key) {
-            return $value->status == '1';
-        })->pluck('widget_name')->toArray();
 
-        $this->dateWiseTimelogs = ProjectTimeLog::dateWiseTimelogs(now()->toDateString(), user()->id);
-        $this->dateWiseTimelogBreak = ProjectTimeLogBreak::dateWiseTimelogBreak(now()->toDateString(), user()->id);
+        $this->dateWiseTimelogs = collect();
+        $this->dateWiseTimelogBreak = collect();
+        $this->weekWiseTimelogs = 0;
+        $this->weekWiseTimelogBreak = 0;
 
-        $this->weekWiseTimelogs = ProjectTimeLog::weekWiseTimelogs($this->weekStartDate->copy()->toDateString(), $this->weekEndDate->copy()->toDateString(), user()->id);
-        $this->weekWiseTimelogBreak = ProjectTimeLogBreak::weekWiseTimelogBreak($this->weekStartDate->toDateString(), $this->weekEndDate->toDateString(), user()->id);
-        $this->appreciations = Appreciation::with(['award', 'award.awardIcon'])
-            ->with(['awardTo' => function ($query) {
-                return $query->without('clientDetails');
-            }])
-            ->orderByDesc('award_date')
-            ->latest()
-            ->limit(5)
-            ->get();
-
-
-        $currentDay = now(company()->timezone)->format('Y-m-d');
-        $this->employees = EmployeeDetails::whereHas('user', function ($query) {
-            return $query->where('status', 'active');
-        })->with(['user' => function ($query) {
-            return $query->without('clientDetails');
-        }]);
-
-        if (in_array('admin', user_roles())) {
-            $this->noticePeriod = $this->employees->clone()
-                ->whereNotNull('notice_period_end_date')
-                ->where('notice_period_end_date', '>=', $currentDay)
-                ->orderBy('notice_period_end_date', 'asc')
-                ->get();
-
-            $this->probations = $this->employees->clone()
-                ->whereNotNull('probation_end_date')
-                ->where('probation_end_date', '>=', $currentDay)
-                ->orderBy('probation_end_date', 'asc')
-                ->get();
-
-            $this->internships = $this->employees->clone()
-                ->whereNotNull('internship_end_date')
-                ->where('internship_end_date', '>=', $currentDay)
-                ->orderBy('internship_end_date', 'asc')
-                ->get();
-
-            $this->contracts = $this->employees->clone()
-                ->whereNotNull('contract_end_date')
-                ->where('contract_end_date', '>=', $currentDay)
-                ->orderBy('contract_end_date', 'asc')
-                ->get();
+        if (in_array('week_timelog', $this->activeWidgets)) {
+            $this->dateWiseTimelogs = Cache::remember('employee_dashboard_day_timelogs_' . $companyId . '_' . $this->user->id . '_' . $today, $dashboardCacheTtl, fn() => ProjectTimeLog::dateWiseTimelogs(now()->toDateString(), user()->id));
+            $this->dateWiseTimelogBreak = Cache::remember('employee_dashboard_day_timelog_breaks_' . $companyId . '_' . $this->user->id . '_' . $today, $dashboardCacheTtl, fn() => ProjectTimeLogBreak::dateWiseTimelogBreak(now()->toDateString(), user()->id));
+            $this->weekWiseTimelogs = Cache::remember('employee_dashboard_week_timelogs_' . $companyId . '_' . $this->user->id . '_' . $this->weekStartDate->toDateString(), $dashboardCacheTtl, fn() => ProjectTimeLog::weekWiseTimelogs($this->weekStartDate->copy()->toDateString(), $this->weekEndDate->copy()->toDateString(), user()->id));
+            $this->weekWiseTimelogBreak = Cache::remember('employee_dashboard_week_timelog_breaks_' . $companyId . '_' . $this->user->id . '_' . $this->weekStartDate->toDateString(), $dashboardCacheTtl, fn() => ProjectTimeLogBreak::weekWiseTimelogBreak($this->weekStartDate->toDateString(), $this->weekEndDate->toDateString(), user()->id));
         }
-        else {
-            $this->noticePeriod = $this->employees->clone()
-                ->where('user_id', user()->id)
-                ->whereNotNull('notice_period_end_date')
-                ->where('notice_period_end_date', '>=', $currentDay)
-                ->first();
 
-            $this->probation = $this->employees->clone()
-                ->where('user_id', user()->id)
-                ->whereNotNull('probation_end_date')
-                ->where('probation_end_date', '>=', $currentDay)
-                ->first();
+        $this->appreciations = collect();
+        if (in_array('appreciation', $this->activeWidgets)) {
+            $this->appreciations = Cache::remember('employee_dashboard_appreciations_' . $companyId, $dashboardCacheTtl, fn() => Appreciation::with(['award', 'award.awardIcon'])
+                ->with(['awardTo' => $dashboardUserCardRelations])
+                ->orderByDesc('award_date')
+                ->latest()
+                ->limit(5)
+                ->get());
+        }
 
-            $this->internship = $this->employees->clone()
-                ->where('user_id', user()->id)
-                ->whereNotNull('internship_end_date')
-                ->where('internship_end_date', '>=', $currentDay)
-                ->first();
+        $this->noticePeriod = in_array('admin', user_roles()) ? collect() : null;
+        $this->probations = collect();
+        $this->internships = collect();
+        $this->contracts = collect();
+        $this->probation = null;
+        $this->internship = null;
+        $this->contract = null;
 
-            $this->contract = $this->employees->clone()
-                ->where('user_id', user()->id)
-                ->where('contract_end_date', '>=', $currentDay)
-                ->first();
+        $requiresEmploymentCards = in_array('notice_period_duration', $this->activeWidgets)
+            || in_array('probation_date', $this->activeWidgets)
+            || in_array('internship_date', $this->activeWidgets)
+            || in_array('contract_date', $this->activeWidgets);
+
+        if ($requiresEmploymentCards) {
+            $currentDay = now(company()->timezone)->format('Y-m-d');
+            $employmentRows = Cache::remember('employee_dashboard_employment_cards_' . $companyId . '_' . user()->id . '_' . $currentDay . '_' . (in_array('admin', user_roles()) ? 'admin' : 'self'), $dashboardCacheTtl, function () use ($currentDay, $dashboardUserCardRelations) {
+                $query = EmployeeDetails::whereHas('user', function ($query) {
+                    return $query->where('status', 'active');
+                })->with(['user' => $dashboardUserCardRelations]);
+
+                if (!in_array('admin', user_roles())) {
+                    $query->where('user_id', user()->id);
+                }
+
+                return $query->where(function ($query) use ($currentDay) {
+                    $query->where(function ($q) use ($currentDay) {
+                        $q->whereNotNull('notice_period_end_date')
+                            ->where('notice_period_end_date', '>=', $currentDay);
+                    })->orWhere(function ($q) use ($currentDay) {
+                        $q->whereNotNull('probation_end_date')
+                            ->where('probation_end_date', '>=', $currentDay);
+                    })->orWhere(function ($q) use ($currentDay) {
+                        $q->whereNotNull('internship_end_date')
+                            ->where('internship_end_date', '>=', $currentDay);
+                    })->orWhere(function ($q) use ($currentDay) {
+                        $q->whereNotNull('contract_end_date')
+                            ->where('contract_end_date', '>=', $currentDay);
+                    });
+                })->get();
+            });
+
+            if (in_array('admin', user_roles())) {
+                if (in_array('notice_period_duration', $this->activeWidgets)) {
+                    $this->noticePeriod = $employmentRows->filter(fn($row) => !is_null($row->notice_period_end_date) && $row->notice_period_end_date->toDateString() >= $currentDay)->sortBy('notice_period_end_date')->values();
+                }
+
+                if (in_array('probation_date', $this->activeWidgets)) {
+                    $this->probations = $employmentRows->filter(fn($row) => !is_null($row->probation_end_date) && $row->probation_end_date->toDateString() >= $currentDay)->sortBy('probation_end_date')->values();
+                }
+
+                if (in_array('internship_date', $this->activeWidgets)) {
+                    $this->internships = $employmentRows->filter(fn($row) => !is_null($row->internship_end_date) && $row->internship_end_date->toDateString() >= $currentDay)->sortBy('internship_end_date')->values();
+                }
+
+                if (in_array('contract_date', $this->activeWidgets)) {
+                    $this->contracts = $employmentRows->filter(fn($row) => !is_null($row->contract_end_date) && $row->contract_end_date->toDateString() >= $currentDay)->sortBy('contract_end_date')->values();
+                }
+            }
+            else {
+                if (in_array('notice_period_duration', $this->activeWidgets)) {
+                    $this->noticePeriod = $employmentRows->first(fn($row) => !is_null($row->notice_period_end_date) && $row->notice_period_end_date->toDateString() >= $currentDay);
+                }
+
+                if (in_array('probation_date', $this->activeWidgets)) {
+                    $this->probation = $employmentRows->first(fn($row) => !is_null($row->probation_end_date) && $row->probation_end_date->toDateString() >= $currentDay);
+                }
+
+                if (in_array('internship_date', $this->activeWidgets)) {
+                    $this->internship = $employmentRows->first(fn($row) => !is_null($row->internship_end_date) && $row->internship_end_date->toDateString() >= $currentDay);
+                }
+
+                if (in_array('contract_date', $this->activeWidgets)) {
+                    $this->contract = $employmentRows->first(fn($row) => !is_null($row->contract_end_date) && $row->contract_end_date->toDateString() >= $currentDay);
+                }
+            }
         }
 
         return view('dashboard.employee.index', $this->data);
@@ -550,7 +614,7 @@ trait EmployeeDashboard
         $this->shiftAssigned = $this->attendanceSettings;
 
         $this->attendanceSettings = attendance_setting();
-        $this->location = CompanyAddress::all();
+        $this->location = Cache::remember('company_addresses_' . company()->id, now()->addMinutes(30), fn() => CompanyAddress::all());
 
         return view('dashboard.employee.clock_in_modal', $this->data);
     }
@@ -663,7 +727,8 @@ trait EmployeeDashboard
             $lateTime = $officeStartTime->addMinutes($this->attendanceSettings->late_mark_duration);
 
             $checkTodayAttendance = Attendance::where('user_id', $this->user->id)
-                ->where(DB::raw('DATE(attendances.clock_in_time)'), '=', $now->format('Y-m-d'))->first();
+                ->whereBetween('attendances.clock_in_time', [$now->format('Y-m-d') . ' 00:00:00', $now->format('Y-m-d') . ' 23:59:59'])
+                ->first();
 
             $attendance = new Attendance();
             $attendance->user_id = $this->user->id;
@@ -786,47 +851,49 @@ trait EmployeeDashboard
 
     public function attendanceShift($defaultAttendanceSettings)
     {
-        $checkPreviousDayShift = EmployeeShiftSchedule::with('shift')->where('user_id', user()->id)
-            ->where('date', now(company()->timezone)->subDay()->toDateString())
-            ->first();
+        return Cache::remember('employee_attendance_shift_' . company()->id . '_' . user()->id . '_' . now(company()->timezone)->format('YmdHi'), now()->addSeconds(60), function () use ($defaultAttendanceSettings) {
+            $checkPreviousDayShift = EmployeeShiftSchedule::with('shift')->where('user_id', user()->id)
+                ->where('date', now(company()->timezone)->subDay()->toDateString())
+                ->first();
 
-        $checkTodayShift = EmployeeShiftSchedule::with('shift')->where('user_id', user()->id)
-            ->where('date', now(company()->timezone)->toDateString())
-            ->first();
+            $checkTodayShift = EmployeeShiftSchedule::with('shift')->where('user_id', user()->id)
+                ->where('date', now(company()->timezone)->toDateString())
+                ->first();
 
-        $backDayFromDefault = Carbon::parse(now(company()->timezone)->subDay()->format('Y-m-d') . ' ' . $defaultAttendanceSettings->office_start_time);
+            $backDayFromDefault = Carbon::parse(now(company()->timezone)->subDay()->format('Y-m-d') . ' ' . $defaultAttendanceSettings->office_start_time);
 
-        $backDayToDefault = Carbon::parse(now(company()->timezone)->subDay()->format('Y-m-d') . ' ' . $defaultAttendanceSettings->office_end_time);
+            $backDayToDefault = Carbon::parse(now(company()->timezone)->subDay()->format('Y-m-d') . ' ' . $defaultAttendanceSettings->office_end_time);
 
-        if ($backDayFromDefault->gt($backDayToDefault)) {
-            $backDayToDefault->addDay();
-        }
+            if ($backDayFromDefault->gt($backDayToDefault)) {
+                $backDayToDefault->addDay();
+            }
 
-        $nowTime = Carbon::createFromFormat('Y-m-d H:i:s', now(company()->timezone)->toDateTimeString(), 'UTC');
+            $nowTime = Carbon::createFromFormat('Y-m-d H:i:s', now(company()->timezone)->toDateTimeString(), 'UTC');
 
-        if ($checkPreviousDayShift && $nowTime->betweenIncluded($checkPreviousDayShift->shift_start_time, $checkPreviousDayShift->shift_end_time)) {
-            $attendanceSettings = $checkPreviousDayShift;
+            if ($checkPreviousDayShift && $nowTime->betweenIncluded($checkPreviousDayShift->shift_start_time, $checkPreviousDayShift->shift_end_time)) {
+                $attendanceSettings = $checkPreviousDayShift;
 
-        }
-        else if ($nowTime->betweenIncluded($backDayFromDefault, $backDayToDefault)) {
-            $attendanceSettings = $defaultAttendanceSettings;
+            }
+            else if ($nowTime->betweenIncluded($backDayFromDefault, $backDayToDefault)) {
+                $attendanceSettings = $defaultAttendanceSettings;
 
-        }
-        else if ($checkTodayShift &&
-            ($nowTime->betweenIncluded($checkTodayShift->shift_start_time, $checkTodayShift->shift_end_time)
-                || $nowTime->gt($checkTodayShift->shift_end_time)
-                || (!$nowTime->betweenIncluded($checkTodayShift->shift_start_time, $checkTodayShift->shift_end_time) && $defaultAttendanceSettings->show_clock_in_button == 'no'))
-        ) {
-            $attendanceSettings = $checkTodayShift;
-        }
-        else if ($checkTodayShift && !is_null($checkTodayShift->shift->early_clock_in)) {
-            $attendanceSettings = $checkTodayShift;
-        }
-        else {
-            $attendanceSettings = $defaultAttendanceSettings;
-        }
+            }
+            else if ($checkTodayShift &&
+                ($nowTime->betweenIncluded($checkTodayShift->shift_start_time, $checkTodayShift->shift_end_time)
+                    || $nowTime->gt($checkTodayShift->shift_end_time)
+                    || (!$nowTime->betweenIncluded($checkTodayShift->shift_start_time, $checkTodayShift->shift_end_time) && $defaultAttendanceSettings->show_clock_in_button == 'no'))
+            ) {
+                $attendanceSettings = $checkTodayShift;
+            }
+            else if ($checkTodayShift && !is_null($checkTodayShift->shift->early_clock_in)) {
+                $attendanceSettings = $checkTodayShift;
+            }
+            else {
+                $attendanceSettings = $defaultAttendanceSettings;
+            }
 
-        return $attendanceSettings->shift;
+            return $attendanceSettings->shift;
+        });
 
     }
 

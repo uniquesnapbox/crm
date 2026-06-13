@@ -2,14 +2,11 @@
 
 namespace App\Models;
 
-use App\Enums\Salutation;
 use App\Scopes\ActiveScope;
 use App\Traits\CustomFieldsTrait;
 use App\Traits\HasCompany;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Notifications\Notifiable;
@@ -22,20 +19,15 @@ use Illuminate\Notifications\Notifiable;
  * @property int|null $source_id
  * @property int|null $status_id
  * @property int $column_priority
- * @property int|null $agent_id
  * @property string|null $company_name
  * @property string|null $website
  * @property string|null $address
- * @property string|null $salutation
  * @property string $client_name
  * @property string $client_email
  * @property string|null $mobile
  * @property string|null $cell
  * @property string|null $office
- * @property string|null $city
- * @property string|null $state
  * @property string|null $country
- * @property string|null $postal_code
  * @property string|null $note
  * @property string $next_follow_up
  * @property \Illuminate\Support\Carbon|null $created_at
@@ -56,7 +48,6 @@ use Illuminate\Notifications\Notifiable;
  * @property-read mixed $extras
  * @property-read mixed $icon
  * @property-read mixed $image_url
- * @property-read \App\Models\LeadAgent|null $leadAgent
  * @property-read \App\Models\LeadSource|null $leadSource
  * @property-read \App\Models\LeadStatus|null $leadStatus
  * @property-read \Illuminate\Notifications\DatabaseNotificationCollection|\Illuminate\Notifications\DatabaseNotification[] $notifications
@@ -67,10 +58,8 @@ use Illuminate\Notifications\Notifiable;
  * @method static \Illuminate\Database\Eloquent\Builder|Lead query()
  * @method static \Illuminate\Database\Eloquent\Builder|Lead whereAddedBy($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Lead whereAddress($value)
- * @method static \Illuminate\Database\Eloquent\Builder|Lead whereAgentId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Lead whereCategoryId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Lead whereCell($value)
- * @method static \Illuminate\Database\Eloquent\Builder|Lead whereCity($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Lead whereClientEmail($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Lead whereClientId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Lead whereClientName($value)
@@ -85,10 +74,7 @@ use Illuminate\Notifications\Notifiable;
  * @method static \Illuminate\Database\Eloquent\Builder|Lead whereNextFollowUp($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Lead whereNote($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Lead whereOffice($value)
- * @method static \Illuminate\Database\Eloquent\Builder|Lead wherePostalCode($value)
- * @method static \Illuminate\Database\Eloquent\Builder|Lead whereSalutation($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Lead whereSourceId($value)
- * @method static \Illuminate\Database\Eloquent\Builder|Lead whereState($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Lead whereStatusId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Lead whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Lead whereValue($value)
@@ -114,10 +100,11 @@ class Lead extends BaseModel
 
     const CUSTOM_FIELD_MODEL = 'App\Models\Lead';
 
-    protected $appends = ['image_url', 'client_name_salutation'];
+    protected $appends = ['image_url'];
 
     protected $casts = [
-        'salutation' => Salutation::class,
+        // 'salutation' => Salutation::class,  // removed
+        'whatsapp_greeting_sent_at' => 'datetime',
     ];
 
     public function getImageUrlAttribute()
@@ -125,13 +112,6 @@ class Lead extends BaseModel
         $gravatarHash = md5(strtolower(trim($this->email)));
 
         return 'https://www.gravatar.com/avatar/' . $gravatarHash . '.png?s=200&d=mp';
-    }
-
-    public function clientNameSalutation(): Attribute
-    {
-        return Attribute::make(
-            get: fn($value) => ($this->salutation ? $this->salutation->label() . ' ' : '') . $this->client_name
-        );
     }
 
     /**
@@ -156,9 +136,24 @@ class Lead extends BaseModel
         return $this->belongsTo(LeadCategory::class, 'category_id');
     }
 
+    public function leadStatus(): BelongsTo
+    {
+        return $this->belongsTo(LeadStatus::class, 'status_id');
+    }
+
     public function note(): BelongsTo
     {
         return $this->belongsTo(LeadNote::class, 'lead_id');
+    }
+
+    public function followUps(): HasMany
+    {
+        return $this->hasMany(LeadFollowUp::class, 'lead_id')->orderByDesc('next_follow_up_date');
+    }
+
+    public function latestFollowUp(): HasOne
+    {
+        return $this->hasOne(LeadFollowUp::class, 'lead_id')->latestOfMany('next_follow_up_date');
     }
 
     public function client(): BelongsTo
@@ -169,6 +164,11 @@ class Lead extends BaseModel
     public function addedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'added_by')->withoutGlobalScope(ActiveScope::class);
+    }
+
+    public function assignedTo(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_to')->withoutGlobalScope(ActiveScope::class);
     }
 
     public static function allLeads($contactId = null)
@@ -182,7 +182,9 @@ class Lead extends BaseModel
         }
 
         // Initialize lead query
-        $leadsQuery = Lead::select('*')->orderBy('client_name');
+        $leadsQuery = Lead::select('*')
+            ->whereNull('archived_at')
+            ->orderBy('client_name');
 
 
         // Apply contact ID filter if provided
@@ -192,6 +194,11 @@ class Lead extends BaseModel
 
         // Retrieve leads
         return $leadsQuery->get();
+    }
+
+    public function getIsConvertedAttribute(): bool
+    {
+        return !is_null($this->client_id) || !is_null($this->converted_at);
     }
 
 }

@@ -69,6 +69,27 @@ return [
         'include_granted_scopes' => true,
     ],
 
+
+
+    'whatsapp' => [
+        'driver'       => env('WHATSAPP_DRIVER', 'log'),
+        'api_url'      => env('WHATSAPP_API_URL', 'http://bhashsms.com/api/sendmsg.php'),
+        'user'         => env('WHATSAPP_API_USER', ''),
+        'password'     => env('WHATSAPP_API_PASS', ''),
+        'sender'       => env('WHATSAPP_API_SENDER', ''),
+        'timeout'      => env('WHATSAPP_API_TIMEOUT', 25),
+        'otp_template' => env('WHATSAPP_OTP_TEMPLATE_NAME', 'auth_uniq'),
+    ],
+
+    'whatsapp_service' => [
+        'base_url' => env('WHATSAPP_SERVICE_URL', ''),
+        'api_key' => env('WHATSAPP_SERVICE_API_KEY', ''),
+        'session' => env('WHATSAPP_SERVICE_SESSION', 'default'),
+        'timeout' => env('WHATSAPP_SERVICE_TIMEOUT', 30),
+    ],
+
+
+
     'sentry' => [
         'enabled' => env('SENTRY_ENABLED', false)
     ],
@@ -77,4 +98,3 @@ return [
         'rest_api_key' => 'YOUR-REST-API-KEY-HERE',
     ],
 ];
-

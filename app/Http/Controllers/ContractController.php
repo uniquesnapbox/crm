@@ -51,12 +51,13 @@ class ContractController extends AccountBaseController
                 $this->clients = User::allClients();
             }
 
-            $this->contract = Contract::all();
             $this->contractTypes = ContractType::all();
             $this->contractCounts = Contract::count();
-            $this->expiredCounts = Contract::where(DB::raw('DATE(`end_date`)'), '<', now()->format('Y-m-d'))->count();
-            $this->aboutToExpireCounts = Contract::where(DB::raw('DATE(`end_date`)'), '>', now()->format('Y-m-d'))
-                ->where(DB::raw('DATE(`end_date`)'), '<', now()->timezone($this->company->timezone)->addDays(7)->format('Y-m-d'))
+            $today = now($this->company->timezone)->startOfDay()->toDateString();
+            $nextWeek = now($this->company->timezone)->addDays(7)->endOfDay()->toDateString();
+            $this->expiredCounts = Contract::where('end_date', '<', $today)->count();
+            $this->aboutToExpireCounts = Contract::where('end_date', '>', $today)
+                ->where('end_date', '<', $nextWeek)
                 ->count();
         }
 

@@ -29,12 +29,15 @@ class ExpenseReportController extends AccountBaseController
            abort_403(user()->permission('view_expense_report') != 'all');
         $this->fromDate = now($this->company->timezone)->startOfMonth();
         $this->toDate = now($this->company->timezone);
-        $this->currencies = Currency::all();
+        $this->currencies = Currency::select('id', 'currency_code', 'currency_symbol')->get();
         $this->currentCurrencyId = $this->company->currency_id;
 
-        $this->projects = Project::allProjects();
-        $this->employees = User::withRole('employee')->get();
-        $this->categories = ExpensesCategory::get();
+        $this->projects = Project::allProjects(false, 50);
+        $this->employees = User::allEmployees(null, true, null, null, 50);
+        $this->categories = ExpensesCategory::query()
+            ->select('id', 'category_name')
+            ->orderBy('category_name')
+            ->paginate(50);
 
         return $dataTable->render('reports.expense.index', $this->data);
     }
@@ -43,18 +46,22 @@ class ExpenseReportController extends AccountBaseController
     {
         $startDate = ($request->startDate == null) ? null : now($this->company->timezone)->startOfMonth()->toDateString();
         $endDate = ($request->endDate == null) ? null : now($this->company->timezone)->toDateString();
+        $startBoundary = null;
+        $endBoundary = null;
 
         // Expense report start
         $expenses = Expense::where('status', 'approved');
 
         if ($request->startDate !== null && $request->startDate != 'null' && $request->startDate != '') {
             $startDate = companyToDateString($request->startDate);
-            $expenses = $expenses->where(DB::raw('DATE(`purchase_date`)'), '>=', $startDate);
+            $startBoundary = Carbon::parse($startDate, $this->company->timezone)->startOfDay()->toDateString();
+            $expenses = $expenses->where('purchase_date', '>=', $startBoundary);
         }
 
         if ($request->endDate !== null && $request->endDate != 'null' && $request->endDate != '') {
             $endDate = companyToDateString($request->endDate);
-            $expenses = $expenses->where(DB::raw('DATE(`purchase_date`)'), '<=', $endDate);
+            $endBoundary = Carbon::parse($endDate, $this->company->timezone)->endOfDay()->toDateString();
+            $expenses = $expenses->where('purchase_date', '<=', $endBoundary);
         }
 
         if ($request->categoryID != 'all' && !is_null($request->categoryID)) {
@@ -133,13 +140,15 @@ class ExpenseReportController extends AccountBaseController
 
         if ($request->startDate !== null && $request->startDate != 'null' && $request->startDate != '') {
             $startDate = companyToDateString($request->startDate);
-            $expenses = $expenseCategoryId->where(DB::raw('DATE(expenses.`purchase_date`)'), '>=', $startDate);
+            $startBoundary = Carbon::parse($startDate, $this->company->timezone)->startOfDay()->toDateString();
+            $expenseCategoryId = $expenseCategoryId->where('expenses.purchase_date', '>=', $startBoundary);
         }
 
 
         if ($request->endDate !== null && $request->endDate != 'null' && $request->endDate != '') {
             $endDate = companyToDateString($request->endDate);
-            $expenses = $expenseCategoryId->where(DB::raw('DATE(expenses.`purchase_date`)'), '<=', $endDate);
+            $endBoundary = Carbon::parse($endDate, $this->company->timezone)->endOfDay()->toDateString();
+            $expenseCategoryId = $expenseCategoryId->where('expenses.purchase_date', '<=', $endBoundary);
         }
 
 
@@ -164,17 +173,32 @@ class ExpenseReportController extends AccountBaseController
         $barData['name'] = __('modules.reports.totalCategories');
         $barData['colors'] = [$this->appTheme->header_color];
         $barData['values'] = [];
+        $categoryCountsQuery = Expense::selectRaw('category_id, COUNT(*) as aggregate_count')
+            ->whereIn('category_id', $categories->pluck('id'))
+            ->where('status', 'approved')
+            ->groupBy('category_id');
+
+        if (!is_null($startBoundary)) {
+            $categoryCountsQuery->where('purchase_date', '>=', $startBoundary);
+        }
+
+        if (!is_null($endBoundary)) {
+            $categoryCountsQuery->where('purchase_date', '<=', $endBoundary);
+        }
+
+        if ($request->employeeID != 'all' && !is_null($request->employeeID)) {
+            $categoryCountsQuery->where('user_id', $request->employeeID);
+        }
+
+        if ($request->projectID != 'all' && !is_null($request->projectID)) {
+            $categoryCountsQuery->where('project_id', $request->projectID);
+        }
+        $categoryCounts = $categoryCountsQuery->pluck('aggregate_count', 'category_id');
 
         foreach ($categories as $category) {
             /** @phpstan-ignore-next-line */
             $category_id = isset($category->id) ? $category->id : $category->category_id;
-
-            if ($startDate && $endDate != null) {
-                $barData['values'][] = Expense::where('category_id', $category_id)->whereBetween(DB::raw('DATE(`purchase_date`)'), [$startDate, $endDate])->count();
-            }
-            else{
-                $barData['values'][] = Expense::where('category_id', $category_id)->count();
-            }
+            $barData['values'][] = (int) ($categoryCounts[$category_id] ?? 0);
         }
 
         $this->barChartData = $barData;

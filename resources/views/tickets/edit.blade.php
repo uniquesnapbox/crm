@@ -457,6 +457,55 @@ $canEditTicket = ($editTicketPermission == 'all' || ($editTicketPermission == 'o
 
                         </div>
                     </div>
+                    @php
+                        $ticketWhatsappStatuses = [
+                            [
+                                'label' => 'Assigned Message to Staff',
+                                'status' => $ticket->whatsapp_assigned_staff_status,
+                                'sent_at' => $ticket->whatsapp_assigned_staff_sent_at,
+                                'error' => $ticket->whatsapp_assigned_staff_error,
+                            ],
+                            [
+                                'label' => 'Assigned Message to Client',
+                                'status' => $ticket->whatsapp_assigned_client_status,
+                                'sent_at' => $ticket->whatsapp_assigned_client_sent_at,
+                                'error' => $ticket->whatsapp_assigned_client_error,
+                            ],
+                            [
+                                'label' => 'Solved Message to Client',
+                                'status' => $ticket->whatsapp_resolved_client_status,
+                                'sent_at' => $ticket->whatsapp_resolved_client_sent_at,
+                                'error' => $ticket->whatsapp_resolved_client_error,
+                            ],
+                        ];
+                    @endphp
+                    <div class="card p-4 border-grey border-left-0 border-right-0 rounded-0">
+                        <div class="card-title">
+                            <h4 class="f-18 f-w-500 mb-3">WhatsApp Status</h4>
+                        </div>
+                        <div class="card-body p-0">
+                            @foreach ($ticketWhatsappStatuses as $ticketWhatsappStatus)
+                                @php
+                                    $status = $ticketWhatsappStatus['status'] ?: 'pending';
+                                    $statusText = $status === 'sent' ? 'Sent' : ($status === 'failed' ? 'Failed' : 'Pending');
+                                    $statusClass = $status === 'sent' ? 'text-success' : ($status === 'failed' ? 'text-danger' : 'text-warning');
+                                    $sentAt = $ticketWhatsappStatus['sent_at']
+                                        ? $ticketWhatsappStatus['sent_at']->timezone(company()->timezone)->format(company()->date_format . ' ' . company()->time_format)
+                                        : '--';
+                                @endphp
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <span class="f-14 text-dark-grey">{{ $ticketWhatsappStatus['label'] }}</span>
+                                        <span class="f-14 {{ $statusClass }}">{{ $statusText }}</span>
+                                    </div>
+                                    <div class="f-12 text-lightest mt-1">Sent at: {{ $sentAt }}</div>
+                                    @if (!empty($ticketWhatsappStatus['error']))
+                                        <div class="f-12 text-danger mt-1">{{ $ticketWhatsappStatus['error'] }}</div>
+                                    @endif
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
                     <!-- CONTACT OWNER END  -->
                     <!-- TICKET CHART START  -->
                     <x-cards.data :title="__('app.menu.tickets')" padding="false">

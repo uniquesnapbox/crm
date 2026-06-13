@@ -210,6 +210,7 @@ return array(
     'amountIsZero' => 'Amount should be more than ZERO for the payment',
     'taskAfterDateValidation' => 'Task end date should not be less than the task start date',
     'taskBeforeDateValidation' => 'Task end date should not be greater than the milestones end date',
+    'employeeEmailAlreadyExists' => 'This employee email is already in use.',
     'noProductSubCategoryAdded' => 'No product sub-category added.',
     'pinnedSuccess' => 'Pinned successfully',
     'noInvoiceFound' => 'Seems like no invoice has been generated.',

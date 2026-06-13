@@ -256,6 +256,20 @@ php artisan queue:table
 php artisan migrate
 ```
 
+### Queue Worker (Recommended for Performance)
+
+For production-like performance, run the queue worker continuously instead of processing jobs synchronously:
+
+```bash
+php artisan queue:work database --queue=high,default,low --sleep=3 --tries=3 --max-time=3600
+```
+
+This project already schedules queue processing and failed-job pruning in `app/Console/Kernel.php`. Keep cron active:
+
+```bash
+* * * * * php /path-to-project/artisan schedule:run >> /dev/null 2>&1
+```
+
 ### Cron Job Setup
 
 Set up a cron job to run scheduled tasks:
@@ -320,6 +334,21 @@ MAIL_FROM_NAME="${APP_NAME}"
 **Issue: Permission Denied**
 - Set correct ownership: `chown -R www-data:www-data storage bootstrap/cache`
 - Set correct permissions: `chmod -R 775 storage bootstrap/cache`
+
+## Performance Monitoring
+
+- Request-level profiling is enabled via `TrackRequestPerformance` middleware.
+- Slow queries are logged to `storage/logs/slow-query.log`.
+- Request latency snapshots are stored in `request_performance_logs`.
+
+### Useful Commands
+
+- Run migrations (includes performance tables):
+  - `php artisan migrate --force`
+- View top slow endpoints and p95:
+  - `php artisan perf:report --hours=24 --top=10`
+- Prune old performance rows:
+  - `php artisan perf:report --prune`
 
 ## Plugins Used
 

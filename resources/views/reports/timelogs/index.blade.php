@@ -178,6 +178,14 @@
 
 
     <script>
+        function debounce(fn, wait) {
+            let timeout;
+            return function (...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => fn.apply(this, args), wait);
+            };
+        }
+
         $('#timelogs-table').on('preXhr.dt', function(e, settings, data) {
 
             var dateRangePicker = $('#datatableRange2').data('daterangepicker');
@@ -211,34 +219,35 @@
             window.LaravelDataTables["timelogs-table"].draw(false);
             pieChart();
         }
+        const debouncedShowTable = debounce(showTable, 300);
 
         $('#project_id, #employee, #client, #status, #invoice_generate').on('change keyup',
             function() {
                 if ($('#status').val() != "all") {
                     $('#reset-filters').removeClass('d-none');
-                    showTable();
+                    debouncedShowTable();
                 } else if ($('#employee').val() != "all") {
                     $('#reset-filters').removeClass('d-none');
-                    showTable();
+                    debouncedShowTable();
                 } else if ($('#client').val() != "all") {
                     $('#reset-filters').removeClass('d-none');
-                    showTable();
+                    debouncedShowTable();
                 } else if ($('#project_id').val() != "all") {
                     $('#reset-filters').removeClass('d-none');
-                    showTable();
+                    debouncedShowTable();
                 } else if ($('#invoice_generate').val() != "all") {
                     $('#reset-filters').removeClass('d-none');
-                    showTable();
+                    debouncedShowTable();
                 } else {
                     $('#reset-filters').addClass('d-none');
-                    showTable();
+                    debouncedShowTable();
                 }
             });
 
         $('#search-text-field').on('keyup', function() {
             if ($('#search-text-field').val() != "") {
                 $('#reset-filters').removeClass('d-none');
-                showTable();
+                debouncedShowTable();
             }
         });
 
@@ -248,7 +257,7 @@
 
             $('.filter-box .select-picker').selectpicker("refresh");
             $('#reset-filters').addClass('d-none');
-            showTable();
+            debouncedShowTable();
         });
 
         $('#reset-filters-2').click(function() {
@@ -256,7 +265,7 @@
 
             $('.filter-box .select-picker').selectpicker("refresh");
             $('#reset-filters').addClass('d-none');
-            showTable();
+            debouncedShowTable();
         });
 
         function pieChart() {
@@ -301,6 +310,21 @@
                 }
             });
         }
-        pieChart();
+        if ('IntersectionObserver' in window) {
+            const target = document.querySelector('#task-chart-card');
+            if (target) {
+                const observer = new IntersectionObserver((entries, obs) => {
+                    if (entries.some(entry => entry.isIntersecting)) {
+                        pieChart();
+                        obs.disconnect();
+                    }
+                });
+                observer.observe(target);
+            } else {
+                pieChart();
+            }
+        } else {
+            pieChart();
+        }
     </script>
 @endpush

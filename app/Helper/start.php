@@ -728,6 +728,20 @@ if (!function_exists('slack_setting')) {
 
 }
 
+if (!function_exists('whatsapp_setting')) {
+
+    // @codingStandardsIgnoreLine
+    function whatsapp_setting()
+    {
+        if (!session()->has('whatsapp_setting')) {
+            session(['whatsapp_setting' => \App\Models\WhatsappNotificationSetting::first()]);
+        }
+
+        return session('whatsapp_setting');
+    }
+
+}
+
 if (!function_exists('default_address')) {
 
     // @codingStandardsIgnoreLine

@@ -4,11 +4,8 @@
 
 @php
 $addLeadAgentPermission = user()->permission('add_lead_agent');
-$viewPipelinePermission = user()->permission('view_deal_pipeline');
-$addPipelinePermission = user()->permission('add_deal_pipeline');
 $addLeadSourcesPermission = user()->permission('add_lead_sources');
 $addLeadCategoryPermission = user()->permission('add_lead_category');
-$mangeLeadStagePermission = user()->permission('manage_deal_stages');
 @endphp
 
     <!-- SETTINGS START -->
@@ -21,9 +18,6 @@ $mangeLeadStagePermission = user()->permission('manage_deal_stages');
                         <div class="nav" id="nav-tab" role="tablist">
                             <a class="nav-item nav-link f-15 active source" href="{{ route('lead-settings.index') }}"
                                 role="tab" aria-controls="nav-leadSource" aria-selected="true">@lang('app.menu.leadSource')
-                            </a>
-                            <a class="nav-item nav-link f-15 pipeline" href="{{ route('lead-settings.index') }}?tab=pipeline"
-                                role="tab" aria-controls="nav-pipeline" aria-selected="true">@lang('modules.deal.pipeline')
                             </a>
                             <a class="nav-item nav-link f-15 agent" href="{{ route('lead-settings.index') }}?tab=agent"
                                 role="tab" aria-controls="nav-leadAgent"
@@ -50,16 +44,6 @@ $mangeLeadStagePermission = user()->permission('manage_deal_stages');
                         @if ($addLeadSourcesPermission != 'none')
                             <x-forms.button-primary icon="plus" id="addSource" class="source-btn mb-2 d-none actionBtn">
                                 @lang('app.addNewLeadSource')
-                            </x-forms.button-primary>
-                        @endif
-                        @if($addPipelinePermission != 'none' && $addPipelinePermission != false)
-                            <x-forms.button-primary icon="plus" id="addPipeline" class="pipeline-btn mb-2  actionBtn">
-                                @lang('app.addNew') @lang('modules.deal.pipeline')
-                            </x-forms.button-primary>
-                        @endif
-                        @if($mangeLeadStagePermission != false && $mangeLeadStagePermission != 'none')
-                            <x-forms.button-primary icon="plus" id="addStage" class="pipeline-btn mb-2  actionBtn">
-                                @lang('app.addNew') @lang('modules.deal.leadStage')
                             </x-forms.button-primary>
                         @endif
                         @if ($addLeadCategoryPermission != 'none')

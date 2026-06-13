@@ -34,12 +34,15 @@ use App\Models\Product;
 use App\Models\PurposeConsent;
 use App\Models\PurposeConsentLead;
 use App\Models\User;
+use App\Modules\WhatsApp\WhatsAppService;
 use App\Traits\ImportExcel;
 use Carbon\Carbon;
 use Froiden\RestAPI\Exceptions\RelatedResourceNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class DealController extends AccountBaseController
 {
@@ -59,85 +62,163 @@ class DealController extends AccountBaseController
 
     public function index(DealsDataTable $dataTable)
     {
+        abort_403(!in_array('admin', user_roles()));
+
         $this->viewLeadPermission = $viewPermission = user()->permission('view_deals');
         $this->viewEmployeePermission = user()->permission('view_employees');
         $this->viewDealLeadPermission = user()->permission('view_lead');
 
         abort_403(!in_array($viewPermission, ['all', 'added', 'both', 'owned']));
+        $this->pageTitle = 'Archived Deals';
+        $this->isArchiveView = true;
 
         if (!request()->ajax()) {
-            $this->totalDeals = Deal::all();
-            $this->pipelines = LeadPipeline::all();
+            $this->pipelines = Cache::remember('lead_pipelines_' . company()->id, now()->addMinutes(30), fn() => LeadPipeline::select('id', 'name', 'default')->get());
 
             $defaultPipeline = $this->pipelines->filter(function ($value, $key) {
                 return $value->default == 1;
             })->first();
 
-            $this->stages = PipelineStage::where('lead_pipeline_id', $defaultPipeline->id)->get();
-            $this->categories = LeadCategory::all();
-            $this->sources = LeadSource::all();
-
-            $this->totalClientConverted = $this->totalDeals->filter(function ($value, $key) {
-                return $value->client_id != null;
-            });
-
-            $this->totalLeads = $this->totalDeals->count();
-            $this->totalClientConverted = $this->totalClientConverted->count();
-
-            $this->pendingLeadFollowUps = DealFollowUp::where(DB::raw('DATE(next_follow_up_date)'), '<=', now()->format('Y-m-d'))
-                ->join('deals', 'deals.id', 'lead_follow_up.deal_id')
-                ->where('deals.next_follow_up', 'yes')
-                ->groupBy('lead_follow_up.deal_id')
-                ->get();
-
-            $this->pendingLeadFollowUps = $this->pendingLeadFollowUps->count();
+            $this->stages = PipelineStage::where('lead_pipeline_id', $defaultPipeline->id)->select('id', 'name', 'label_color', 'lead_pipeline_id')->get();
 
             $this->viewLeadAgentPermission = user()->permission('view_lead_agents');
-
-            $this->leadAgents = LeadAgent::with('user')->whereHas('user', function ($q) {
-                $q->where('status', 'active');
-            })->groupBy('user_id');
-
-            $this->leadAgents = $this->leadAgents->where(function ($q) {
-                if ($this->viewLeadAgentPermission == 'all') {
-                    $this->leadAgents = $this->leadAgents;
-                }
-                elseif ($this->viewLeadAgentPermission == 'added') {
-                    $this->leadAgents = $this->leadAgents->where('added_by', user()->id);
-                }
-                elseif ($this->viewLeadAgentPermission == 'owned') {
-                    $this->leadAgents = $this->leadAgents->where('user_id', user()->id);
-                }
-                elseif ($this->viewLeadAgentPermission == 'both') {
-                    $this->leadAgents = $this->leadAgents->where('added_by', user()->id)->orWhere('user_id', user()->id);
-                }
-                else {
-                    // This is $this->viewLeadAgentPermission == 'none'
-                    $this->leadAgents = [];
-                }
-            })->get();
-
-            $this->dealWatcher = User::allEmployees(null, 'active');
-
-            $this->dealWatcher->where(function ($query) {
-                if ($this->viewEmployeePermission == 'added') {
-                    $query->where('employee_details.added_by', user()->id);
-                } elseif ($this->viewEmployeePermission == 'owned') {
-                    $query->where('employee_details.user_id', user()->id);
-                } elseif ($this->viewEmployeePermission == 'both') {
-                    $query->where(function ($q) {
-                        $q->where('employee_details.user_id', user()->id)
-                            ->orWhere('employee_details.added_by', user()->id);
-                    });
-                }
-            });
-
-            $this->dealLeads = Lead::select('id', 'client_name')->get();
+            // Non-critical filter lists are loaded via ajax to reduce initial payload.
+            $this->leadAgents = collect();
+            $this->dealWatcher = collect();
+            $this->dealLeads = collect();
 
         }
 
-        return $dataTable->render('leads.index', $this->data);
+        $renderStartedAt = microtime(true);
+        $response = $dataTable->render('leads.index', $this->data);
+        $renderMs = round((microtime(true) - $renderStartedAt) * 1000, 2);
 
+        if (!request()->ajax()) {
+            Log::channel('performance')->info('Deals index render profile', [
+                'path' => request()->path(),
+                'route' => optional(request()->route())->getName(),
+                'blade_render_ms' => $renderMs,
+                'company_id' => company()->id,
+                'user_id' => user()->id,
+            ]);
+        }
+
+        if ($response instanceof SymfonyResponse) {
+            $response->headers->set('X-Blade-Render-Ms', (string) $renderMs);
+        }
+
+        return $response;
+
+    }
+
+    public function filterOptions(Request $request)
+    {
+        abort_403(!in_array('admin', user_roles()));
+        abort_403(!in_array(user()->permission('view_deals'), ['all', 'added', 'both', 'owned']));
+
+        $companyId = company()->id;
+        $type = $request->get('type', 'all');
+        $search = trim((string) $request->get('search', ''));
+        $limit = max(1, min((int) $request->get('limit', 20), 50));
+        $viewLeadAgentPermission = user()->permission('view_lead_agents');
+
+        $leadAgents = collect();
+        $dealWatcher = collect();
+        $dealLeads = collect();
+
+        if ($type === 'all' || $type === 'leadAgents') {
+            $agentsBuilder = LeadAgent::query()
+                ->where('lead_agents.company_id', $companyId)
+                ->with(['user' => function ($query) {
+                    $query->without(['clientDetails', 'employeeDetail', 'leaves', 'roles'])
+                        ->select('id', 'name', 'email', 'salutation', 'status');
+                }])
+                ->whereHas('user', function ($query) use ($search) {
+                    $query->where('status', 'active');
+
+                    if ($search !== '') {
+                        $query->where(function ($sub) use ($search) {
+                            $sub->where('name', 'like', '%' . $search . '%')
+                                ->orWhere('email', 'like', '%' . $search . '%');
+                        });
+                    }
+                });
+
+            if ($viewLeadAgentPermission == 'added') {
+                $agentsBuilder->where('added_by', user()->id);
+            }
+            elseif ($viewLeadAgentPermission == 'owned') {
+                $agentsBuilder->where('user_id', user()->id);
+            }
+            elseif ($viewLeadAgentPermission == 'both') {
+                $agentsBuilder->where(function ($query) {
+                    $query->where('added_by', user()->id)
+                        ->orWhere('user_id', user()->id);
+                });
+            }
+            elseif ($viewLeadAgentPermission == 'none') {
+                $agentsBuilder->whereRaw('1 = 0');
+            }
+
+            $leadAgents = $agentsBuilder
+                ->select('lead_agents.id', 'lead_agents.user_id', 'lead_agents.added_by')
+                ->orderByDesc('lead_agents.id')
+                ->limit($limit)
+                ->get()
+                ->map(function ($agent) {
+                    return [
+                        'id' => $agent->id,
+                        'text' => ($agent->user->name ?? '--') . ' [' . ($agent->user->email ?? '--') . ']',
+                    ];
+                })->values();
+        }
+
+        if ($type === 'all' || $type === 'dealWatcher') {
+            $dealWatcher = User::query()
+                ->without(['clientDetails', 'employeeDetail', 'leaves', 'roles'])
+                ->select('id', 'name', 'email', 'salutation')
+                ->where('company_id', $companyId)
+                ->where('status', 'active')
+                ->whereHas('roles', function ($query) {
+                    $query->where('roles.name', 'employee');
+                })
+                ->when($search !== '', function ($query) use ($search) {
+                    $query->where(function ($sub) use ($search) {
+                        $sub->where('name', 'like', '%' . $search . '%')
+                            ->orWhere('email', 'like', '%' . $search . '%');
+                    });
+                })
+                ->orderBy('name')
+                ->limit($limit)
+                ->get()
+                ->map(function ($user) {
+                    return [
+                        'id' => $user->id,
+                        'text' => $user->name_salutation,
+                    ];
+                })->values();
+        }
+
+        if ($type === 'all' || $type === 'dealLeads') {
+            $dealLeads = Lead::query()
+                ->where('company_id', $companyId)
+                ->select('id', 'client_name')
+                ->when($search !== '', function ($query) use ($search) {
+                    $query->where('client_name', 'like', '%' . $search . '%');
+                })
+                ->orderBy('client_name')
+                ->limit($limit)
+                ->get()
+                ->map(fn($lead) => ['id' => $lead->id, 'text' => $lead->client_name])
+                ->values();
+        }
+
+        return Reply::dataOnly([
+            'status' => 'success',
+            'leadAgents' => $leadAgents,
+            'dealWatcher' => $dealWatcher,
+            'dealLeads' => $dealLeads,
+        ]);
     }
 
     public function show($id)
@@ -252,13 +333,19 @@ class DealController extends AccountBaseController
             $this->fields = $deal->getCustomFieldGroupsWithFields()->fields;
         }
 
-        $this->leadContacts = Lead::allLeads();
-        $this->products = Product::all();
-        $this->sources = LeadSource::all();
-        $this->stages = PipelineStage::all();
-        $this->categories = LeadCategory::all();
+        $this->leadContacts = collect();
+        $this->products = collect();
+        if (!is_null($this->contactID)) {
+            $selectedLead = Lead::select('id', 'client_name')->find($this->contactID);
+            if ($selectedLead) {
+                $this->leadContacts = collect([$selectedLead]);
+            }
+        }
+        $this->sources = Cache::remember('lead_sources_' . company()->id, now()->addMinutes(30), fn() => LeadSource::all());
+        $this->stages = Cache::remember('pipeline_stages_' . company()->id, now()->addMinutes(30), fn() => PipelineStage::all());
+        $this->categories = Cache::remember('lead_categories_' . company()->id, now()->addMinutes(30), fn() => LeadCategory::all());
         $this->leadPipelines = LeadPipeline::orderBy('default', 'DESC')->get();
-        $this->leadStages = PipelineStage::all();
+        $this->leadStages = Cache::remember('pipeline_stages_' . company()->id, now()->addMinutes(30), fn() => PipelineStage::all());
         $this->countries = countries();
 
         $this->pageTitle = __('modules.deal.createTitle');
@@ -364,10 +451,10 @@ class DealController extends AccountBaseController
             $this->fields = $this->deal->getCustomFieldGroupsWithFields()->fields;
         }
 
-        $this->categories = LeadCategory::all();
-        $this->leadContacts = Lead::all();
-        $this->products = Product::all();
-        $this->leadPipelines = LeadPipeline::all();
+        $this->categories = Cache::remember('lead_categories_' . company()->id, now()->addMinutes(30), fn() => LeadCategory::all());
+        $this->leadContacts = $this->deal->contact ? collect([$this->deal->contact]) : collect();
+        $this->products = $this->deal->products;
+        $this->leadPipelines = Cache::remember('lead_pipelines_' . company()->id, now()->addMinutes(30), fn() => LeadPipeline::all());
 
         $this->stages = PipelineStage::where('lead_pipeline_id', $this->deal->lead_pipeline_id)->get();
 
@@ -575,6 +662,15 @@ class DealController extends AccountBaseController
         $followUp->status = 'pending';
 
         $followUp->save();
+
+        $lead = $this->deal->contact;
+
+        if ($lead && !empty($lead->mobile)) {
+            app(WhatsAppService::class)->sendMessage(
+                $lead->mobile,
+                "Hello {$lead->client_name}, following up regarding your inquiry."
+            );
+        }
 
         return Reply::success(__('messages.recordSaved'));
 

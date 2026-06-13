@@ -12,6 +12,7 @@ use App\Http\Controllers\ClientController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\NoticeController;
 use App\Http\Controllers\SearchController;
+use App\Http\Controllers\CustomPageController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\HolidayController;
@@ -35,7 +36,6 @@ use App\Http\Controllers\TaskNoteController;
 use App\Http\Controllers\ClientDocController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EventFileController;
-use App\Http\Controllers\LeadBoardController;
 use App\Http\Controllers\LeaveFileController;
 use App\Http\Controllers\QuickbookController;
 use App\Http\Controllers\TaskBoardController;
@@ -52,7 +52,6 @@ use App\Http\Controllers\TicketFileController;
 use App\Http\Controllers\BankAccountController;
 use App\Http\Controllers\DesignationController;
 use App\Http\Controllers\EmployeeDocController;
-use App\Http\Controllers\ImmigrationController;
 use App\Http\Controllers\LeadCategoryController;
 use App\Http\Controllers\LeaveReportController;
 use App\Http\Controllers\LeavesQuotaController;
@@ -94,7 +93,6 @@ use App\Http\Controllers\ProjectCategoryController;
 use App\Http\Controllers\ProjectTemplateController;
 use App\Http\Controllers\TimelogCalendarController;
 use App\Http\Controllers\AttendanceReportController;
-use App\Http\Controllers\AttendanceSettingController;
 use App\Http\Controllers\ContractTemplateController;
 use App\Http\Controllers\EmergencyContactController;
 use App\Http\Controllers\EstimateTemplateController;
@@ -118,11 +116,28 @@ use App\Http\Controllers\ProjectTemplateMemberController;
 use App\Http\Controllers\ProjectTemplateSubTaskController;
 use App\Http\Controllers\EmployeeShiftChangeRequestController;
 use App\Http\Controllers\LeadContactController;
-use App\Http\Controllers\PipelineController;
+use App\Http\Controllers\LiveTrackingController;
+use App\Http\Controllers\AsyncOptionsController;
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\DisabledFeatureController;
 use App\Models\AttendanceSetting;
 
-Route::group(['middleware' => 'auth', 'prefix' => 'account'], function () {
+Route::post('mobile-login', [AuthController::class, 'login'])
+    ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class])
+    ->middleware('throttle:mobile-login')
+    ->name('mobile.login');
+
+Route::redirect('dashboard', '/account/dashboard');
+Route::redirect('dashbooard', '/account/dashboard');
+
+// Allow both web-session users and Sanctum token (used by Flutter app) to access the same routes.
+// Order matters: Sanctum will attempt token auth first, then fall back to the web guard.
+Route::group(['middleware' => 'auth:sanctum,web', 'prefix' => 'account'], function () {
+    Route::get('live-tracking', [LiveTrackingController::class, 'index'])->name('account.live-tracking');
+    Route::redirect('admin/live-tracking', '/account/live-tracking')->name('account.admin.live-tracking');
+
     Route::post('image/upload', [ImageController::class, 'store'])->name('image.store');
+    Route::get('async-options/{resource}', [AsyncOptionsController::class, 'index'])->name('async-options.index');
 
 
     Route::get('account-unverified', [DashboardController::class, 'accountUnverified'])->name('account_unverified');
@@ -440,9 +455,9 @@ Route::group(['middleware' => 'auth', 'prefix' => 'account'], function () {
     Route::post('deals/follow-up-update', [DealController::class, 'updateFollow'])->name('deals.follow_up_update');
     Route::post('deals/follow-up-delete/{id}', [DealController::class, 'deleteFollow'])->name('deals.follow_up_delete');
 
-    // Change status
-    Route::post('deals/change-stage', [DealController::class, 'changeStage'])->name('deals.change_stage');
-    Route::post('deals/apply-quick-action', [DealController::class, 'applyQuickAction'])->name('deals.apply_quick_action');
+    // Disabled deal stage flow while lead-first workflow is active.
+    Route::post('deals/change-stage', [DisabledFeatureController::class, 'notFound'])->name('deals.change_stage');
+    Route::post('deals/apply-quick-action', [DisabledFeatureController::class, 'notFound'])->name('deals.apply_quick_action');
 
     Route::get('deals/gdpr-consent', [DealController::class, 'consent'])->name('deals.gdpr_consent');
     Route::post('deals/save-deal-consent/{deal}', [DealController::class, 'saveLeadConsent'])->name('deals.save_lead_consent');
@@ -462,25 +477,39 @@ Route::group(['middleware' => 'auth', 'prefix' => 'account'], function () {
     Route::post('deal-notes/apply-quick-action', [DealNoteController::class, 'applyQuickAction'])->name('deal-notes.apply_quick_action');
     Route::resource('deal-notes', DealNoteController::class);
 
-    // deal board routes
-    Route::post('leadboards/collapseColumn', [LeadBoardController::class, 'collapseColumn'])->name('leadboards.collapse_column');
-    Route::post('leadboards/updateIndex', [LeadBoardController::class, 'updateIndex'])->name('leadboards.update_index');
-    Route::get('leadboards/loadMore', [LeadBoardController::class, 'loadMore'])->name('leadboards.load_more');
-    Route::resource('leadboards', LeadBoardController::class);
+    // Disabled deal board routes while lead-first workflow is active.
+    Route::post('leadboards/collapseColumn', [DisabledFeatureController::class, 'notFound'])->name('leadboards.collapse_column');
+    Route::post('leadboards/updateIndex', [DisabledFeatureController::class, 'notFound'])->name('leadboards.update_index');
+    Route::get('leadboards/loadMore', [DisabledFeatureController::class, 'notFound'])->name('leadboards.load_more');
+    Route::get('leadboards', [DisabledFeatureController::class, 'notFound'])->name('leadboards.index');
+    Route::get('leadboards/create', [DisabledFeatureController::class, 'notFound'])->name('leadboards.create');
+    Route::post('leadboards', [DisabledFeatureController::class, 'notFound'])->name('leadboards.store');
+    Route::get('leadboards/{leadboard}', [DisabledFeatureController::class, 'notFound'])->name('leadboards.show');
+    Route::get('leadboards/{leadboard}/edit', [DisabledFeatureController::class, 'notFound'])->name('leadboards.edit');
+    Route::match(['put', 'patch'], 'leadboards/{leadboard}', [DisabledFeatureController::class, 'notFound'])->name('leadboards.update');
+    Route::delete('leadboards/{leadboard}', [DisabledFeatureController::class, 'notFound'])->name('leadboards.destroy');
 
     Route::post('lead-form/sortFields', [LeadCustomFormController::class, 'sortFields'])->name('lead-form.sortFields');
     Route::resource('lead-form', LeadCustomFormController::class);
 
     Route::group(['prefix' => 'deals'], function () {
-        Route::get('import', [DealController::class, 'importLead'])->name('deals.import');
-        Route::post('import', [DealController::class, 'importStore'])->name('deals.import.store');
-        Route::post('import/process', [DealController::class, 'importProcess'])->name('deals.import.process');
+        Route::get('import', [DisabledFeatureController::class, 'notFound'])->name('deals.import');
+        Route::post('import', [DisabledFeatureController::class, 'notFound'])->name('deals.import.store');
+        Route::post('import/process', [DisabledFeatureController::class, 'notFound'])->name('deals.import.process');
     });
 
     Route::group(['prefix' => 'lead-contact'], function () {
         Route::get('import', [LeadContactController::class, 'importLead'])->name('lead-contact.import');
         Route::post('import', [LeadContactController::class, 'importStore'])->name('lead-contact.import.store');
         Route::post('import/process', [LeadContactController::class, 'importProcess'])->name('lead-contact.import.process');
+        Route::post('{lead}/quick-update', [LeadContactController::class, 'quickUpdate'])->name('lead-contact.quick_update');
+        Route::get('{lead}/follow-up/create', [LeadContactController::class, 'followUpCreate'])->name('lead-contact.follow_up');
+        Route::post('follow-up-store', [LeadContactController::class, 'followUpStore'])->name('lead-contact.follow_up_store');
+        Route::get('follow-up-edit/{id}', [LeadContactController::class, 'editFollow'])->name('lead-contact.follow_up_edit');
+        Route::post('follow-up-update', [LeadContactController::class, 'updateFollow'])->name('lead-contact.follow_up_update');
+        Route::post('follow-up-delete/{id}', [LeadContactController::class, 'deleteFollow'])->name('lead-contact.follow_up_delete');
+        Route::post('change-follow-up-status', [LeadContactController::class, 'changeFollowUpStatus'])->name('lead-contact.change_follow_up_status');
+        Route::post('{lead}/convert-to-client', [LeadContactController::class, 'convertToClient'])->name('lead-contact.convert_to_client');
     });
 
     // deals route
@@ -488,10 +517,16 @@ Route::group(['middleware' => 'auth', 'prefix' => 'account'], function () {
     Route::resource('lead-contact', LeadContactController::class);
     Route::post('lead-contact/apply-quick-action', [LeadContactController::class, 'applyQuickAction'])->name('lead-contact.apply_quick_action');
 
-    Route::get('deals/get-stage/{id}', [DealController::class, 'getStages'])->name('deals.get-stage');
-    Route::get('deals/get-deals/{id}', [DealController::class, 'getDeals'])->name('deals.get-deals');
-    Route::get('deals/get-agent/{id}', [DealController::class, 'getAgents'])->name('deals.get_agents');
-    Route::resource('deals', DealController::class);
+    Route::get('deals/filter-options', [DealController::class, 'filterOptions'])->name('deals.filter_options');
+    Route::get('deals/get-stage/{id}', [DisabledFeatureController::class, 'notFound'])->name('deals.get-stage');
+    Route::get('deals/get-deals/{id}', [DisabledFeatureController::class, 'notFound'])->name('deals.get-deals');
+    Route::get('deals/get-agent/{id}', [DisabledFeatureController::class, 'notFound'])->name('deals.get_agents');
+    Route::get('deals/create', [DisabledFeatureController::class, 'notFound'])->name('deals.create');
+    Route::post('deals', [DisabledFeatureController::class, 'notFound'])->name('deals.store');
+    Route::get('deals/{deal}/edit', [DisabledFeatureController::class, 'notFound'])->name('deals.edit');
+    Route::match(['put', 'patch'], 'deals/{deal}', [DisabledFeatureController::class, 'notFound'])->name('deals.update');
+    Route::delete('deals/{deal}', [DisabledFeatureController::class, 'notFound'])->name('deals.destroy');
+    Route::resource('deals', DealController::class)->only(['index', 'show']);
 
     // leaves files routes
     Route::get('leave-files/download/{id}', [LeaveFileController::class, 'download'])->name('leave-files.download');
@@ -631,7 +666,7 @@ Route::group(['middleware' => 'auth', 'prefix' => 'account'], function () {
     Route::resource('expenseCategory', ExpenseCategoryController::class);
 
     // unified CRM calendar routes (tasks + followups)
-    Route::get('/calendar', [App\Http\Controllers\CalendarController::class, 'index'])->name('crm.calendar');
+    Route::get('/calendar', [App\Http\Controllers\CalendarController::class, 'index'])->name('calendar.index');
     Route::get('/calendar/events', [App\Http\Controllers\CalendarController::class, 'events'])->name('crm.calendar.events');
 
     // Timelogs
@@ -725,6 +760,7 @@ Route::group(['middleware' => 'auth', 'prefix' => 'account'], function () {
 
     // Ticket Custom Embed From
     Route::post('ticket-form/sort-fields', [TicketCustomFormController::class, 'sortFields'])->name('ticket-form.sort_fields');
+    Route::post('ticket-form/update-form-status', [TicketCustomFormController::class, 'updateFormStatus'])->name('ticket-form.update_form_status');
     Route::resource('ticket-form', TicketCustomFormController::class);
 
     Route::get('ticket-files/download/{id}', [TicketFileController::class, 'download'])->name('ticket-files.download');
@@ -787,6 +823,7 @@ Route::group(['middleware' => 'auth', 'prefix' => 'account'], function () {
     Route::post('mark-read', [NotificationController::class, 'markRead'])->name('mark_single_notification_read');
     Route::post('mark_notification_read', [NotificationController::class, 'markAllRead'])->name('mark_notification_read');
 
+    Route::resource('custom-pages', CustomPageController::class)->except(['show']);
     Route::resource('search', SearchController::class);
 
     // Remove in v 5.2.5
@@ -801,3 +838,9 @@ Route::group(['middleware' => 'auth', 'prefix' => 'account'], function () {
     Route::get('quickbooks/{hash}/callback', [QuickbookController::class, 'callback'])->name('quickbooks.callback');
     Route::get('quickbooks', [QuickbookController::class, 'index'])->name('quickbooks.index');
 });
+
+if (file_exists(app_path('Modules/WhatsApp/routes.php'))) {
+    require app_path('Modules/WhatsApp/routes.php');
+}
+
+require base_path('routes/document-workflow.php');

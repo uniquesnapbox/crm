@@ -9,7 +9,7 @@ use App\Notifications\EventStatusNote;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 
-class EventStatusNoteListener
+class EventStatusNoteListener implements ShouldQueue
 {
 
     /**

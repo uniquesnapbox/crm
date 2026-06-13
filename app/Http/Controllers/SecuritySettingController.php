@@ -35,6 +35,15 @@ class SecuritySettingController extends AccountBaseController
         $this->user = user();
         $this->smtpSetting = smtp_setting();
         $this->setting = company();
+        $this->twoFactorQrSvg = null;
+
+        if (!empty($this->user->two_factor_secret)) {
+            try {
+                $this->twoFactorQrSvg = $this->user->twoFactorQrCodeSvg();
+            } catch (\Throwable $e) {
+                $this->twoFactorQrSvg = null;
+            }
+        }
 
         $this->view = 'security-settings.ajax.google-recaptcha';
 

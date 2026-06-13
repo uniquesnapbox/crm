@@ -82,6 +82,30 @@
         </div>
     @endif
 
+    @if (in_array('leads', user_modules()) && in_array('todays_follow_ups', $activeWidgets))
+        <div class="col-xl-3 col-lg-6 col-md-6">
+            <a href="{{ route('lead-contact.index') }}">
+                <x-cards.widget :title="__('modules.dashboard.todaysFollowUps')" :value="$todaysFollowUpsCount" icon="phone-volume"></x-cards.widget>
+            </a>
+        </div>
+    @endif
+
+    @if (in_array('leads', user_modules()) && in_array('upcoming_follow_ups', $activeWidgets))
+        <div class="col-xl-3 col-lg-6 col-md-6">
+            <a href="{{ route('lead-contact.index') }}">
+                <x-cards.widget :title="__('modules.dashboard.upcomingFollowUps')" :value="$upcomingFollowUpsCount" icon="calendar-alt"></x-cards.widget>
+            </a>
+        </div>
+    @endif
+
+    @if (in_array('leads', user_modules()) && in_array('pending_calls_meetings', $activeWidgets))
+        <div class="col-xl-3 col-lg-6 col-md-6">
+            <a href="{{ route('lead-contact.index') }}">
+                <x-cards.widget :title="__('modules.dashboard.pendingCallsMeetings')" :value="$overdueFollowUpsCount" icon="phone"></x-cards.widget>
+            </a>
+        </div>
+    @endif
+
 </div>
 
 <div class="row">
@@ -266,17 +290,16 @@
                         <tr>
                             <td class="pl-20">
                                 <h5 class="f-13 text-darkest-grey"><a
-                                        href="{{ route('deals.show', [$item->id]) }}">{{ $item->client_name_salutation }}</a>
+                                        href="{{ route('lead-contact.show', [$item->lead_id]) }}?tab=follow-up">{{ $item->lead->client_name ?? '--' }}</a>
                                 </h5>
-                                <div class="text-muted">{{ $item->company_name }}</div>
+                                <div class="text-muted">{{ $item->lead->company_name ?? '--' }}</div>
                             </td>
                             <td>
-
-                                {{ \Carbon\Carbon::parse($item->follow_up_date_past)->timezone(company()->timezone)->translatedFormat(company()->date_format) }}
+                                {{ optional($item->next_follow_up_date)->timezone(company()->timezone)->translatedFormat(company()->date_format . ' ' . company()->time_format) }}
                             </td>
                             <td class="pr-20 text-right">
-                                @if ($item->agent_id)
-                                    <x-employee :user="$item->leadAgent->user"/>
+                                @if ($item->lead?->addedBy)
+                                    <x-employee :user="$item->lead->addedBy"/>
                                 @endif
                             </td>
                         </tr>

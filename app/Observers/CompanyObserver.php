@@ -517,9 +517,9 @@ class CompanyObserver
 
     public function customForms($company)
     {
-        $fields = ['Name', 'Email', 'Ticket Subject', 'Ticket Description', 'Type', 'Priority', 'Assign Group'];
-        $fieldsName = ['name', 'email', 'ticket_subject', 'ticket_description', 'type', 'priority', 'assign_group'];
-        $fieldsType = ['text', 'text', 'text', 'textarea', 'select', 'select', 'select'];
+        $fields = ['Name', 'Email', 'Mobile Number', 'Ticket Subject', 'Ticket Description', 'Type', 'Priority', 'Assign Group'];
+        $fieldsName = ['name', 'email', 'mobile', 'ticket_subject', 'ticket_description', 'type', 'priority', 'assign_group'];
+        $fieldsType = ['text', 'text', 'text', 'text', 'textarea', 'select', 'select', 'select'];
 
         foreach ($fields as $key => $value) {
 

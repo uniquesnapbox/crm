@@ -28,7 +28,7 @@ mix.js('resources/js/bootstrap.js', 'public/js')
     'node_modules/sweetalert2/dist/sweetalert2.all.min.js',
     'node_modules/cropperjs/dist/cropper.js',
     'node_modules/bootstrap-select/js/bootstrap-select.js',
-    'node_modules/quill/dist/quill.min.js',
+    'node_modules/quill/dist/quill.js',
     'node_modules/quill-emoji/dist/quill-emoji.js',
     'node_modules/quill-mention/dist/quill.mention.min.js',
     'node_modules/quill-magic-url/dist/index.js',

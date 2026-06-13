@@ -36,6 +36,7 @@ use App\Http\Controllers\LanguageSettingController;
 use App\Http\Controllers\SecuritySettingController;
 use App\Http\Controllers\LeadAgentSettingController;
 use App\Http\Controllers\PushNotificationController;
+use App\Http\Controllers\WhatsappSettingController;
 use App\Http\Controllers\AttendanceSettingController;
 use App\Http\Controllers\ContractSettingController;
 use App\Http\Controllers\CustomLinkSettingController;
@@ -82,12 +83,15 @@ Route::group(['middleware' => 'auth', 'prefix' => 'account/settings'], function 
     Route::get('slack-settings/send-test-notification', [SlackSettingController::class, 'sendTestNotification'])->name('slack_settings.send_test_notification');
 
     Route::get('push-notification-settings/send-test-notification', [PushNotificationController::class, 'sendTestNotification'])->name('push_notification_settings.send_test_notification');
+    Route::get('whatsapp-settings/send-test-notification', [WhatsappSettingController::class, 'sendTestNotification'])->name('whatsapp_settings.send_test_notification');
+    Route::get('whatsapp-settings/connection-status', [WhatsappSettingController::class, 'connectionStatus'])->name('whatsapp-settings.connection-status');
 
     Route::resource('smtp-settings', SmtpSettingController::class);
     Route::resource('notifications', NotificationSettingController::class);
     Route::resource('slack-settings', SlackSettingController::class);
     Route::resource('push-notification-settings', PushNotificationController::class);
     Route::resource('pusher-settings', PusherSettingsController::class);
+    Route::resource('whatsapp-settings', WhatsappSettingController::class);
 
     // Currency Settings routes
     Route::get('currency-settings/update/exchange-rates', [CurrencySettingController::class, 'updateExchangeRate'])->name('currency_settings.update_exchange_rates');
@@ -245,6 +249,8 @@ Route::group(['middleware' => 'auth', 'prefix' => 'account/settings'], function 
 });
 
 Route::group(['middleware' => 'auth', 'prefix' => 'account'], function () {
+
+    Route::redirect('sign-up-settings', '/account/settings/sign-up-settings');
 
     Route::resource('company-settings', SettingsController::class)->only(['edit', 'update', 'index', 'change_language']);
 

@@ -13,6 +13,7 @@ use App\Models\CustomFieldGroup;
 use App\DataTables\BaseDataTable;
 use Yajra\DataTables\Html\Button;
 use Yajra\DataTables\Html\Column;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Model;
 
@@ -41,7 +42,7 @@ class DealsDataTable extends BaseDataTable
         $this->addFollowUpPermission = user()->permission('add_lead_follow_up');
         $this->changeLeadStatusPermission = user()->permission('change_deal_stages');
         $this->viewLeadFollowUpPermission = user()->permission('view_lead_follow_up');
-        $this->myAgentId = LeadAgent::where('user_id', user()->id)->pluck('id')->toArray();
+        $this->myAgentId = Cache::remember('deals_datatable_my_agent_ids_' . company()->id . '_' . user()->id, now()->addMinutes(1), fn() => LeadAgent::where('user_id', user()->id)->pluck('id')->toArray());
     }
 
     /**
@@ -54,15 +55,13 @@ class DealsDataTable extends BaseDataTable
     {
         $currentDate = now(company()->timezone)->translatedFormat('Y-m-d');
 
-        $stagesData = PipelineStage::all();
-
-        $stages = $stagesData->filter(function ($value, $key) {
-            return $value->lead_pipeline_id == $this->request()->pipeline;
-        });
+        $stagesData = Cache::remember('pipeline_stages_' . company()->id, now()->addMinutes(30), fn() => PipelineStage::select('id', 'lead_pipeline_id', 'name', 'label_color')->get());
+        $stagesByPipeline = $stagesData->groupBy('lead_pipeline_id');
+        $defaultStages = $stagesByPipeline->get($this->request()->pipeline, collect());
 
         $datatables = datatables()->eloquent($query);
         $datatables->addIndexColumn();
-        $datatables->addColumn('check', fn($row) => $this->checkBox($row));
+        $datatables->addColumn('check', fn($row) => $this->isArchiveView() ? '' : $this->checkBox($row));
         $datatables->addColumn('export_deal_watcher', fn($row) => $row->dealWatcher->name ?? '--');
         $datatables->addColumn('action', function ($row) {
             $action = '<div class="task_view">
@@ -76,31 +75,31 @@ class DealsDataTable extends BaseDataTable
 
             $action .= '<a href="' . route('deals.show', [$row->id]) . '" class="dropdown-item"><i class="fa fa-eye mr-2"></i>' . __('app.view') . '</a>';
 
-            if (
+            if (!$this->isArchiveView() && (
                 $this->editLeadPermission == 'all'
                 || ($this->editLeadPermission == 'added' && user()->id == $row->added_by)
                 || ($this->editLeadPermission == 'owned' && ((!is_null($row->agent_id) && !is_null($row->leadAgent) && user()->id == $row->leadAgent->user->id) || (!is_null($row->deal_watcher) && user()->id == $row->deal_watcher)))
                 || ($this->editLeadPermission == 'both' && (((!is_null($row->agent_id) && !is_null($row->leadAgent) && user()->id == $row->leadAgent->user->id) || (!is_null($row->deal_watcher) && user()->id == $row->deal_watcher)) || user()->id == $row->added_by))
-            ) {
+            )) {
                 $action .= '<a class="dropdown-item openRightModal" href="' . route('deals.edit', [$row->id]) . '">
                                 <i class="fa fa-edit mr-2"></i>
                                 ' . trans('app.edit') . '
                             </a>';
             }
 
-            if (
+            if (!$this->isArchiveView() && (
                 $this->deleteLeadPermission == 'all'
                 || ($this->deleteLeadPermission == 'added' && user()->id == $row->added_by)
                 || ($this->deleteLeadPermission == 'owned' && ((!is_null($row->agent_id) && !is_null($row->leadAgent) && user()->id == $row->leadAgent->user->id) || (!is_null($row->deal_watcher) && user()->id == $row->deal_watcher)))
                 || ($this->deleteLeadPermission == 'both' && (((!is_null($row->agent_id) && !is_null($row->leadAgent) && user()->id == $row->leadAgent->user->id) || (!is_null($row->deal_watcher) && user()->id == $row->deal_watcher)) || user()->id == $row->added_by))
-            ) {
+            )) {
                 $action .= '<a class="dropdown-item delete-table-row" href="javascript:;" data-id="' . $row->id . '">
                         <i class="fa fa-trash mr-2"></i>
                         ' . trans('app.delete') . '
                     </a>';
             }
 
-            if (($this->addFollowUpPermission == 'all' || ($this->addFollowUpPermission == 'added' && user()->id == $row->added_by)) && $row->next_follow_up == 'yes') {
+            if (!$this->isArchiveView() && (($this->addFollowUpPermission == 'all' || ($this->addFollowUpPermission == 'added' && user()->id == $row->added_by)) && $row->next_follow_up == 'yes')) {
                 $action .= '<a onclick="followUp(' . $row->id . ')" class="dropdown-item" href="javascript:;">
                                 <i class="fa fa-thumbs-up mr-2"></i>
                                 ' . trans('modules.lead.addFollowUp') . '
@@ -120,20 +119,14 @@ class DealsDataTable extends BaseDataTable
         $datatables->addColumn('export_email', fn($row) => $row->client_email);
         $datatables->addColumn('lead_value', fn($row) => currency_format($row->value, $row->currency_id));
         $datatables->addColumn('lead', 'client_name');
-        $datatables->addColumn('category_name', fn($row) => $row->contact->category->category_name ?? null);
+        $datatables->addColumn('category_name', fn($row) => optional(optional($row->contact)->category)->category_name);
         $datatables->addColumn('leadStage', fn($row) => $row->leadStage->name ?? '--');
 
-        $datatables->addColumn('stage', function ($row) use ($stages, $stagesData) {
+        $datatables->addColumn('stage', function ($row) use ($defaultStages, $stagesByPipeline) {
             $action = '--';
+            $stages = $defaultStages->isNotEmpty() ? $defaultStages : $stagesByPipeline->get($row->lead_pipeline_id, collect());
 
-            if (count($stages) == 0) {
-
-                $stages = $stagesData->filter(function ($value, $key) use ($row) {
-                    return $value->lead_pipeline_id == $row->lead_pipeline_id;
-                });
-            }
-
-            if ($this->changeLeadStatusPermission == 'all') {
+            if (!$this->isArchiveView() && $this->changeLeadStatusPermission == 'all') {
 
                 $statusLi = '--';
 
@@ -215,8 +208,8 @@ class DealsDataTable extends BaseDataTable
         });
         $datatables->editColumn('close_date', fn($row) => $row->close_date ? $row->close_date->translatedFormat($this->company->date_format) : '--');
         $datatables->editColumn('lead_pipeline_id', fn($row) => $row->lead_pipeline_id ? $row->pipeline->name : '--');
-        $datatables->editColumn('agent_name', fn($row) => $row->agent_id ? view('components.employee', ['user' => $row->leadAgent->user]) : '--');
-        $datatables->addColumn('deal_watcher_user', fn($row) => $row->dealWatcher ? view('components.employee', ['user' => $row->dealWatcher]) : '--');
+        $datatables->editColumn('agent_name', fn($row) => $row->leadAgent->user->name ?? '--');
+        $datatables->addColumn('deal_watcher_user', fn($row) => $row->dealWatcher->name ?? '--');
         $datatables->smart(false);
         $datatables->setRowId(fn($row) => 'row-' . $row->id);
         $datatables->removeColumn('status_id');
@@ -228,7 +221,7 @@ class DealsDataTable extends BaseDataTable
 
         $customFieldColumns = CustomField::customFieldData($datatables, Deal::CUSTOM_FIELD_MODEL);
 
-        $datatables->rawColumns(array_merge(['status', 'action', 'name', 'client_name', 'next_follow_up_date', 'agent_name', 'check', 'mobile', 'stage', 'lead_email'], $customFieldColumns));
+        $datatables->rawColumns(array_merge(['status', 'action', 'name', 'client_name', 'next_follow_up_date', 'check', 'mobile', 'stage', 'lead_email'], $customFieldColumns));
 
         return $datatables;
     }
@@ -238,7 +231,23 @@ class DealsDataTable extends BaseDataTable
      */
     public function query(Deal $model)
     {
-        $lead = $model->with(['leadAgent', 'dealWatcher', 'leadAgent.user', 'category', 'contact', 'pipeline', 'leadStage'])
+        $followUpMeta = DB::table('lead_follow_up as lfu')
+            ->select(
+                'lfu.deal_id',
+                DB::raw("MIN(CASE WHEN lfu.status = 'pending' THEN lfu.next_follow_up_date END) as next_follow_up_date"),
+                DB::raw("SUBSTRING_INDEX(GROUP_CONCAT(lfu.status ORDER BY lfu.next_follow_up_date ASC), ',', 1) as next_follow_up_status")
+            )
+            ->groupBy('lfu.deal_id');
+
+        $lead = $model->with([
+            'leadAgent:id,user_id',
+            'leadAgent.user:id,name,status',
+            'dealWatcher:id,name,status',
+            'contact:id,category_id',
+            'contact.category:id,category_name',
+            'pipeline:id,name',
+            'leadStage:id,name',
+        ])
             ->select(
                 'deals.id',
                 'deals.name',
@@ -250,30 +259,26 @@ class DealsDataTable extends BaseDataTable
                 'leads.client_id',
                 'deals.next_follow_up',
                 'deals.value',
-                'pipeline_stages.name as stageName',
                 'pipeline_stage_id',
-                'deals.created_at',
                 'deals.close_date',
-                'deals.updated_at',
                 'users.name as agent_name',
-                'users.image',
                 'leads.company_name',
                 'leads.mobile',
                 'leads.salutation as salutation',
                 'leads.id as contact_id',
                 'leads.client_name as client_name',
                 'leads.client_email as client_email',
-                DB::raw("(select next_follow_up_date from lead_follow_up where deal_id = deals.id and deals.next_follow_up  = 'yes' and lead_follow_up.status  = 'pending' ORDER BY next_follow_up_date asc limit 1) as next_follow_up_date"),
-                DB::raw("(select lead_follow_status.status from lead_follow_up as lead_follow_status where deal_id = deals.id and deals.next_follow_up  = 'yes'  ORDER BY next_follow_up_date asc limit 1) as next_follow_up_status")
+                DB::raw("CASE WHEN deals.next_follow_up = 'yes' THEN follow_up_meta.next_follow_up_date ELSE NULL END as next_follow_up_date"),
+                DB::raw("CASE WHEN deals.next_follow_up = 'yes' THEN follow_up_meta.next_follow_up_status ELSE NULL END as next_follow_up_status")
             )
-            ->leftJoin('pipeline_stages', 'pipeline_stages.id', 'deals.pipeline_stage_id')
             ->leftJoin('lead_agents', 'lead_agents.id', 'deals.agent_id')
             ->leftJoin('users', 'users.id', 'lead_agents.user_id')
-            ->leftJoin('leads', 'leads.id', 'deals.lead_id');
+            ->leftJoin('leads', 'leads.id', 'deals.lead_id')
+            ->leftJoinSub($followUpMeta, 'follow_up_meta', function ($join) {
+                $join->on('follow_up_meta.deal_id', '=', 'deals.id');
+            });
 
         if ($this->request()->followUp != 'all' && $this->request()->followUp != '') {
-            $lead = $lead->leftJoin('lead_follow_up', 'lead_follow_up.deal_id', 'deals.id');
-
             if ($this->request()->followUp == 'yes') {
                 $lead = $lead->where('deals.next_follow_up', 'yes');
             }
@@ -305,8 +310,9 @@ class DealsDataTable extends BaseDataTable
 
         if ($this->request()->startDate !== null && $this->request()->startDate != 'null' && $this->request()->startDate != '' && request()->date_filter_on == 'created_at') {
             $startDate = Carbon::createFromFormat($this->company->date_format, $this->request()->startDate)->toDateString();
+            $startBoundary = Carbon::parse($startDate, $this->company->timezone)->startOfDay()->toDateTimeString();
 
-            $lead = $lead->having(DB::raw('DATE(deals.`created_at`)'), '>=', $startDate);
+            $lead = $lead->where('deals.created_at', '>=', $startBoundary);
         }
 
         if ($this->request()->pipeline !== null && $this->request()->pipeline != 'null' && $this->request()->pipeline != '' && request()->pipeline != 'all') {
@@ -315,29 +321,34 @@ class DealsDataTable extends BaseDataTable
 
         if ($this->request()->startDate !== null && $this->request()->startDate != 'null' && $this->request()->startDate != '' && request()->date_filter_on == 'next_follow_up_date') {
             $startDate = Carbon::createFromFormat($this->company->date_format, $this->request()->startDate)->toDateString();
+            $startBoundary = Carbon::parse($startDate, $this->company->timezone)->startOfDay()->toDateTimeString();
 
-            $lead = $lead->having(DB::raw('DATE(`next_follow_up_date`)'), '>=', $startDate);
+            $lead = $lead->where('follow_up_meta.next_follow_up_date', '>=', $startBoundary);
         }
 
         if ($this->request()->endDate !== null && $this->request()->endDate != 'null' && $this->request()->endDate != '' && request()->date_filter_on == 'created_at') {
             $endDate = Carbon::createFromFormat($this->company->date_format, $this->request()->endDate)->toDateString();
-            $lead = $lead->having(DB::raw('DATE(deals.`created_at`)'), '<=', $endDate);
+            $endBoundary = Carbon::parse($endDate, $this->company->timezone)->endOfDay()->toDateTimeString();
+            $lead = $lead->where('deals.created_at', '<=', $endBoundary);
         }
 
         if ($this->request()->endDate !== null && $this->request()->endDate != 'null' && $this->request()->endDate != '' && request()->date_filter_on == 'next_follow_up_date') {
             $endDate = Carbon::createFromFormat($this->company->date_format, $this->request()->endDate)->toDateString();
-            $lead = $lead->having(DB::raw('DATE(`next_follow_up_date`)'), '<=', $endDate);
+            $endBoundary = Carbon::parse($endDate, $this->company->timezone)->endOfDay()->toDateTimeString();
+            $lead = $lead->where('follow_up_meta.next_follow_up_date', '<=', $endBoundary);
         }
 
         if ($this->request()->startDate !== null && $this->request()->startDate != 'null' && $this->request()->startDate != '' && request()->date_filter_on == 'updated_at') {
             $startDate = Carbon::createFromFormat($this->company->date_format, $this->request()->startDate)->toDateString();
+            $startBoundary = Carbon::parse($startDate, $this->company->timezone)->startOfDay()->toDateTimeString();
 
-            $lead = $lead->having(DB::raw('DATE(deals.`updated_at`)'), '>=', $startDate);
+            $lead = $lead->where('deals.updated_at', '>=', $startBoundary);
         }
 
         if ($this->request()->endDate !== null && $this->request()->endDate != 'null' && $this->request()->endDate != '' && request()->date_filter_on == 'updated_at') {
             $endDate = Carbon::createFromFormat($this->company->date_format, $this->request()->endDate)->toDateString();
-            $lead = $lead->having(DB::raw('DATE(deals.`updated_at`)'), '<=', $endDate);
+            $endBoundary = Carbon::parse($endDate, $this->company->timezone)->endOfDay()->toDateTimeString();
+            $lead = $lead->where('deals.updated_at', '<=', $endBoundary);
         }
 
         if (($this->request()->agent != 'all' && $this->request()->agent != '') || $this->viewLeadPermission == 'added') {
@@ -403,7 +414,7 @@ class DealsDataTable extends BaseDataTable
             });
         }
 
-        return $lead->groupBy('deals.id');
+        return $lead;
     }
 
     /**
@@ -415,6 +426,10 @@ class DealsDataTable extends BaseDataTable
     {
         $dataTable = $this->setBuilder('leads-table', 2)
             ->parameters([
+                'pageLength' => 20,
+                'lengthMenu' => [[20], [20]],
+                'searchDelay' => 350,
+                'deferRender' => true,
                 'initComplete' => 'function () {
                    window.LaravelDataTables["leads-table"].buttons().container()
                     .appendTo("#table-actions")
@@ -482,6 +497,11 @@ class DealsDataTable extends BaseDataTable
 
         return array_merge($data, CustomFieldGroup::customFieldsDataMerge(new Deal()), $action);
 
+    }
+
+    private function isArchiveView(): bool
+    {
+        return request()->routeIs('deals.index');
     }
 
 }

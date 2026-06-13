@@ -2,7 +2,7 @@
 
 namespace App\Events;
 
-use App\Models\DealFollowUp;
+use App\Models\LeadFollowUp;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
@@ -14,7 +14,7 @@ class AutoFollowUpReminderEvent
 
     public $followup;
 
-    public function __construct(DealFollowUp $followup)
+    public function __construct(LeadFollowUp $followup)
     {
         $this->followup = $followup;
     }

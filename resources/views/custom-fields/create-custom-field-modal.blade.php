@@ -12,9 +12,12 @@
                     <x-forms.select fieldId="module" :fieldLabel="__('app.module')" fieldName="module"
                                     search="true">
                         @foreach ($customFieldGroups as $item)
-                            <option value="{{ $item->id }}">@lang('app.'.strtolower($item->name))</option>
+                            <option value="{{ $item->id }}" @selected(($selectedModuleId ?? 0) === (int) $item->id)>@lang('app.'.strtolower($item->name))</option>
                         @endforeach
                     </x-forms.select>
+                    @if (($lockModule ?? false) && !empty($selectedModuleId))
+                        <input type="hidden" name="module" value="{{ $selectedModuleId }}">
+                    @endif
                 </div>
 
                 <div class="col-lg-6">
@@ -91,6 +94,12 @@
 <script>
 
     $(".select-picker").selectpicker();
+
+    @if (($lockModule ?? false) && !empty($selectedModuleId))
+        $('#module').val('{{ $selectedModuleId }}');
+        $('#module').prop('disabled', true);
+        $('#module').selectpicker('refresh');
+    @endif
 
     var $insertBefore = $('#insertBefore');
     var $i = 1;

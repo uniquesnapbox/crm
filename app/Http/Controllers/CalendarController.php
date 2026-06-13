@@ -2,8 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Task;
-use App\Models\DealFollowUp;
+use App\Models\LeadFollowUp;
 use Illuminate\Http\Request;
 
 class CalendarController extends AccountBaseController
@@ -12,7 +11,12 @@ class CalendarController extends AccountBaseController
     {
         parent::__construct();
         $this->pageTitle = 'app.menu.calendar';
-        // you can add middleware if necessary
+        $this->activeMenu = 'calendar';
+        $this->middleware(function ($request, $next) {
+            abort_403(!in_array('leads', $this->user->modules));
+
+            return $next($request);
+        });
     }
 
     /**
@@ -22,43 +26,73 @@ class CalendarController extends AccountBaseController
      */
     public function index()
     {
-        return view('events.calendar');
+        return view('events.calendar', $this->data);
     }
 
     /**
-     * Return combined tasks and followups in FullCalendar format.
+     * Return lead follow-ups in FullCalendar format.
      */
     public function events(Request $request)
     {
         $user = auth()->user();
 
         if ($user->hasRole('admin')) {
-            $tasks = Task::whereNotNull('due_date')->get();
-            $followups = DealFollowUp::whereNotNull('next_follow_up_date')->get();
-        } else {
-            $tasks = Task::where('assigned_to', $user->id)->get();
-            $followups = DealFollowUp::where('created_by', $user->id)->get();
+            $followups = LeadFollowUp::with('lead')
+                ->whereNotNull('lead_id')
+                ->whereNotNull('next_follow_up_date')
+                ->get();
+        }
+        else {
+            $followups = LeadFollowUp::with('lead')
+                ->where('added_by', $user->id)
+                ->whereNotNull('lead_id')
+                ->whereNotNull('next_follow_up_date')
+                ->get();
         }
 
         $events = [];
 
-        foreach ($tasks as $task) {
-            $events[] = [
-                'id'   => $task->id,
-                'title' => 'Task: ' . $task->heading,
-                'start' => $task->due_date ? $task->due_date->format('Y-m-d') : $task->start_date->format('Y-m-d'),
-                'color' => '#0B0B7A',
-                'type' => 'task'
-            ];
-        }
-
         foreach ($followups as $followup) {
+            if (!$followup->lead) {
+                continue;
+            }
+
+            $followUpAt = $followup->next_follow_up_date?->timezone(company()->timezone);
+            $today = now(company()->timezone)->startOfDay();
+            $followUpDay = $followUpAt?->copy()->startOfDay();
+
+            $color = '#0ea5a4';
+
+            if ($followUpDay && $followUpDay->lt($today)) {
+                $color = '#dc2626';
+            }
+            elseif ($followUpDay && $followUpDay->equalTo($today)) {
+                $color = '#f97316';
+            }
+            elseif ($followUpDay) {
+                $color = '#2563eb';
+            }
+
             $events[] = [
-                'id'   => 'fup-' . $followup->id,
-                'title' => 'Follow-up: ' . optional($followup->lead)->client_name,
-                'start' => $followup->next_follow_up_date ? $followup->next_follow_up_date->format('Y-m-d') : null,
-                'color' => '#F97316',
-                'type' => 'followup'
+                'id' => 'fup-' . $followup->id,
+                'title' => $followup->lead->client_name,
+                'start' => $followUpAt?->toIso8601String(),
+                'color' => $color,
+                'allDay' => false,
+                'extendedProps' => [
+                    'type' => 'followup',
+                    'lead_id' => $followup->lead_id,
+                    'followup_id' => $followup->id,
+                    'followup_date' => $followUpAt?->format(company()->date_format),
+                    'reminder_time' => $followUpAt?->format(company()->time_format),
+                    'note' => trim(strip_tags((string) $followup->remark)) ?: '--',
+                    'latitude' => $followup->latitude,
+                    'longitude' => $followup->longitude,
+                    'maps_url' => ($followup->latitude && $followup->longitude)
+                        ? 'https://www.google.com/maps/search/?api=1&query=' . $followup->latitude . ',' . $followup->longitude
+                        : null,
+                    'redirect_url' => route('lead-contact.show', [$followup->lead_id]) . '?tab=follow-up',
+                ],
             ];
         }
 

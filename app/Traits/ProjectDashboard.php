@@ -10,7 +10,6 @@ use App\Models\ProjectTimeLog;
 use App\Models\ProjectTimeLogBreak;
 use Carbon\Carbon;
 use Carbon\CarbonInterval;
-use Illuminate\Support\Facades\DB;
 
 /**
  *
@@ -35,7 +34,7 @@ trait ProjectDashboard
         $startDate = $this->startDate->toDateString();
         $endDate = $this->endDate->toDateString();
 
-        $this->totalProject = Project::whereBetween(DB::raw('DATE(`created_at`)'), [$startDate, $endDate])->count();
+        $this->totalProject = Project::whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])->count();
 
         $hoursLogged = ProjectTimeLog::whereDate('start_time', '>=', $startDate)
             ->whereDate('end_time', '<=', $endDate)
@@ -57,8 +56,7 @@ trait ProjectDashboard
         $this->totalHoursLogged = $timeLog;
 
         $this->totalOverdueProject = Project::whereNotNull('deadline')
-            ->where(DB::raw('DATE(deadline)'), '>=', $startDate)
-            ->where(DB::raw('DATE(deadline)'), '<=', $endDate)
+            ->whereBetween('deadline', [$startDate, $endDate])
             ->count();
 
         $this->widgets = DashboardWidget::where('dashboard_type', 'admin-project-dashboard')->get();
@@ -66,7 +64,7 @@ trait ProjectDashboard
             return $value->status == '1';
         })->pluck('widget_name')->toArray();
 
-        $this->pendingMilestone = ProjectMilestone::whereBetween(DB::raw('DATE(project_milestones.`created_at`)'), [$startDate, $endDate])
+        $this->pendingMilestone = ProjectMilestone::whereBetween('project_milestones.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->with('project', 'currency')
             ->whereHas('project')
             ->where('status', 'incomplete')
@@ -85,7 +83,7 @@ trait ProjectDashboard
         $data['values'] = [];
 
         foreach ($labels as $label) {
-            $data['values'][] = Project::whereBetween(DB::raw('DATE(`created_at`)'), [$startDate, $endDate])->where('status', $label)->count();
+            $data['values'][] = Project::whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])->where('status', $label)->count();
         }
 
         return $data;

@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Channels\WascriptChannel;
 use App\Models\EmailNotificationSetting;
 use App\Models\Lead;
 
@@ -35,6 +36,10 @@ class NewLeadCreated extends BaseNotification
 
         if ($this->emailSetting->send_email == 'yes' && $notifiable->email_notifications && $notifiable->email != '') {
             array_push($via, 'mail');
+        }
+
+        if ($this->canSendWhatsApp($notifiable, $this->emailSetting, 'lead')) {
+            array_push($via, WascriptChannel::class);
         }
 
         return $via;
@@ -81,6 +86,15 @@ class NewLeadCreated extends BaseNotification
             'name' => $this->leadContact->client_name,
             'agent_id' => $notifiable->id,
             'added_by' => $this->leadContact->added_by
+        ];
+    }
+
+    public function toWascript($notifiable): array
+    {
+        return [
+            'message' => __('email.lead.subject') . "\n"
+                . __('modules.lead.clientName') . ': ' . $this->leadContact->client_name . "\n"
+                . $this->modifyUrl(route('lead-contact.show', $this->leadContact->id)),
         ];
     }
 

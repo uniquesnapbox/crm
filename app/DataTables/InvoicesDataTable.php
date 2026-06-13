@@ -11,7 +11,6 @@ use App\Models\GlobalSetting;
 use Illuminate\Database\Eloquent\Model;
 use Yajra\DataTables\Html\Button;
 use Yajra\DataTables\Html\Column;
-use Illuminate\Support\Facades\DB;
 
 class InvoicesDataTable extends BaseDataTable
 {
@@ -397,12 +396,12 @@ class InvoicesDataTable extends BaseDataTable
 
         if ($request->startDate !== null && $request->startDate != 'null' && $request->startDate != '') {
             $startDate = companyToDateString($request->startDate);
-            $model = $model->where(DB::raw('DATE(invoices.`issue_date`)'), '>=', $startDate);
+            $model = $model->where('invoices.issue_date', '>=', $startDate);
         }
 
         if ($request->endDate !== null && $request->endDate != 'null' && $request->endDate != '') {
             $endDate = companyToDateString($request->endDate);
-            $model = $model->where(DB::raw('DATE(invoices.`issue_date`)'), '<=', $endDate);
+            $model = $model->where('invoices.issue_date', '<=', $endDate);
         }
 
         if ($request->status != 'all' && !is_null($request->status)) {

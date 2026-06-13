@@ -30,6 +30,7 @@ class StoreCustomTicket extends CoreRequest
         $rules = array();
         $rules['name'] = 'required';
         $rules['email'] = 'required|email:rfc,strict';
+        $rules['mobile'] = 'nullable|string|max:20';
         $rules['ticket_subject'] = 'required';
         $rules['assign_group'] = 'required';
         $rules['message'] = 'required|sometimes';

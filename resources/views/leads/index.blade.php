@@ -13,6 +13,7 @@
 @php
 $addLeadPermission = user()->permission('add_deals');
 $addLeadCustomFormPermission = user()->permission('manage_lead_custom_forms');
+$isArchiveView = $isArchiveView ?? false;
 @endphp
 
 @section('content')
@@ -21,18 +22,19 @@ $addLeadCustomFormPermission = user()->permission('manage_lead_custom_forms');
         <!-- Add Task Export Buttons Start -->
         <div class="d-grid d-lg-flex d-md-flex action-bar">
             <div id="table-actions" class="flex-grow-1 align-items-center">
-                @if ($addLeadPermission == 'all' || $addLeadPermission == 'added')
+                @if (!$isArchiveView && ($addLeadPermission == 'all' || $addLeadPermission == 'added'))
                     <x-forms.link-primary :link="route('deals.create')" class="mr-3 float-left mb-2 mb-lg-0 mb-md-0 openRightModal" icon="plus">
                         @lang('modules.deal.addDeal')
                     </x-forms.link-primary>
                 @endif
 
-                @if ($addLeadPermission == 'all' || $addLeadPermission == 'added')
+                @if (!$isArchiveView && ($addLeadPermission == 'all' || $addLeadPermission == 'added'))
                     <x-forms.link-secondary :link="route('deals.import')" class="mr-3 openRightModal float-left mb-2 mb-lg-0 mb-md-0 d-none d-lg-block" icon="file-upload">
                         @lang('app.importExcel')
                     </x-forms.link-secondary>
                 @endif
             </div>
+            @if (!$isArchiveView)
             <x-datatable.actions>
 
                 <div class="select-status mr-3 pl-3">
@@ -52,14 +54,17 @@ $addLeadCustomFormPermission = user()->permission('manage_lead_custom_forms');
                 </div>
 
             </x-datatable.actions>
+            @endif
 
 
+            @if (!$isArchiveView)
             <div class="btn-group mt-2 mt-lg-0 mt-md-0 ml-0 ml-lg-3 ml-md-3" role="group">
                 <a href="{{ route('deals.index') }}" class="btn btn-secondary f-14 btn-active" data-toggle="tooltip"
                     data-original-title="@lang('modules.leaves.tableView')"><i class="side-icon bi bi-list-ul"></i></a>
 
                 <a href="{{ route('leadboards.index') }}" class="btn btn-secondary f-14" data-toggle="tooltip" data-original-title="@lang('modules.lead.kanbanboard')"><i class="side-icon bi bi-kanban"></i></a>
             </div>
+            @endif
         </div>
 
         <!-- Add Task Export Buttons End -->

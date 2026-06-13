@@ -26,6 +26,7 @@ use App\Traits\ProjectProgress;
 use App\Models\ProjectMilestone;
 use App\Events\TaskReminderEvent;
 use App\DataTables\TasksDataTable;
+use App\Services\TaskWhatsAppNotificationService;
 use Illuminate\Support\Facades\DB;
 use App\Models\ProjectTimeLogBreak;
 use App\Http\Requests\Tasks\StoreTask;
@@ -37,7 +38,7 @@ class TaskController extends AccountBaseController
 
     use ProjectProgress;
 
-    public function __construct()
+    public function __construct(private TaskWhatsAppNotificationService $taskWhatsAppNotificationService)
     {
         parent::__construct();
         $this->pageTitle = 'app.menu.tasks';
@@ -651,6 +652,7 @@ class TaskController extends AccountBaseController
     public function update(UpdateTask $request, $id)
     {
         $task = Task::with('users', 'label', 'project')->findOrFail($id)->withCustomFields();
+        $existingAssignedUsers = $task->users->pluck('id')->toArray();
         $editTaskPermission = user()->permission('edit_tasks');
         $taskUsers = $task->users->pluck('id')->toArray();
 
@@ -742,6 +744,14 @@ class TaskController extends AccountBaseController
 
         // Sync task users
         $task->users()->sync($request->user_id);
+        $newAssignedUsers = array_values(array_diff($request->user_id ?? [], $existingAssignedUsers));
+
+        if (!empty($newAssignedUsers)) {
+            $this->taskWhatsAppNotificationService->sendAssignedNotifications(
+                $task->fresh(['boardColumn', 'project', 'addedByUser']),
+                $newAssignedUsers
+            );
+        }
 
         return Reply::successWithData(__('messages.updateSuccess'), ['redirectUrl' => route('tasks.show', $id)]);
     }

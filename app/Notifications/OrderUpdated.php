@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Channels\WascriptChannel;
 use App\Models\EmailNotificationSetting;
 use App\Models\Order;
 use NotificationChannels\OneSignal\OneSignalChannel;
@@ -38,6 +39,10 @@ class OrderUpdated extends BaseNotification
 
         if ($this->emailSetting->send_push == 'yes') {
             array_push($via, OneSignalChannel::class);
+        }
+
+        if ($this->canSendWhatsApp($notifiable, $this->emailSetting)) {
+            array_push($via, WascriptChannel::class);
         }
 
         return $via;
@@ -92,6 +97,15 @@ class OrderUpdated extends BaseNotification
         return OneSignalMessage::create()
             ->setSubject(__('email.order.updateSubject'))
             ->setBody(__('email.order.updateText'));
+    }
+
+    public function toWascript($notifiable): array
+    {
+        return [
+            'message' => __('email.order.updateSubject') . "\n"
+                . __('modules.orders.orderNumber') . ': ' . $this->order->order_number . "\n"
+                . $this->modifyUrl(route('orders.show', $this->order->id)),
+        ];
     }
 
 }

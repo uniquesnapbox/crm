@@ -1,11 +1,41 @@
+@php
+    $customPermissions = $modulesData->customPermissions;
+    $permissionLabelOverrides = [];
+
+    if ($modulesData->module_name === 'leads') {
+        $visiblePermissionNames = [
+            'view_lead_follow_up',
+            'add_lead_follow_up',
+            'edit_lead_follow_up',
+            'delete_lead_follow_up',
+        ];
+
+        $customPermissions = $customPermissions
+            ->whereIn('name', $visiblePermissionNames)
+            ->values();
+
+        if (!empty($leadConvertPermission)) {
+            $customPermissions->push($leadConvertPermission);
+        }
+
+        $permissionLabelOverrides = [
+            'view_lead_follow_up' => 'View Follow-up',
+            'add_lead_follow_up' => 'Add Follow-up',
+            'edit_lead_follow_up' => 'Edit Follow-up',
+            'delete_lead_follow_up' => 'Delete Follow-up',
+            'add_clients' => 'Convert to Client',
+        ];
+    }
+@endphp
+
 <tr class="custom-permissions" id="module-custom-permission-{{ $modulesData->id }}">
     <td></td>
     <td colspan="4">
         <table class="table table-bordered rounded">
-            @foreach ($modulesData->customPermissions as $permission)
+            @foreach ($customPermissions as $permission)
                 <tr>
                     <td>
-                        <h6 class="heading-h6">@lang('permissions.'.$permission->name)</h6>
+                        <h6 class="heading-h6">{{ $permissionLabelOverrides[$permission->name] ?? __('permissions.'.$permission->name) }}</h6>
                     </td>
                     @php
                         $permissionType = $role->permissionType($permission->id);

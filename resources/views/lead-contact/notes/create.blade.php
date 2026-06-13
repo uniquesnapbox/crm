@@ -113,7 +113,18 @@
                 data: $('#save-lead-note-data-form').serialize(),
                 success: function(response) {
                     if (response.status == 'success') {
-                        window.location.href = response.redirectUrl;
+                        const modalOpen = $(MODAL_LG).hasClass('show') || $(MODAL_LG).hasClass('in');
+                        const rightModalOpen = $(RIGHT_MODAL).hasClass('show') || $(RIGHT_MODAL).hasClass('in');
+                        const historyUrl = "{{ route('lead-contact.show', $leadId) }}?tab=history";
+
+                        if (modalOpen || rightModalOpen) {
+                            $(MODAL_LG).modal('hide');
+                            $(RIGHT_MODAL).modal('hide');
+                            window.location.href = historyUrl;
+                            return;
+                        }
+
+                        window.location.href = historyUrl;
                     }
                 }
             })

@@ -40,6 +40,7 @@ use App\Scopes\ActiveScope;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Cache;
 use Stripe\Stripe;
 use App\Traits\EmployeeActivityTrait;
 
@@ -64,13 +65,13 @@ class InvoiceController extends AccountBaseController
         abort_403(!in_array($viewPermission, ['all', 'added', 'owned', 'both']));
 
         if (!request()->ajax()) {
-            $this->projects = Project::allProjects();
+            $this->projects = Project::allProjects(false, 50);
 
             if (in_array('client', user_roles())) {
                 $this->clients = User::client();
             }
             else {
-                $this->clients = User::allClients();
+                $this->clients = User::allClients(null, true, null, null, 50);
             }
         }
 
@@ -111,8 +112,8 @@ class InvoiceController extends AccountBaseController
             $this->client = $this->estimate->lead->contact->client;
         }
 
-        $this->currencies = Currency::all();
-        $this->categories = ProductCategory::all();
+        $this->currencies = Cache::remember('currencies_' . company()->id, now()->addMinutes(30), fn() => Currency::all());
+        $this->categories = Cache::remember('product_categories_' . company()->id, now()->addMinutes(30), fn() => ProductCategory::all());
         $this->lastInvoice = Invoice::lastInvoiceNumber() + 1;
         $this->invoiceSetting = invoice_setting();
         $this->zero = '';
@@ -125,8 +126,8 @@ class InvoiceController extends AccountBaseController
             }
         }
 
-        $this->units = UnitType::all();
-        $this->taxes = Tax::all();
+        $this->units = Cache::remember('unit_types_' . company()->id, now()->addMinutes(30), fn() => UnitType::all());
+        $this->taxes = Cache::remember('taxes_' . company()->id, now()->addMinutes(30), fn() => Tax::all());
 
         if (module_enabled('Purchase')){
             /** @phpstan-ignore-next-line */
@@ -137,8 +138,8 @@ class InvoiceController extends AccountBaseController
             $this->products = Product::all();
         }
 
-        $this->clients = User::allClients();
-        $this->companyAddresses = CompanyAddress::all();
+        $this->clients = User::allClients(null, true, null, null, 50);
+        $this->companyAddresses = Cache::remember('company_addresses_' . company()->id, now()->addMinutes(30), fn() => CompanyAddress::all());
         $this->projects = Project::allProjectsHavingClient();
         $this->linkInvoicePermission = user()->permission('link_invoice_bank_account');
         $this->viewBankAccountPermission = user()->permission('view_bankaccount');
@@ -314,8 +315,8 @@ class InvoiceController extends AccountBaseController
                             ->orWhereNull('tasks.billable');
                     }
                 )
-                ->whereDate('project_time_logs.start_time', '>=', $timelogFrom)
-                ->whereDate('project_time_logs.end_time', '<=', $timelogTo)
+                ->whereBetween('project_time_logs.start_time', [$timelogFrom . ' 00:00:00', $timelogTo . ' 23:59:59'])
+                ->whereBetween('project_time_logs.end_time', [$timelogFrom . ' 00:00:00', $timelogTo . ' 23:59:59'])
                 ->update(['invoice_id' => $invoice->id]);
         }
 
@@ -621,13 +622,13 @@ class InvoiceController extends AccountBaseController
         }
 
         $this->projects = Project::whereNotNull('client_id')->get();
-        $this->currencies = Currency::all();
-        $this->categories = ProductCategory::all();
-        $this->units = UnitType::all();
+        $this->currencies = Cache::remember('currencies_' . company()->id, now()->addMinutes(30), fn() => Currency::all());
+        $this->categories = Cache::remember('product_categories_' . company()->id, now()->addMinutes(30), fn() => ProductCategory::all());
+        $this->units = Cache::remember('unit_types_' . company()->id, now()->addMinutes(30), fn() => UnitType::all());
 
-        $this->taxes = Tax::all();
+        $this->taxes = Cache::remember('taxes_' . company()->id, now()->addMinutes(30), fn() => Tax::all());
         $this->products = Product::all();
-        $this->clients = User::allClients();
+        $this->clients = User::allClients(null, true, null, null, 50);
         $this->linkInvoicePermission = user()->permission('link_invoice_bank_account');
         $this->viewBankAccountPermission = user()->permission('view_bankaccount');
         $this->paymentGateway = PaymentGatewayCredentials::first();
@@ -648,7 +649,7 @@ class InvoiceController extends AccountBaseController
             $this->companyName = isset($companyName) ? ($companyName->clientdetails ? $companyName->clientdetails->company_name : '') : '';
         }
 
-        $this->companyAddresses = CompanyAddress::all();
+        $this->companyAddresses = Cache::remember('company_addresses_' . company()->id, now()->addMinutes(30), fn() => CompanyAddress::all());
 
         if (request()->ajax()) {
             $html = view('invoices.ajax.edit', $this->data)->render();
@@ -917,8 +918,8 @@ class InvoiceController extends AccountBaseController
         }
 
         $this->items->price = number_format((float)$this->items->price, 2, '.', '');
-        $this->taxes = Tax::all();
-        $this->units = UnitType::all();
+        $this->taxes = Cache::remember('taxes_' . company()->id, now()->addMinutes(30), fn() => Tax::all());
+        $this->units = Cache::remember('unit_types_' . company()->id, now()->addMinutes(30), fn() => UnitType::all());
         $view = view('invoices.ajax.add_item', $this->data)->render();
 
         return Reply::dataOnly(['status' => 'success', 'view' => $view]);
@@ -1206,10 +1207,10 @@ class InvoiceController extends AccountBaseController
     public function getClientOrCompanyName($projectID = '')
     {
         $this->projectID = $projectID;
-        $this->currencies = Currency::all();
+        $this->currencies = Cache::remember('currencies_' . company()->id, now()->addMinutes(30), fn() => Currency::all());
 
         if ($projectID == '') {
-            $this->clients = User::allClients();
+            $this->clients = User::allClients(null, true, null, null, 50);
             $exchangeRate = company()->currency->exchange_rate;
             $currencyName = company()->currency->currency_code;
         }
@@ -1235,12 +1236,12 @@ class InvoiceController extends AccountBaseController
 
     public function fetchTimelogs(Request $request)
     {
-        $this->taxes = Tax::all();
+        $this->taxes = Cache::remember('taxes_' . company()->id, now()->addMinutes(30), fn() => Tax::all());
         $this->invoiceSetting = invoice_setting();
         $projectId = $request->projectId;
         $this->qtyVal = $request->qtyValue;
         $this->timelogs = [];
-        $this->units = UnitType::all();
+        $this->units = Cache::remember('unit_types_' . company()->id, now()->addMinutes(30), fn() => UnitType::all());
 
         if (!is_null($request->timelogFrom) && $request->timelogFrom != '') {
             $timelogFrom = companyToYmd($request->timelogFrom);
@@ -1257,8 +1258,8 @@ class InvoiceController extends AccountBaseController
                             ->orWhereNull('tasks.billable');
                     }
                 )
-                ->whereDate('project_time_logs.start_time', '>=', $timelogFrom)
-                ->whereDate('project_time_logs.end_time', '<=', $timelogTo)
+                ->whereBetween('project_time_logs.start_time', [$timelogFrom . ' 00:00:00', $timelogTo . ' 23:59:59'])
+                ->whereBetween('project_time_logs.end_time', [$timelogFrom . ' 00:00:00', $timelogTo . ' 23:59:59'])
                 ->selectRaw('project_time_logs.id, project_time_logs.task_id, sum(project_time_logs.earnings) as sum')
                 ->get();
         }

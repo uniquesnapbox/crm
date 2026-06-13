@@ -210,6 +210,12 @@ class RolePermissionController extends AccountBaseController
         $roleId = request('roleId');
         $this->role = Role::with('permissions')->findOrFail($roleId);
         $this->modulesData = Module::with('customPermissions')->findOrFail($moduleId);
+        $this->leadConvertPermission = null;
+
+        if ($this->modulesData->module_name === 'leads') {
+            $this->leadConvertPermission = Permission::where('name', 'add_clients')->first();
+        }
+
         $html = view('role-permissions.ajax.custom_permissions', $this->data)->render();
 
         return Reply::dataOnly(['status' => 'success', 'html' => $html]);

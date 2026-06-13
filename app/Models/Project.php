@@ -286,7 +286,7 @@ class Project extends BaseModel
      * Search Parameter is passed the get only search results and 20
      * @return \Illuminate\Support\Collection
      */
-    public static function allProjects($notFinished = false)
+    public static function allProjects($notFinished = false, $perPage = null)
     {
         $projects = Project::query();
 
@@ -327,6 +327,10 @@ class Project extends BaseModel
         //                ->get();
         //        }
         // @codingStandardsIgnoreEnd
+
+        if (!is_null($perPage)) {
+            return $projects->paginate((int) $perPage);
+        }
 
         return $projects->get();
     }

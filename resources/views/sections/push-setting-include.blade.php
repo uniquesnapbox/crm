@@ -1,4 +1,4 @@
-@if ($pushSetting->status == 'active')
+@if (isset($pushSetting) && $pushSetting && $pushSetting->status == 'active')
     <link rel="manifest" href="{{ asset('manifest.json') }}"/>
     <script src="https://cdn.onesignal.com/sdks/OneSignalSDK.js" async=""></script>
     <script>
@@ -55,7 +55,7 @@
                         if (!userId) {
                             OneSignal.registerForPushNotifications();
                         } else {
-                            let db_onesignal_id = '{{ $user->onesignal_player_id }}';
+                            let db_onesignal_id = '{{ isset($user) ? $user->onesignal_player_id : '' }}';
 
                             if (db_onesignal_id !== userId) { //update onesignal ID if it is new
                                 updateOnesignalPlayerId(userId);
@@ -68,7 +68,7 @@
                     OneSignal.getUserId(function (userId) {
                         console.log("OneSignal User ID:", userId);
                         // (Output) OneSignal User ID: 270a35cd-4dda-4b3f-b04e-41d7463a2316
-                        let db_onesignal_id = '{{ $user->onesignal_player_id }}';
+                        let db_onesignal_id = '{{ isset($user) ? $user->onesignal_player_id : '' }}';
                         console.log('database id : ' + db_onesignal_id);
 
                         if (db_onesignal_id !== userId) { //update onesignal ID if it is new
@@ -94,7 +94,7 @@
     </script>
 @endif
 
-@if ($pusherSettings->status)
+@if (isset($pusherSettings) && $pusherSettings && $pusherSettings->status)
     <script src="https://js.pusher.com/7.0/pusher.min.js"></script>
 
     <script>

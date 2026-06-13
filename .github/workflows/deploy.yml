@@ -1,0 +1,91 @@
+name: Deploy to AIMEXE VPS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          cat > ~/.ssh/config <<EOF
+          Host aimexe-vps
+            HostName ${VPS_HOST}
+            User ${VPS_USER}
+            IdentityFile ~/.ssh/id_ed25519
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+            HostKeyAlgorithms +ssh-rsa
+            PubkeyAcceptedAlgorithms +ssh-rsa
+          EOF
+
+      - name: Define Release Variables
+        run: |
+          set -euo pipefail
+          echo "APP_BASE=/var/www/aimexe" >> "$GITHUB_ENV"
+          RELEASE_ID="$(date -u +%Y%m%d%H%M%S)"
+          echo "RELEASE_ID=${RELEASE_ID}" >> "$GITHUB_ENV"
+          echo "RELEASE_PATH=/var/www/aimexe/releases/${RELEASE_ID}" >> "$GITHUB_ENV"
+
+      - name: Prepare Release Directories
+        run: |
+          set -euo pipefail
+          ssh aimexe-vps "
+            set -euo pipefail
+            mkdir -p '${APP_BASE}/releases' '${APP_BASE}/shared'
+            mkdir -p '${APP_BASE}/shared/storage/framework/cache' \
+                     '${APP_BASE}/shared/storage/framework/sessions' \
+                     '${APP_BASE}/shared/storage/framework/views' \
+                     '${APP_BASE}/shared/storage/logs'
+            if [ ! -f '${APP_BASE}/shared/.env' ]; then
+              echo 'shared/.env not found at ${APP_BASE}/shared/.env'
+              exit 1
+            fi
+            mkdir -p '${RELEASE_PATH}'
+          "
+
+      - name: Sync Project to New Release
+        run: |
+          set -euo pipefail
+          rsync -az --delete \
+            --no-perms --no-owner --no-group \
+            --omit-dir-times \
+            --exclude=".git/" \
+            --exclude=".github/" \
+            --exclude=".env" \
+            --exclude="node_modules/" \
+            --exclude="vendor/" \
+            --exclude="storage/" \
+            --exclude="public/uploads/" \
+            ./ "aimexe-vps:${RELEASE_PATH}/"
+
+      - name: Activate Release (Atomic Symlink Swap)
+        run: |
+          set -euo pipefail
+          ssh aimexe-vps "
+            set -euo pipefail
+            ln -sfn '${APP_BASE}/shared/.env' '${RELEASE_PATH}/.env'
+            rm -rf '${RELEASE_PATH}/storage'
+            ln -sfn '${APP_BASE}/shared/storage' '${RELEASE_PATH}/storage'
+            chmod +x '${RELEASE_PATH}/scripts/post_deploy.sh'
+            cd '${RELEASE_PATH}'
+            ./scripts/post_deploy.sh
+            ln -sfn '${RELEASE_PATH}' '${APP_BASE}/current'
+            ls -1dt '${APP_BASE}'/releases/* 2>/dev/null | tail -n +4 | xargs -r rm -rf
+          "

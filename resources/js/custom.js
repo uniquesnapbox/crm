@@ -196,7 +196,7 @@ var pathArray = window.location.pathname.split("account/");
 if (typeof pathArray[1] !== "undefined") {
     var currentRoute = pathArray[1].split("/");
     currentRoute = currentRoute[0];
-    var element = $("#sideMenuScroll li a")
+    var element = $("#appSideMenuScroll li a")
         .filter(function () {
             return this.href == currentUrl.href;
         })
@@ -206,7 +206,7 @@ if (typeof pathArray[1] !== "undefined") {
         .addClass("openIt");
 
     // active left main menu item
-    var element2 = $("#sideMenuScroll li a").filter(function () {
+    var element2 = $("#appSideMenuScroll li a").filter(function () {
         var pathArray = this.href.split("account/");
         if (currentRoute == pathArray[1]) {
             return true;
@@ -451,3 +451,4 @@ $(document).ready(function () {
 $('#mobile_menu_collapse').on('click', '.dropdown-item', function() {
     $("#dropdownMenuLink").dropdown("toggle");
 });
+

@@ -16,11 +16,19 @@
                 data: function (params) {
                     return {
                         search: params.term,
+                        page: params.page || 1,
                     };
                 },
                 processResults: function (response) {
+                    if (Array.isArray(response)) {
+                        return {
+                            results: response
+                        }
+                    }
+
                     return {
-                        results: response
+                        results: response.results || [],
+                        pagination: response.pagination || { more: false }
                     }
                 },
                 cache: true

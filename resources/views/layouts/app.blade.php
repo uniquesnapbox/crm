@@ -29,9 +29,9 @@
     @stack('datatable-styles')
 
     <!-- Template CSS -->
-    <link type="text/css" rel="stylesheet" media="all" href="{{ asset('css/main.css') }}">
+    <link type="text/css" rel="stylesheet" media="all" href="{{ asset('css/main.css') }}?v={{ filemtime(public_path('css/main.css')) }}">
 
-    <title>{{ is_array(__($pageTitle)) ? $pageTitle : __($pageTitle) }}</title>
+    <title>{{ isset($pageTitle) ? (is_array(__($pageTitle)) ? $pageTitle : __($pageTitle)) : config('app.name') }}</title>
     <meta name="msapplication-TileColor" content="#ffffff">
     <meta name="msapplication-TileImage" content="{{ companyOrGlobalSetting()->favicon_url }}">
     <meta name="theme-color" content="#ffffff">
@@ -121,6 +121,15 @@
 
     <script src="{{ asset('vendor/jquery/jquery.min.js') }}"></script>
     <script src="{{ asset('vendor/jquery/modernizr.min.js') }}"></script>
+    <script>
+        window.company = @json(companyOrGlobalSetting());
+        window.MOMENTJS_TIME_FORMAT = "{{ (companyOrGlobalSetting()->time_format == 'h:i A') ? 'hh:mm A' : ( (companyOrGlobalSetting()->time_format == 'h:i a') ? 'hh:mm a' : 'H:mm') }}";
+        window.init = window.init || function () {};
+        var company = window.company;
+        var MOMENTJS_TIME_FORMAT = window.MOMENTJS_TIME_FORMAT;
+    </script>
+    <script src="{{ asset('vendor/moment/moment-with-locales.min.js') }}"></script>
+    <script src="{{ asset('vendor/moment/moment-timezone-with-data-10-year-range.js') }}"></script>
 
     {{-- Timepicker --}}
     <script src="{{ asset('vendor/jquery/bootstrap-timepicker.min.js') }}" defer="defer"></script>
@@ -135,10 +144,27 @@
     </script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            const blockedDomains = ['USB CRM', 'froiden', 'envato', 'codecanyon'];
+            const blockedHosts = ['froiden.com', 'envato.com', 'codecanyon.net'];
+
             document.querySelectorAll('a[href]').forEach(function (a) {
-                const href = (a.getAttribute('href') || '').toLowerCase();
-                if (blockedDomains.some(d => href.includes(d))) {
+                const rawHref = (a.getAttribute('href') || '').trim();
+                if (!rawHref || rawHref.startsWith('#') || rawHref.toLowerCase().startsWith('javascript:')) {
+                    return;
+                }
+
+                let parsedUrl;
+                try {
+                    parsedUrl = new URL(rawHref, window.location.origin);
+                } catch (e) {
+                    return;
+                }
+
+                const host = parsedUrl.hostname.toLowerCase();
+                const isBlocked = blockedHosts.some(function (blockedHost) {
+                    return host === blockedHost || host.endsWith('.' + blockedHost);
+                });
+
+                if (isBlocked) {
                     a.setAttribute('href', 'javascript:;');
                     a.removeAttribute('target');
                     a.removeAttribute('rel');
@@ -152,9 +178,23 @@
 
 <body id="body" class="{{ user()->dark_theme ? 'dark-theme' : '' }} {{ user()->rtl ? 'rtl' : '' }}">
 <script>
-    if (checkMiniSidebar == "yes" || checkMiniSidebar == "") {
-        $('body').addClass('sidebar-toggled');
-    }
+    (function () {
+        const desktopBreakpoint = 769;
+        const shouldMiniSidebar = checkMiniSidebar === "yes" || checkMiniSidebar === "";
+        const isDesktopViewport = window.innerWidth >= desktopBreakpoint;
+
+        if (shouldMiniSidebar && isDesktopViewport) {
+            $('body').addClass('sidebar-toggled');
+        } else {
+            $('body').removeClass('sidebar-toggled');
+        }
+
+        window.addEventListener('resize', function () {
+            if (window.innerWidth < desktopBreakpoint) {
+                $('body').removeClass('sidebar-toggled');
+            }
+        });
+    })();
 </script>
 {{-- include topbar --}}
 @include('sections.topbar')
@@ -172,6 +212,25 @@
         <div class="preloader-container d-flex justify-content-center align-items-center">
             <div class="spinner-border" role="status" aria-hidden="true"></div>
         </div>
+        <script>
+            // Fail-safe: never leave the UI blocked behind the preloader.
+            (function () {
+                function hidePreloader() {
+                    var preloader = document.querySelector('.preloader-container');
+                    if (preloader) {
+                        preloader.style.display = 'none';
+                        preloader.classList.remove('d-flex');
+                    }
+                }
+
+                window.addEventListener('DOMContentLoaded', hidePreloader, { once: true });
+                window.addEventListener('load', hidePreloader, { once: true });
+                window.addEventListener('error', function () {
+                    setTimeout(hidePreloader, 0);
+                });
+                setTimeout(hidePreloader, 3000);
+            })();
+        </script>
 
 
         @yield('filter-section')
@@ -188,13 +247,20 @@
 @include('sections.modals')
 
 <!-- Global Required Javascript -->
-<script src="{{ asset('js/main.js') }}"></script>
+<script src="{{ asset('js/main.js') }}?v={{ filemtime(public_path('js/main.js')) }}"></script>
+<script>
+    window.company = window.company || @json(companyOrGlobalSetting());
+    window.MOMENTJS_TIME_FORMAT = window.MOMENTJS_TIME_FORMAT || "{{ (companyOrGlobalSetting()->time_format == 'h:i A') ? 'hh:mm A' : ( (companyOrGlobalSetting()->time_format == 'h:i a') ? 'hh:mm a' : 'H:mm') }}";
+    window.init = window.init || function () {};
+</script>
 <script>
     // Translation of default values for the select picker box.
-    $.fn.selectpicker.Constructor.DEFAULTS.noneSelectedText = "@lang('placeholders.noneSelectedText')";
-    $.fn.selectpicker.Constructor.DEFAULTS.noneResultsText = "@lang('placeholders.noneResultsText')";
-    $.fn.selectpicker.Constructor.DEFAULTS.selectAllText = "@lang('placeholders.selectAllText')";
-    $.fn.selectpicker.Constructor.DEFAULTS.deselectAllText = "@lang('placeholders.deselectAllText')";
+    if ($.fn.selectpicker && $.fn.selectpicker.Constructor && $.fn.selectpicker.Constructor.DEFAULTS) {
+        $.fn.selectpicker.Constructor.DEFAULTS.noneSelectedText = "@lang('placeholders.noneSelectedText')";
+        $.fn.selectpicker.Constructor.DEFAULTS.noneResultsText = "@lang('placeholders.noneResultsText')";
+        $.fn.selectpicker.Constructor.DEFAULTS.selectAllText = "@lang('placeholders.selectAllText')";
+        $.fn.selectpicker.Constructor.DEFAULTS.deselectAllText = "@lang('placeholders.deselectAllText')";
+    }
 
     const MODAL_DEFAULT = '#myModalDefault';
     const MODAL_LG = '#myModal';
@@ -203,11 +269,11 @@
     const RIGHT_MODAL = '#task-detail-1';
     const RIGHT_MODAL_CONTENT = '#right-modal-content';
     const RIGHT_MODAL_TITLE = '#right-modal-title';
-    const company = @json(companyOrGlobalSetting());
+    var company = window.company;
     const pusher_setting = @json(pusher_settings());
     const message_setting = @json(message_setting());
     const SEARCH_KEYWORD = "{{ request('search_keyword') }}";
-    const MOMENTJS_TIME_FORMAT = "{{ (companyOrGlobalSetting()->time_format == 'h:i A') ? 'hh:mm A' : ( (companyOrGlobalSetting()->time_format == 'h:i a') ? 'hh:mm a' : 'H:mm') }}";
+    var MOMENTJS_TIME_FORMAT = window.MOMENTJS_TIME_FORMAT;
 
     const datepickerConfig = {
         formatter: (input, date, instance) => {

@@ -39,7 +39,7 @@ trait FinanceDashboard
 
         // count of paid invoices
         $this->totalPaidInvoice = Invoice::where('status', 'paid')
-            ->whereBetween(DB::raw('DATE(`issue_date`)'), [$startDate, $endDate])
+            ->whereBetween('issue_date', [$startDate, $endDate])
             ->select('id')
             ->count();
 
@@ -47,12 +47,12 @@ trait FinanceDashboard
             return $query->where('status', 'unpaid')
                 ->orWhere('status', 'partial');
         })
-            ->whereBetween(DB::raw('DATE(`issue_date`)'), [$startDate, $endDate])
+            ->whereBetween('issue_date', [$startDate, $endDate])
             ->select('id')
             ->count();
 
         // Total Expense
-        $expenses = Expense::whereBetween(DB::raw('DATE(expenses.`purchase_date`)'), [$startDate, $endDate])
+        $expenses = Expense::whereBetween('expenses.purchase_date', [$startDate, $endDate])
             ->join('currencies', 'currencies.id', '=', 'expenses.currency_id')
             ->select(
                 'expenses.id',
@@ -89,7 +89,7 @@ trait FinanceDashboard
         $this->totalExpenses = $totalExpenses;
 
         // Total Earning
-        $paymentsModal = Payment::whereBetween(DB::raw('DATE(payments.`paid_on`)'), [$startDate, $endDate]);
+        $paymentsModal = Payment::whereBetween('payments.paid_on', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
 
         $payments = clone $paymentsModal;
 
@@ -128,7 +128,7 @@ trait FinanceDashboard
         $this->totalEarnings = $totalEarnings;
 
         // Total Pending amount
-        $invoices = Invoice::whereBetween(DB::raw('DATE(invoices.`issue_date`)'), [$startDate, $endDate])
+        $invoices = Invoice::whereBetween('invoices.issue_date', [$startDate, $endDate])
             ->join('currencies', 'currencies.id', '=', 'invoices.currency_id')
             ->where(function ($q) {
                 $q->where('invoices.status', 'unpaid');
@@ -176,7 +176,7 @@ trait FinanceDashboard
         $data['values'] = [];
         $data['colors'] = [];
 
-        $allInvoice = Invoice::whereBetween(DB::raw('DATE(`issue_date`)'), [$startDate, $endDate])->get();
+        $allInvoice = Invoice::whereBetween('issue_date', [$startDate, $endDate])->get();
 
         $data['values'][] = $allInvoice->filter(function ($value, $key) {
             return $value->status == 'draft';
@@ -219,7 +219,7 @@ trait FinanceDashboard
         $data['values'] = [];
         $data['colors'] = [];
 
-        $allEstimate = Estimate::whereBetween(DB::raw('DATE(`valid_till`)'), [$startDate, $endDate])->get();
+        $allEstimate = Estimate::whereBetween('valid_till', [$startDate, $endDate])->get();
 
         $data['values'][] = $allEstimate->filter(function ($value, $key) {
             return $value->status == 'draft';
@@ -262,7 +262,7 @@ trait FinanceDashboard
         $data['values'] = [];
         $data['colors'] = [];
 
-        $allProposal = Proposal::whereBetween(DB::raw('DATE(`created_at`)'), [$startDate, $endDate])->get();
+        $allProposal = Proposal::whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])->get();
 
         $data['values'][] = $allProposal->filter(function ($value, $key) {
             return $value->status == 'waiting';
@@ -275,7 +275,7 @@ trait FinanceDashboard
         $data['colors'][] = '#D30000';
 
         $data['values'][] = $allProposal->filter(function ($value, $key) {
-            return $value->status = 'waiting' && $value->valid_till->lessThan(now());
+            return $value->status == 'waiting' && $value->valid_till->lessThan(now());
         })->count();
         $data['colors'][] = '#99A5B5';
 
@@ -297,7 +297,7 @@ trait FinanceDashboard
     public function projectEarningChartData($startDate, $endDate)
     {
         // earnings By Projects
-        $paymentsModal = Payment::whereBetween(DB::raw('DATE(payments.`paid_on`)'), [$startDate, $endDate]);
+        $paymentsModal = Payment::whereBetween('payments.paid_on', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
         $projects = clone $paymentsModal;
         $projects->join('currencies', 'currencies.id', '=', 'payments.currency_id')
             ->join('projects', 'projects.id', '=', 'payments.project_id')

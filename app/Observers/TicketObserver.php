@@ -11,7 +11,9 @@ use App\Models\TicketAgentGroups;
 use App\Events\TicketRequesterEvent;
 use App\Models\TicketActivity;
 use App\Models\User;
+use App\Services\TicketWhatsAppNotificationService;
 use App\Traits\EmployeeActivityTrait;
+use Illuminate\Support\Facades\Log;
 
 class TicketObserver
 {
@@ -88,6 +90,10 @@ class TicketObserver
         if (!isRunningInConsoleOrSeeding()) {
             self::createEmployeeActivity(user()->id, 'ticket-created', $model->id, 'ticket');
 
+            if ($model->agent_id) {
+                app(TicketWhatsAppNotificationService::class)->sendAssignedNotifications($model->fresh(['agent', 'requester']));
+            }
+
             // Send admin notification
             if (request()->mention_user_ids != '' || request()->mention_user_ids != null) {
                 $model->mentionUser()->sync(request()->mention_user_ids);
@@ -97,21 +103,28 @@ class TicketObserver
                 $mentionUserIds = $mentionUserIds ?: $mentionArray;
                 $userDetails = User::whereIn('id', $mentionArray)->get();
 
-                event(new TicketEvent($model, $userDetails, 'MentionTicketAgent'));
+                $this->dispatchEventSafely(new TicketEvent($model, $userDetails, 'MentionTicketAgent'), 'Ticket mention notification failed.', [
+                    'ticket_id' => $model->id,
+                ]);
 
                 if ($unmentionIds != null && $unmentionIds != '' && $model->agent_id != '') {
-                    event(new TicketEvent($model, User::whereIn('id', $unmentionIds)->get(), 'TicketAgent'));
+                    $this->dispatchEventSafely(new TicketEvent($model, User::whereIn('id', $unmentionIds)->get(), 'TicketAgent'), 'Ticket agent notification failed.', [
+                        'ticket_id' => $model->id,
+                    ]);
 
                 }
 
             }
             else {
-                event(new TicketEvent($model, null, 'NewTicket'));
+                $this->dispatchEventSafely(new TicketEvent($model, null, 'NewTicket'), 'New ticket notification failed.', [
+                    'ticket_id' => $model->id,
+                ]);
             }
 
             if ($model->requester) {
-
-                event(new TicketRequesterEvent($model, null, $model->requester));
+                $this->dispatchEventSafely(new TicketRequesterEvent($model, null, $model->requester), 'Ticket requester notification failed.', [
+                    'ticket_id' => $model->id,
+                ]);
             }
 
         }
@@ -132,8 +145,11 @@ class TicketObserver
         if (!isRunningInConsoleOrSeeding()) {
              self::createEmployeeActivity(user()->id, 'ticket-updated', $ticket->id, 'ticket');
 
-            if ($ticket->isDirty('agent_id') && $ticket->agent_id != '') {
-                event(new TicketEvent($ticket, null, 'TicketAgent'));
+            if ($ticket->wasChanged('agent_id') && $ticket->agent_id != '') {
+                app(TicketWhatsAppNotificationService::class)->sendAssignedNotifications($ticket->fresh(['agent', 'requester']));
+                $this->dispatchEventSafely(new TicketEvent($ticket, null, 'TicketAgent'), 'Ticket reassignment notification failed.', [
+                    'ticket_id' => $ticket->id,
+                ]);
             }
 
             if ($ticket->isDirty('agent_id')) {
@@ -156,8 +172,12 @@ class TicketObserver
                 $this->createActivity($ticket, 'channel');
             }
 
-            if ($ticket->isDirty('status')) {
+            if ($ticket->wasChanged('status')) {
                 $this->createActivity($ticket, 'status');
+
+                if ($ticket->status === 'resolved') {
+                    app(TicketWhatsAppNotificationService::class)->sendResolvedClientNotification($ticket->fresh(['requester', 'agent']));
+                }
             }
 
         }
@@ -200,6 +220,17 @@ class TicketObserver
         $ticketActivity->priority = $ticket->priority;
         $ticketActivity->type = $type;
         $ticketActivity->save();
+    }
+
+    private function dispatchEventSafely(object $event, string $message, array $context = []): void
+    {
+        try {
+            event($event);
+        } catch (\Throwable $exception) {
+            Log::warning($message, $context + [
+                'error' => $exception->getMessage(),
+            ]);
+        }
     }
 
 }

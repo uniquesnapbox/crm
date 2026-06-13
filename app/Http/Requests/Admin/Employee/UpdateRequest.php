@@ -5,6 +5,7 @@ namespace App\Http\Requests\Admin\Employee;
 use App\Models\EmployeeDetails;
 use App\Http\Requests\CoreRequest;
 use App\Traits\CustomFieldsRequestTrait;
+use Illuminate\Validation\Rule;
 
 class UpdateRequest extends CoreRequest
 {
@@ -46,7 +47,14 @@ class UpdateRequest extends CoreRequest
         ];
 
         if (isWorksuite()) {
-            $rules['email'] = 'required|max:100|email:rfc,strict|unique:users,email,'.$this->route('employee').',id,company_id,' . company()->id;
+            $rules['email'] = [
+                'required',
+                'max:100',
+                'email:rfc,strict',
+                Rule::unique('users', 'email')
+                    ->ignore($this->route('employee'))
+                    ->where('company_id', company()->id),
+            ];
         }
 
         if ($detailID) {
@@ -67,6 +75,13 @@ class UpdateRequest extends CoreRequest
         $rules = $this->customFieldRules($rules);
 
         return $rules;
+    }
+
+    public function messages()
+    {
+        return [
+            'email.unique' => __('messages.employeeEmailAlreadyExists'),
+        ];
     }
 
     public function attributes()

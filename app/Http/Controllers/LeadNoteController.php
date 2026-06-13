@@ -89,6 +89,8 @@ class LeadNoteController extends AccountBaseController
         $note->details = $request->details;
         $note->type = $request->type;
         $note->ask_password = $request->ask_password ? $request->ask_password : '';
+        $note->added_by = user()->id;
+        $note->last_updated_by = user()->id;
 
         $note->save();
         /* if note type is private */
@@ -105,7 +107,7 @@ class LeadNoteController extends AccountBaseController
             }
         }
 
-        return Reply::successWithData(__('messages.recordSaved'), ['redirectUrl' => route('lead-contact.show', $note->lead_id) . '?tab=notes']);
+        return Reply::successWithData(__('messages.recordSaved'), ['redirectUrl' => route('lead-contact.show', $note->lead_id) . '?tab=history']);
     }
 
     public function edit($id)
@@ -144,6 +146,7 @@ class LeadNoteController extends AccountBaseController
         $note->details = $request->details;
         $note->type = $request->type;
         $note->ask_password = $request->ask_password ?: '';
+        $note->last_updated_by = user()->id;
         $note->save();
 
         /* if note type is private */
@@ -163,7 +166,7 @@ class LeadNoteController extends AccountBaseController
             }
         }
 
-        return Reply::successWithData(__('messages.updateSuccess'), ['redirectUrl' => route('lead-contact.show', $note->lead_id) . '?tab=notes']);
+        return Reply::successWithData(__('messages.updateSuccess'), ['redirectUrl' => route('lead-contact.show', $note->lead_id) . '?tab=history']);
     }
 
     public function destroy($id)

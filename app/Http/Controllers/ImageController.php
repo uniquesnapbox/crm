@@ -30,12 +30,7 @@ class ImageController extends Controller
         $imagePath = '';
         try {
             $decrypted = Common::encryptDecrypt($imageEncrypted, 'decrypt');
-            $file_data = file_get_contents(asset_url_local_s3(self::FILE_PATH . '/' . $decrypted), false, stream_context_create([
-                'ssl' => [
-                    'verify_peer' => false,
-                    'verify_peer_name' => false,
-                ],
-            ]));
+            $file_data = file_get_contents(asset_url_local_s3(self::FILE_PATH . '/' . $decrypted));
 
             $imagePath = \Image::make($file_data)->response();
         } catch (\Exception $e) {

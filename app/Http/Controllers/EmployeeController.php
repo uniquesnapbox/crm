@@ -848,7 +848,6 @@ class EmployeeController extends AccountBaseController
         abort_403(!(in_array($viewPermission, ['all']) && in_array('tickets', user_modules())));
         $tab = request('tab');
         $this->activeTab = $tab ?: 'profile';
-        $this->tickets = Ticket::all();
         $this->view = 'employees.ajax.tickets';
         $dataTable = new TicketDataTable();
 

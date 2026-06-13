@@ -83,7 +83,8 @@ class LeadReportDataTable extends BaseDataTable
             $startDate = companyToDateString($request->startDate);
 
             if (!is_null($startDate)) {
-                $model = $model->where(DB::raw('DATE(deals.`created_at`)'), '>=', $startDate);
+                $startBoundary = Carbon::parse($startDate, $this->company->timezone)->startOfDay()->toDateTimeString();
+                $model = $model->where('deals.created_at', '>=', $startBoundary);
             }
         }
 
@@ -91,8 +92,9 @@ class LeadReportDataTable extends BaseDataTable
             $endDate = companyToDateString($request->endDate);
 
             if (!is_null($endDate)) {
-                $model = $model->where(function ($query) use ($endDate) {
-                    $query->where(DB::raw('DATE(deals.`created_at`)'), '<=', $endDate);
+                $endBoundary = Carbon::parse($endDate, $this->company->timezone)->endOfDay()->toDateTimeString();
+                $model = $model->where(function ($query) use ($endBoundary) {
+                    $query->where('deals.created_at', '<=', $endBoundary);
                 });
             }
         }

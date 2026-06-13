@@ -24,6 +24,8 @@
         </a>
     @else
         <a class="nav-item text-lightest f-15 sidebar-text-color accordionItemHeading {{ $active == 1 ? 'active' : '' }}"
+           href="javascript:;"
+           onclick="return toggleSidebarAccordion(event, this);"
            title="{{ $text }}">
             @isset($iconPath)
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"

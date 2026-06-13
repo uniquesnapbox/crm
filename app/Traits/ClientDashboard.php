@@ -47,17 +47,17 @@ trait ClientDashboard
             ->join('roles', 'roles.id', '=', 'role_user.role_id')
             ->leftJoin('client_details', 'users.id', '=', 'client_details.user_id')
             ->where('roles.name', 'client')
-            ->whereBetween(DB::raw('DATE(client_details.`created_at`)'), [$startDate, $endDate])
+            ->whereBetween('client_details.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->select('users.id')
             ->count();
 
-        $this->totalLead = Lead::whereBetween(DB::raw('DATE(`created_at`)'), [$startDate, $endDate])
+        $this->totalLead = Lead::whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->count();
 
-        $this->totalDeals = Deal::whereBetween(DB::raw('DATE(`created_at`)'), [$startDate, $endDate])
+        $this->totalDeals = Deal::whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->count();
 
-        $this->totalLeadConversions = Deal::select('deals.id', 'pipeline_stages.slug')->whereBetween(DB::raw('DATE(deals.updated_at)'), [$startDate, $endDate])
+        $this->totalLeadConversions = Deal::select('deals.id', 'pipeline_stages.slug')->whereBetween('deals.updated_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->leftJoin('pipeline_stages', 'pipeline_stages.id', 'deals.pipeline_stage_id')
             ->get();
 
@@ -67,14 +67,14 @@ trait ClientDashboard
 
         $this->convertDealPercentage = ($this->totalLeadConversions->count() > 0) ? number_format(($this->convertedDeals / $this->totalLeadConversions->count() * 100), 2) : 0;
 
-        $this->totalContractsGenerated = Contract::whereBetween(DB::raw('DATE(contracts.`end_date`)'), [$startDate, $endDate])->orWhereBetween(DB::raw('DATE(contracts.`start_date`)'), [$startDate, $endDate])->count();
+        $this->totalContractsGenerated = Contract::whereBetween('contracts.end_date', [$startDate, $endDate])->orWhereBetween('contracts.start_date', [$startDate, $endDate])->count();
 
-        $this->totalContractsSigned = ContractSign::whereBetween(DB::raw('DATE(`created_at`)'), [$startDate, $endDate])
+        $this->totalContractsSigned = ContractSign::whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->count();
 
         $this->recentLoginActivities = Role::with(['users' => function ($query) use ($startDate, $endDate) {
             return $query->select('users.id', 'users.name', 'users.email', 'users.last_login', 'users.image')
-                ->whereBetween(DB::raw('DATE(users.`last_login`)'), [$startDate, $endDate])
+                ->whereBetween('users.last_login', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
                 ->whereNotNull('last_login')
                 ->orderBy('users.last_login', 'desc')
                 ->limit(10);
@@ -83,7 +83,7 @@ trait ClientDashboard
 
         $this->latestClient = Role::with(['users' => function ($query) use ($startDate, $endDate) {
             return $query->select('users.id', 'users.name', 'users.email', 'users.created_at', 'users.image')
-                ->whereBetween(DB::raw('DATE(users.`created_at`)'), [$startDate, $endDate])
+                ->whereBetween('users.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
                 ->orderBy('users.id', 'desc')
                 ->limit(10);
         }])->where('name', 'client')->first();
@@ -122,8 +122,7 @@ trait ClientDashboard
             $query->whereNotNull('projects.client_id')
                 ->orWhereNotNull('invoices.client_id');
         });
-        $payments = $payments->where(DB::raw('DATE(payments.`paid_on`)'), '>=', $startDate);
-        $payments = $payments->where(DB::raw('DATE(payments.`paid_on`)'), '<=', $endDate);
+        $payments = $payments->whereBetween('payments.paid_on', [$startDate, $endDate]);
 
         $payments = $payments->orderBy('paid_on', 'ASC')
             ->get();
@@ -178,7 +177,7 @@ trait ClientDashboard
             ->leftJoin('users', 'users.id', 'projects.client_id')
             ->leftJoin('users as client', 'client.id', 'proj.client_id')
             ->where('project_time_logs.approved', 1)
-            ->whereBetween(DB::raw('DATE(project_time_logs.`created_at`)'), [$startDate, $endDate])
+            ->whereBetween('project_time_logs.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->select('project_time_logs.*', 'client.name')
             ->get();
 
@@ -208,7 +207,7 @@ trait ClientDashboard
     public function leadStatusChart($startDate, $endDate, $pipelineID = null)
     {
         $leadStatus = PipelineStage::withCount(['deals' => function ($query) use ($startDate, $endDate) {
-            return $query->whereBetween(DB::raw('DATE(`created_at`)'), [$startDate, $endDate]);
+            return $query->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
         }]);
 
         if ($pipelineID) {
@@ -238,7 +237,7 @@ trait ClientDashboard
     public function leadSourceChart($startDate, $endDate)
     {
         $leadStatus = LeadSource::withCount(['leads' => function ($query) use ($startDate, $endDate) {
-            return $query->whereBetween(DB::raw('DATE(`created_at`)'), [$startDate, $endDate]);
+            return $query->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
         }])->get();
 
         $data['labels'] = [];

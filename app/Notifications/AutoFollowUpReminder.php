@@ -2,8 +2,9 @@
 
 namespace App\Notifications;
 
+use App\Channels\WascriptChannel;
 use App\Models\EmailNotificationSetting;
-use App\Models\DealFollowUp;
+use App\Models\LeadFollowUp;
 
 class AutoFollowUpReminder extends BaseNotification
 {
@@ -16,7 +17,7 @@ class AutoFollowUpReminder extends BaseNotification
     private $leadFollowup;
     private $emailSetting;
 
-    public function __construct(DealFollowUp $leadFollowup)
+    public function __construct(LeadFollowUp $leadFollowup)
     {
         $this->leadFollowup = $leadFollowup;
         $this->company = $leadFollowup->lead->company;
@@ -37,6 +38,10 @@ class AutoFollowUpReminder extends BaseNotification
             array_push($via, 'mail');
         }
 
+        if ($this->canSendWhatsApp($notifiable, $this->emailSetting)) {
+            array_push($via, WascriptChannel::class);
+        }
+
         return $via;
     }
 
@@ -49,7 +54,7 @@ class AutoFollowUpReminder extends BaseNotification
     public function toMail($notifiable)
     {
         $build = parent::build();
-        $url = route('deals.show', $this->leadFollowup->lead->id) . '?tab=follow-up';
+        $url = route('lead-contact.show', $this->leadFollowup->lead->id) . '?tab=follow-up';
 
         $url = getDomainSpecificUrl($url, $this->company);
 
@@ -101,6 +106,17 @@ class AutoFollowUpReminder extends BaseNotification
         return $this->slackBuild($notifiable)
             ->content(__('email.followUpReminder.followUpLeadText') .'<br><br>' .__('email.followUpReminder.followUpLead') . ' :- ' . $followUpLead . '<br>' . __('email.followUpReminder.nextFollowUpDate') . ' :- ' . $followUpDate . '<br>' . __('email.followUpReminder.nextFollowUpTime') . ' :- ' . $followUpTime . '<br>' . $this->leadFollowup->remark);
 
+    }
+
+    public function toWascript($notifiable): array
+    {
+        return [
+            'message' => __('email.followUpReminder.subject') . "\n"
+                . __('email.followUpReminder.followUpLead') . ': ' . $this->leadFollowup->lead->client_name . "\n"
+                . __('email.followUpReminder.nextFollowUpDate') . ': ' . $this->leadFollowup->next_follow_up_date->format($this->company->date_format . ' ' . $this->company->time_format) . "\n"
+                . trim((string) $this->leadFollowup->remark) . "\n"
+                . $this->modifyUrl(route('lead-contact.show', $this->leadFollowup->lead->id) . '?tab=follow-up'),
+        ];
     }
 
 }

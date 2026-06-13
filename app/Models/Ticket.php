@@ -94,6 +94,9 @@ class Ticket extends BaseModel
 
     protected $casts = [
         'deleted_at' => 'datetime',
+        'whatsapp_assigned_staff_sent_at' => 'datetime',
+        'whatsapp_assigned_client_sent_at' => 'datetime',
+        'whatsapp_resolved_client_sent_at' => 'datetime',
     ];
     protected $appends = ['created_on'];
 

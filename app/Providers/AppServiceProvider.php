@@ -3,9 +3,12 @@
 namespace App\Providers;
 
 use App\Models\Company;
+use App\Models\PushNotificationSetting;
 use Barryvdh\LaravelIdeHelper\IdeHelperServiceProvider;
 use Carbon\CarbonInterval;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Cashier\Cashier;
 use Laravel\Sanctum\Sanctum;
@@ -13,13 +16,11 @@ use function config;
 
 class AppServiceProvider extends ServiceProvider
 {
-
     /**
      * Register any application services.
      *
      * @return void
      */
-
     public function register()
     {
         Cashier::ignoreMigrations();
@@ -40,12 +41,25 @@ class AppServiceProvider extends ServiceProvider
 
         Schema::defaultStringLength(191);
 
+        // Handle push notification setting safely
+        try {
+            if (Schema::hasTable('push_notification_settings')) {
+                View::share('pushSetting', DB::table('push_notification_settings')->first());
+            } else {
+                View::share('pushSetting', null);
+            }
+        } catch (\Exception $e) {
+            View::share('pushSetting', null);
+        }
+
+        View::share('pageTitle', 'USB CRM');
+
         if (app()->environment('development')) {
             $this->app->register(IdeHelperServiceProvider::class);
         }
 
         // prevent scripts from timing out during long operations
-        ini_set('max_execution_time', '300');
+        ini_set('max_execution_time', '0');
 
         CarbonInterval::macro('formatHuman', function ($totalMinutes, $seconds = false): string {
 
@@ -55,7 +69,5 @@ class AppServiceProvider extends ServiceProvider
 
             return static::minutes($totalMinutes)->cascade()->forHumans(['short' => true, 'options' => 0]); /** @phpstan-ignore-line */
         });
-
     }
-
 }

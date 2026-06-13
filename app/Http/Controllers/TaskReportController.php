@@ -10,9 +10,8 @@ use App\Models\TaskboardColumn;
 use App\Models\TaskCategory;
 use App\Models\TaskLabelList;
 use App\Models\User;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class TaskReportController extends AccountBaseController
 {
@@ -28,12 +27,12 @@ class TaskReportController extends AccountBaseController
         abort_403(user()->permission('view_task_report') != 'all');
 
         if (!request()->ajax()) {
-            $this->projects = Project::allProjects();
-            $this->clients = User::allClients();
-            $this->employees = User::allEmployees();
-            $this->taskBoardStatus = TaskboardColumn::all();
-            $this->taskCategories = TaskCategory::all();
-            $this->taskLabels = TaskLabelList::all();
+            $this->projects = Project::allProjects(false, 50);
+            $this->clients = User::allClients(null, true, null, null, 50);
+            $this->employees = User::allEmployees(null, false, null, null, 50);
+            $this->taskBoardStatus = Cache::remember('task_board_status_' . company()->id, now()->addMinutes(30), fn() => TaskboardColumn::all());
+            $this->taskCategories = Cache::remember('task_categories_' . company()->id, now()->addMinutes(30), fn() => TaskCategory::all());
+            $this->taskLabels = Cache::remember('task_labels_' . company()->id, now()->addMinutes(30), fn() => TaskLabelList::all());
         }
 
         return $dataTable->render('reports.tasks.index', $this->data);
@@ -41,7 +40,7 @@ class TaskReportController extends AccountBaseController
 
     public function taskChartData(Request $request)
     {
-        $taskStatus = TaskboardColumn::all();
+        $taskStatus = Cache::remember('task_board_status_' . company()->id, now()->addMinutes(30), fn() => TaskboardColumn::all());
         $data['labels'] = $taskStatus->pluck('column_name');
         $data['colors'] = $taskStatus->pluck('label_color');
         $data['values'] = [];
@@ -67,9 +66,8 @@ class TaskReportController extends AccountBaseController
 
             if ($startDate !== null && $endDate !== null) {
                 $model->where(function ($q) use ($startDate, $endDate) {
-                    $q->whereBetween(DB::raw('DATE(tasks.`due_date`)'), [$startDate, $endDate]);
-
-                    $q->orWhereBetween(DB::raw('DATE(tasks.`start_date`)'), [$startDate, $endDate]);
+                    $q->whereBetween('tasks.due_date', [$startDate, $endDate]);
+                    $q->orWhereBetween('tasks.start_date', [$startDate, $endDate]);
                 });
             }
 

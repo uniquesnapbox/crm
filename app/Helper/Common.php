@@ -44,8 +44,8 @@ class Common
     {
 
         // DO NOT CHANGE IT. CHANGING IT WILL AFFECT THE APPLICATION
-        $secret_key = 'USB CRM'; // User define private key
-        $secret_iv = 'froiden'; // User define secret key
+        $secret_key = env('MASKING_SECRET_KEY', 'USB CRM'); // User define private key
+        $secret_iv = env('MASKING_SECRET_IV', 'froiden'); // User define secret key
 
         $encryptMethod = 'AES-256-CBC';
         $key = hash('sha256', $secret_key);

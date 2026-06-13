@@ -4,6 +4,10 @@ $viewLeadSourcesPermission = user()->permission('view_lead_sources');
 $addLeadSourcesPermission = user()->permission('add_lead_sources');
 $addLeadCategoryPermission = user()->permission('add_lead_category');
 $addProductPermission = user()->permission('add_product');
+$addPermission = user()->permission('add_lead'); // For Added By field
+$assignLeadPermission = in_array('admin', user_roles()) || user()->permission('add_lead') == 'all' || user()->permission('edit_lead') == 'all';
+$rawEditMobile = preg_replace('/\D+/', '', (string) ($leadContact->mobile ?? ''));
+$editMobileLocal = (str_starts_with($rawEditMobile, '91') && strlen($rawEditMobile) === 12) ? substr($rawEditMobile, 2) : substr($rawEditMobile, -10);
 @endphp
 
 <link rel="stylesheet" href="{{ asset('vendor/css/dropzone.min.css') }}">
@@ -16,15 +20,6 @@ $addProductPermission = user()->permission('add_product');
                     @lang('modules.leadContact.leadDetails')</h4>
 
                 <div class="row p-20">
-                    <div class="col-lg-4 col-md-6">
-                        <x-forms.select fieldId="salutation" :fieldLabel="__('modules.client.salutation')"
-                            fieldName="salutation">
-                            <option value="">--</option>
-                            @foreach ($salutations as $salutation)
-                                <option value="{{ $salutation->value }}" @selected($leadContact->salutation == $salutation)>{{ $salutation->label() }}</option>
-                            @endforeach
-                        </x-forms.select>
-                    </div>
 
                     <div class="col-lg-4 col-md-6">
                         <x-forms.text :fieldLabel="__('app.name')" fieldName="client_name"
@@ -64,11 +59,43 @@ $addProductPermission = user()->permission('add_product');
                         </div>
                     @endif
 
+                    <div class="col-lg-4 col-md-6">
+                        <x-forms.select fieldId="status_id" fieldLabel="Lead Status" fieldName="status_id" search="true">
+                            <option value="">--</option>
+                            @foreach ($status as $item)
+                                <option @selected($leadContact->status_id == $item->id) value="{{ $item->id }}">{{ $item->type }}</option>
+                            @endforeach
+                        </x-forms.select>
+                    </div>
+
+                    @if ($addPermission == 'all')
+                        <div class="col-lg-4 col-md-6">
+                            <x-forms.select fieldId="added_by" :fieldLabel="__('app.added').' '.__('app.by')"
+                                fieldName="added_by">
+                                <option value="">--</option>
+                                @foreach ($employees as $item)
+                                    <x-user-option :user="$item" :selected="$leadContact->added_by == $item->id" />
+                                @endforeach
+                            </x-forms.select>
+                        </div>
+                    @endif
+
+                    @if ($assignLeadPermission)
+                        <div class="col-lg-4 col-md-6">
+                            <x-forms.select fieldId="assigned_to" :fieldLabel="__('modules.tasks.assignTo')"
+                                fieldName="assigned_to" search="true">
+                                <option value="">--</option>
+                                @foreach ($employees as $item)
+                                    <x-user-option :user="$item" :selected="$leadContact->assigned_to == $item->id" />
+                                @endforeach
+                            </x-forms.select>
+                        </div>
+                    @endif
+
                 </div>
 
                 <h4 class="mb-0 p-20 f-21 font-weight-normal text-capitalize border-top-grey">
                     @lang('modules.lead.companyDetails')</h4>
-
 
                 <div class="row p-20">
 
@@ -84,8 +111,31 @@ $addProductPermission = user()->permission('add_product');
                     </div>
 
                     <div class="col-lg-3 col-md-6">
-                        <x-forms.tel fieldId="mobile" :fieldLabel="__('modules.lead.mobile')" fieldName="mobile"
-                           :fieldPlaceholder="__('placeholders.mobile')" :fieldValue="$leadContact->mobile"></x-forms.tel>
+                        <div class="form-group my-3">
+                            <label class="f-14 text-dark-grey mb-12" for="mobile_local">
+                                WhatsApp Mobile <sup class="f-14 mr-1">*</sup>
+                            </label>
+                            <div class="input-group">
+                                <div class="input-group-prepend">
+                                    <select class="form-control" id="mobile_country_code" style="width: 90px; min-width: 90px; max-width: 90px;">
+                                        @foreach ($countries as $item)
+                                            @php $code = preg_replace('/\D+/', '', (string) $item->phonecode); @endphp
+                                            @if (!empty($code))
+                                                <option value="{{ $code }}" data-country="{{ $item->nicename }}"
+                                                    @if ($leadContact->country == $item->nicename) selected @elseif (!$leadContact->country && $item->nicename == 'India') selected @endif>
+                                                    +{{ $code }}
+                                                </option>
+                                            @endif
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <input type="text" class="form-control" id="mobile_local" maxlength="10"
+                                    inputmode="numeric" pattern="[0-9]{10}" placeholder="9876543210"
+                                    value="{{ $editMobileLocal }}" autocomplete="off">
+                            </div>
+                            <input type="hidden" name="mobile" id="mobile" value="">
+                            <small class="text-muted">Enter 10-digit mobile number. Country code +91 is fixed.</small>
+                        </div>
                     </div>
 
                     <div class="col-lg-3 col-md-6">
@@ -98,46 +148,131 @@ $addProductPermission = user()->permission('add_product');
                             search="true">
                             <option value="">--</option>
                             @foreach ($countries as $item)
-                                <option @if ($leadContact->country == $item->nicename) selected @endif data-tokens="{{ $item->iso3 }}"
+                                <option @if ($leadContact->country == $item->nicename) selected @elseif (!$leadContact->country && $item->nicename == 'India') selected @endif
+                                    data-tokens="{{ $item->iso3 }}"
+                                    data-phonecode="{{ $item->phonecode }}"
                                     data-content="<span class='flag-icon flag-icon-{{ strtolower($item->iso) }} flag-icon-squared'></span> {{ $item->nicename }}"
                                     value="{{ $item->nicename }}">{{ $item->nicename }}</option>
                             @endforeach
                         </x-forms.select>
                     </div>
 
-                    <div class="col-lg-3 col-md-6">
-                        <x-forms.text :fieldLabel="__('modules.stripeCustomerAddress.state')" fieldName="state"
-                            fieldId="state" :fieldPlaceholder="__('placeholders.state')" :fieldValue="$leadContact->state" />
-                    </div>
-
-                    <div class="col-lg-3 col-md-6">
-                        <x-forms.text :fieldLabel="__('modules.stripeCustomerAddress.city')" fieldName="city" :fieldValue="$leadContact->city"
-                            fieldId="city" :fieldPlaceholder="__('placeholders.city')" />
-                    </div>
-
-                    <div class="col-lg-3 col-md-6">
-                        <x-forms.text :fieldLabel="__('modules.stripeCustomerAddress.postalCode')"
-                            fieldName="postal_code" fieldId="postal_code" :fieldPlaceholder="__('placeholders.postalCode')"
-                            :fieldValue="$leadContact->postal_code" />
-                    </div>
+                    {{-- Removed state, city, postal_code fields as per task --}}
 
                     <div class="col-md-12">
                         <div class="form-group my-3">
-                            <x-forms.textarea class="mr-0 mr-lg-2 mr-md-2" :fieldLabel="__('app.address')"
-                                fieldName="address" fieldId="address" :fieldPlaceholder="__('placeholders.address')"
-                                :fieldValue="$leadContact->address">
-                            </x-forms.textarea>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <label class="f-14 text-dark-grey mb-12" data-label="true" for="address">
+                                    @lang('app.address')
+                                </label>
+                                <button type="button" class="btn btn-sm btn-outline-secondary mb-2" id="fetch-address">
+                                    <i class="fa fa-map-marker-alt"></i> Fetch Address
+                                </button>
+                            </div>
+                            <textarea class="form-control" name="address" id="address" rows="3" placeholder="@lang('placeholders.address')">{{ $leadContact->address }}</textarea>
                         </div>
                     </div>
 
                 </div>
-                    <x-forms.custom-field :fields="$fields" :model="$leadContact"></x-forms.custom-field>
-                <x-form-actions>
-                    <x-forms.button-primary id="save-lead-form" class="mr-3" icon="check">@lang('app.save')
-                    </x-forms.button-primary>
-                    <x-forms.button-cancel :link="route('lead-contact.index')" class="border-0">@lang('app.cancel')
-                    </x-forms.button-cancel>
-                </x-form-actions>
+
+                <h4 class="mb-0 p-20 f-21 font-weight-normal text-capitalize border-top-grey">
+                    Lead Qualification
+                </h4>
+
+                <div class="row p-20">
+                    <div class="col-lg-4 col-md-6">
+                        <x-forms.select fieldId="interest_level" fieldLabel="Interest Level" fieldName="interest_level">
+                            <option value="">--</option>
+                            <option @selected($leadContact->interest_level === 'low') value="low">Low</option>
+                            <option @selected($leadContact->interest_level === 'medium') value="medium">Medium</option>
+                            <option @selected($leadContact->interest_level === 'high') value="high">High</option>
+                            <option @selected($leadContact->interest_level === 'very_high') value="very_high">Very High</option>
+                        </x-forms.select>
+                    </div>
+
+                    <div class="col-lg-4 col-md-6">
+                        <div class="form-group my-3">
+                            <label class="f-14 text-dark-grey mb-12" for="deal_size">Deal Size</label>
+                            <input type="number" step="0.01" min="0" class="form-control" name="deal_size" id="deal_size"
+                                value="{{ $leadContact->deal_size }}" placeholder="Expected amount">
+                        </div>
+                    </div>
+
+                    @if ($viewLeadCategoryPermission != 'none')
+                        <div class="col-lg-4 col-md-6">
+                            <x-forms.label class="my-3" fieldId="category_id" fieldLabel="Customer Group">
+                            </x-forms.label>
+                            <x-forms.input-group>
+                                <select class="form-control select-picker" name="category_id" id="category_id"
+                                    data-live-search="true">
+                                    <option value="">--</option>
+                                    @foreach ($categories as $category)
+                                        <option @selected($leadContact->category_id == $category->id) value="{{ $category->id }}">
+                                            {{ $category->category_name }}</option>
+                                    @endforeach
+                                </select>
+
+                                @if ($addLeadCategoryPermission == 'all' || $addLeadCategoryPermission == 'added')
+                                    <x-slot name="append">
+                                        <button type="button"
+                                            class="btn btn-outline-secondary border-grey add-lead-category"
+                                            data-toggle="tooltip" data-original-title="{{ __('app.add').' Customer Group' }}">
+                                            @lang('app.add')</button>
+                                    </x-slot>
+                                @endif
+                            </x-forms.input-group>
+                        </div>
+                    @endif
+
+                    <div class="col-lg-4 col-md-6">
+                        <x-forms.select fieldId="contact_status" fieldLabel="Lead Contact Status" fieldName="contact_status">
+                            <option value="">--</option>
+                            <option @selected($leadContact->contact_status === 'pending') value="pending">Pending</option>
+                            <option @selected($leadContact->contact_status === 'connected') value="connected">Connected</option>
+                            <option @selected($leadContact->contact_status === 'not_connected') value="not_connected">Not Connected</option>
+                        </x-forms.select>
+                    </div>
+
+                    <div class="col-lg-8 col-md-6 {{ $leadContact->contact_status === 'not_connected' ? '' : 'd-none' }}" id="contact-status-reason-wrapper">
+                        <div class="form-group my-3">
+                            <label class="f-14 text-dark-grey mb-12" for="contact_status_reason">If Not Connected, Why?</label>
+                            <textarea class="form-control" name="contact_status_reason" id="contact_status_reason" rows="3" placeholder="Write the reason">{{ $leadContact->contact_status_reason }}</textarea>
+                        </div>
+                    </div>
+
+                    <div class="col-md-12">
+                        <div class="form-group my-3">
+                            <label class="f-14 text-dark-grey mb-12" for="products_services">Products / Services</label>
+                            <textarea class="form-control" name="products_services" id="products_services" rows="3" placeholder="What is the lead interested in?">{{ $leadContact->products_services }}</textarea>
+                        </div>
+                    </div>
+
+                    <div class="col-md-12">
+                        <div class="form-group my-3">
+                            <label class="f-14 text-dark-grey mb-12" for="note">Notes</label>
+                            <textarea class="form-control" name="note" id="note" rows="4" placeholder="Qualification notes, comments, or background">{{ $leadContact->note }}</textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <x-forms.custom-field :fields="$fields" :model="$leadContact"></x-forms.custom-field>
+
+                {{-- Dropdown button for actions --}}
+                <div class="row p-20">
+                    <div class="col-md-12">
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                @lang('app.actions')
+                            </button>
+                            <div class="dropdown-menu">
+                                <button type="button" class="dropdown-item" id="save-lead-form">@lang('app.save')</button>
+                                <button type="button" class="dropdown-item" id="save-more-lead-form">@lang('app.saveAddMore')</button>
+                                <div class="dropdown-divider"></div>
+                                <a class="dropdown-item" href="{{ route('lead-contact.index') }}">@lang('app.cancel')</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
             </div>
         </x-form>
@@ -145,9 +280,85 @@ $addProductPermission = user()->permission('add_product');
     </div>
 </div>
 
-
 <script>
     $(document).ready(function() {
+        function selectedCountryCode() {
+            const code = ($('#mobile_country_code').val() || '91').toString().replace(/\D+/g, '');
+            return code || '91';
+        }
+
+        function syncCountryToCode() {
+            const selected = $('#country option:selected');
+            const code = (selected.data('phonecode') || '91').toString().replace(/\D+/g, '') || '91';
+            $('#mobile_country_code').val(code);
+        }
+
+        function syncCodeToCountry() {
+            const code = selectedCountryCode();
+            const $country = $('#country');
+            const $match = $country.find('option').filter(function() {
+                return (($(this).data('phonecode') || '').toString().replace(/\D+/g, '')) === code;
+            }).first();
+
+            if ($match.length) {
+                $country.val($match.val());
+                if (typeof $country.selectpicker === 'function') {
+                    $country.selectpicker('refresh');
+                }
+            }
+        }
+
+        function sanitizeMobileLocal(value, countryCode) {
+            const digits = (value || '').toString().replace(/\D+/g, '');
+            return countryCode === '91' ? digits.slice(0, 10) : digits.slice(0, 12);
+        }
+
+        function syncHiddenMobile() {
+            const code = selectedCountryCode();
+            const local = sanitizeMobileLocal($('#mobile_local').val(), code);
+            $('#mobile_local').val(local);
+            $('#mobile').val(local ? ('+' + code + local) : '');
+            return local;
+        }
+
+        function validateMobileBeforeSave() {
+            const code = selectedCountryCode();
+            const local = syncHiddenMobile();
+
+            const isValid = code === '91' ? local.length === 10 : (local.length >= 6 && local.length <= 12);
+
+            if (!isValid) {
+                if (typeof toastr !== 'undefined') {
+                    toastr.error(code === '91'
+                        ? 'Please enter a valid 10-digit mobile number for India (+91).'
+                        : 'Please enter a valid mobile number (6-12 digits) for selected country code.');
+                } else {
+                    alert(code === '91'
+                        ? 'Please enter a valid 10-digit mobile number for India (+91).'
+                        : 'Please enter a valid mobile number (6-12 digits) for selected country code.');
+                }
+                return false;
+            }
+
+            return true;
+        }
+
+        $('#mobile_local').on('input', function() {
+            syncHiddenMobile();
+        });
+
+        $('#country').on('change', function() {
+            syncCountryToCode();
+            syncHiddenMobile();
+        });
+
+        $('#mobile_country_code').on('change', function() {
+            syncCodeToCountry();
+            syncHiddenMobile();
+        });
+
+        syncCountryToCode();
+        syncHiddenMobile();
 
         $('.custom-date-picker').each(function(ind, el) {
             datepicker(el, {
@@ -156,8 +367,30 @@ $addProductPermission = user()->permission('add_product');
             });
         });
 
+        // Save button (normal save)
         $('#save-lead-form').click(function() {
-            const url = "{{ route('lead-contact.update', [$leadContact->id]) }}";
+            if (!validateMobileBeforeSave()) {
+                return;
+            }
+            saveLead('normal');
+        });
+
+        // Save & Add More button
+        $('#save-more-lead-form').click(function() {
+            if (!validateMobileBeforeSave()) {
+                return;
+            }
+            saveLead('add_more');
+        });
+
+        function saveLead(action) {
+            var url = "{{ route('lead-contact.update', [$leadContact->id]) }}";
+            var data = $('#save-lead-data-form').serialize();
+            if (action === 'add_more') {
+                url += '?add_more=true';
+                data += '&add_more=true';
+            }
+
             $.easyAjax({
                 url: url,
                 container: '#save-lead-data-form',
@@ -165,13 +398,18 @@ $addProductPermission = user()->permission('add_product');
                 disableButton: true,
                 blockUI: true,
                 file: true,
-                buttonSelector: "#save-lead-form",
-                data: $('#save-lead-data-form').serialize(),
+                buttonSelector: action === 'add_more' ? "#save-more-lead-form" : "#save-lead-form",
+                data: data,
                 success: function(response) {
-                    window.location.href = response.redirectUrl;
+                    if (action === 'add_more') {
+                        // Redirect to create form after save
+                        window.location.href = "{{ route('lead-contact.create') }}";
+                    } else {
+                        window.location.href = response.redirectUrl;
+                    }
                 }
             });
-        });
+        }
 
         $('body').on('click', '.add-lead-source', function() {
             const url = '{{ route('lead-source-settings.create') }}';
@@ -210,6 +448,14 @@ $addProductPermission = user()->permission('add_product');
             $('#other-details').toggleClass('d-none');
         });
 
+        function toggleContactReason() {
+            const showReason = $('#contact_status').val() === 'not_connected';
+            $('#contact-status-reason-wrapper').toggleClass('d-none', !showReason);
+        }
+
+        $('#contact_status').on('change', toggleContactReason);
+        toggleContactReason();
+
         $('#createTaskLabel').click(function() {
             const url = "{{ route('task-label.create') }}";
             $(MODAL_XL + ' ' + MODAL_HEADING).html('...');
@@ -235,9 +481,7 @@ $addProductPermission = user()->permission('add_product');
 
         $('#add-employee').click(function() {
             $(MODAL_XL).modal('show');
-
             const url = "{{ route('employees.create') }}";
-
             $.easyAjax({
                 url: url,
                 blockUI: true,
@@ -264,4 +508,51 @@ $addProductPermission = user()->permission('add_product');
         });
         $('#'+id).val(checkedData);
     }
+
+    // Fetch address using geolocation
+    $('body').on('click', '#fetch-address', function() {
+        var button = $(this);
+        var originalText = button.html();
+        button.html('<i class="fa fa-spinner fa-spin"></i> Fetching...');
+        button.prop('disabled', true);
+
+        if ("geolocation" in navigator) {
+            navigator.geolocation.getCurrentPosition(function(position) {
+                var lat = position.coords.latitude;
+                var lon = position.coords.longitude;
+                var url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`;
+
+                $.ajax({
+                    url: url,
+                    type: 'GET',
+                    success: function(response) {
+                        if (response && response.display_name) {
+                            $('#address').val(response.display_name);
+                        } else {
+                            alert('Could not fetch the address from coordinates.');
+                        }
+                    },
+                    error: function() {
+                        alert('Error occurred while fetching the address.');
+                    },
+                    complete: function() {
+                        button.html(originalText);
+                        button.prop('disabled', false);
+                    }
+                });
+            }, function(error) {
+                alert('Geolocation failed: ' + error.message);
+                button.html(originalText);
+                button.prop('disabled', false);
+            }, {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            });
+        } else {
+            alert("Geolocation is not supported by this browser.");
+            button.html(originalText);
+            button.prop('disabled', false);
+        }
+    });
 </script>

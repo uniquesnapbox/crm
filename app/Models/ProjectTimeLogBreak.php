@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Traits\HasCompany;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\DB;
@@ -89,8 +90,10 @@ class ProjectTimeLogBreak extends BaseModel
 
     public static function dateWiseTimelogBreak($date, $userID = null)
     {
+        $from = Carbon::parse($date)->startOfDay();
+        $to = Carbon::parse($date)->endOfDay();
         $timelogs = ProjectTimeLogBreak::join('project_time_logs', 'project_time_log_breaks.project_time_log_id', '=', 'project_time_logs.id')
-            ->whereDate('project_time_log_breaks.start_time', $date)
+            ->whereBetween('project_time_log_breaks.start_time', [$from, $to])
             ->whereNotNull('project_time_logs.end_time')
             ->select('project_time_log_breaks.*');
 
@@ -103,8 +106,10 @@ class ProjectTimeLogBreak extends BaseModel
 
     public static function weekWiseTimelogBreak($startDate, $endDate, $userID = null)
     {
+        $from = Carbon::parse($startDate)->startOfDay();
+        $to = Carbon::parse($endDate)->endOfDay();
         $timelogs = ProjectTimeLogBreak::join('project_time_logs', 'project_time_log_breaks.project_time_log_id', '=', 'project_time_logs.id')
-            ->whereBetween(DB::raw('DATE(project_time_log_breaks.`start_time`)'), [$startDate, $endDate])
+            ->whereBetween('project_time_log_breaks.start_time', [$from, $to])
             ->whereNotNull('project_time_logs.end_time')
             ->select('project_time_log_breaks.*');
 
