@@ -126,6 +126,9 @@ Route::post('mobile-login', [AuthController::class, 'login'])
     ->middleware('throttle:mobile-login')
     ->name('mobile.login');
 
+Route::redirect('dashboard', '/account/dashboard');
+Route::redirect('dashbooard', '/account/dashboard');
+
 // Allow both web-session users and Sanctum token (used by Flutter app) to access the same routes.
 // Order matters: Sanctum will attempt token auth first, then fall back to the web guard.
 Route::group(['middleware' => 'auth:sanctum,web', 'prefix' => 'account'], function () {
