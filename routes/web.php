@@ -12,6 +12,7 @@ use App\Http\Controllers\ClientController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\NoticeController;
 use App\Http\Controllers\SearchController;
+use App\Http\Controllers\CustomPageController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\HolidayController;
@@ -822,6 +823,7 @@ Route::group(['middleware' => 'auth:sanctum,web', 'prefix' => 'account'], functi
     Route::post('mark-read', [NotificationController::class, 'markRead'])->name('mark_single_notification_read');
     Route::post('mark_notification_read', [NotificationController::class, 'markAllRead'])->name('mark_notification_read');
 
+    Route::resource('custom-pages', CustomPageController::class)->except(['show']);
     Route::resource('search', SearchController::class);
 
     // Remove in v 5.2.5

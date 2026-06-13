@@ -6,6 +6,7 @@ use App\Http\Controllers\ImageController;
 use App\Http\Controllers\LoginController;
 
 use App\Http\Controllers\RegisterController;
+use App\Http\Controllers\PublicCustomPageController;
 
 use App\Http\Controllers\PublicUrlController;
 use App\Http\Controllers\Payment\MollieController;
@@ -25,6 +26,7 @@ Route::redirect('/', '/login');
 
 Route::get('/invitation/{code}', [RegisterController::class, 'invitation'])->name('invitation');
 Route::post('/invitation/accept-invite', [RegisterController::class, 'acceptInvite'])->name('accept_invite');
+Route::get('/pages/{slug}', [PublicCustomPageController::class, 'show'])->name('custom-pages.public');
 
 
 

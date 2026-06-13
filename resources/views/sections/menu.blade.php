@@ -113,6 +113,9 @@
                 @if (isset($sidebarUserPermissions['view_appreciation'])  && $sidebarUserPermissions['view_appreciation'] == 5 && isset($sidebarUserPermissions['manage_award']) && $sidebarUserPermissions['manage_award'] == 4)
                     <x-sub-menu-item :link="route('awards.index')" :text="__('app.menu.appreciation')" />
                 @endif
+                @if (in_array('admin', user_roles()))
+                    <x-sub-menu-item :link="route('custom-pages.index')" :text="'Custom Pages'" />
+                @endif
                 <!-- NAV ITEM - CUSTOM MODULES  -->
                 @foreach ($worksuitePlugins as $item)
                     @includeIf(strtolower($item) . '::sections.hr.sidebar')
