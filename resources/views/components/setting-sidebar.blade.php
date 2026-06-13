@@ -136,7 +136,7 @@
 
         @if (in_array('admin', user_roles()) || user()->permission('manage_company_setting') == 'all')
             <x-setting-menu-item :active="$activeMenu" menu="sign_up_setting" :href="route('sign-up-settings.index')"
-                                :text="__('app.menu.signUpSetting')"/>
+                                 :text="__('app.menu.signUpSetting')"/>
         @endif
 
         @if(isWorksuite())

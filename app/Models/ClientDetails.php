@@ -81,15 +81,20 @@ class ClientDetails extends BaseModel
 
     use CustomFieldsTrait, HasCompany;
 
-    protected $fillable = ['company_name', 'user_id', 'address', 'postal_code', 'state', 'city', 'office', 'cell', 'website', 'note', 'skype', 'facebook', 'twitter', 'linkedin', 'tax_name', 'gst_number', 'shipping_address', 'category_id', 'sub_category_id', 'company_logo', 'electronic_address', 'electronic_address_scheme'];
+    protected $fillable = ['company_name', 'user_id', 'address', 'postal_code', 'state', 'city', 'office', 'cell', 'website', 'note', 'client_type', 'last_contact_date', 'next_followup_date', 'skype', 'facebook', 'twitter', 'linkedin', 'tax_name', 'gst_number', 'shipping_address', 'category_id', 'sub_category_id', 'company_logo', 'electronic_address', 'electronic_address_scheme'];
 
-    protected $default = ['id', 'company_name', 'address', 'website', 'note', 'skype', 'facebook', 'twitter', 'linkedin', 'tax_name', 'gst_number', 'name', 'email', 'company_logo'];
+    protected $default = ['id', 'company_name', 'address', 'website', 'note', 'client_type', 'last_contact_date', 'next_followup_date', 'skype', 'facebook', 'twitter', 'linkedin', 'tax_name', 'gst_number', 'name', 'email', 'company_logo'];
 
     protected $table = 'client_details';
 
     protected $appends = ['image_url'];
 
     protected $with = ['company'];
+
+    protected $casts = [
+        'last_contact_date' => 'date',
+        'next_followup_date' => 'date',
+    ];
 
     const CUSTOM_FIELD_MODEL = 'App\Models\ClientDetails';
 

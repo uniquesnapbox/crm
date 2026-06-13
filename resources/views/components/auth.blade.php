@@ -46,7 +46,11 @@
 
 </head>
 
-<body class="{{ $globalSetting->auth_theme == 'dark' ? 'dark-theme' : '' }}">
+@php
+    $isLoginPage = request()->routeIs('login');
+@endphp
+
+<body class="{{ $globalSetting->auth_theme == 'dark' ? 'dark-theme' : '' }} {{ $isLoginPage ? 'auth-login-page' : '' }}">
 
 <header class="sticky-top d-flex justify-content-center align-items-center login_header bg-white px-4">
     <img class="mr-2 rounded" src="{{ $globalSetting->logo_url }}" alt="Logo"/>
@@ -61,7 +65,7 @@
         <div class="row">
             <div class="col-md-12 text-center">
 
-                <div class="login_box mx-auto rounded bg-white text-center">
+                <div class="login_box mx-auto rounded bg-white text-center {{ $isLoginPage ? 'login-page-card' : '' }}">
                     {{ $slot }}
                 </div>
 

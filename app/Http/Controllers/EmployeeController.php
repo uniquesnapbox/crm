@@ -21,6 +21,7 @@ use App\Imports\EmployeeImport;
 use App\Jobs\ImportEmployeeJob;
 use App\Models\Appreciation;
 use App\Models\Attendance;
+use App\Models\Country;
 use App\Models\Designation;
 use App\Models\EmployeeActivity;
 use App\Models\EmployeeDetails;
@@ -180,16 +181,15 @@ class EmployeeController extends AccountBaseController
 
         DB::beginTransaction();
         try {
+            $defaultCountry = $this->defaultCountry();
             $user = new User();
             $user->name = $request->name;
             $user->email = $request->email;
             $user->password = bcrypt($request->password);
             $user->mobile = $request->mobile;
-            $user->country_id = $request->country;
-            $user->salutation = $request->salutation;
-            $user->country_phonecode = $request->country_phonecode;
-            $user->gender = $request->gender;
-            $user->locale = $request->locale;
+            $user->country_id = $request->country ?: ($defaultCountry?->id);
+            $user->country_phonecode = $request->country_phonecode ?: (string) ($defaultCountry?->phonecode ?? '');
+            $user->locale = $request->locale ?: ($this->company->locale ?? 'en');
 
             if ($request->has('login')) {
                 $user->login = $request->login;
@@ -210,9 +210,9 @@ class EmployeeController extends AccountBaseController
 
             $user->save();
 
-            $tags = json_decode($request->tags);
+            $tags = json_decode($request->tags ?? '[]');
 
-            if (!empty($tags)) {
+            if (is_array($tags) && !empty($tags)) {
                 foreach ($tags as $tag) {
                     // check or store skills
                     $skillData = Skill::firstOrCreate(['name' => $tag->value]);
@@ -411,6 +411,7 @@ class EmployeeController extends AccountBaseController
     public function update(UpdateRequest $request, $id)
     {
 
+        $defaultCountry = $this->defaultCountry();
         $user = User::withoutGlobalScope(ActiveScope::class)->findOrFail($id);
         $user->name = $request->name;
         $user->email = $request->email;
@@ -420,13 +421,20 @@ class EmployeeController extends AccountBaseController
         }
 
         $user->mobile = $request->mobile;
-        $user->country_id = $request->country;
-        $user->salutation = $request->salutation;
-        $user->country_phonecode = $request->country_phonecode;
-        $user->gender = $request->gender;
-        $user->locale = $request->locale;
+        $user->country_id = $request->country ?: ($defaultCountry?->id) ?: $user->country_id;
 
-        if ($request->status) {
+        if ($request->filled('country_phonecode')) {
+            $user->country_phonecode = $request->country_phonecode;
+        }
+        elseif (empty($user->country_phonecode) && $defaultCountry?->phonecode) {
+            $user->country_phonecode = (string) $defaultCountry->phonecode;
+        }
+
+        if ($request->filled('locale')) {
+            $user->locale = $request->locale;
+        }
+
+        if ($request->has('status')) {
             $lastDate = $request->last_date ? Carbon::createFromFormat($this->company->date_format, $request->last_date, $this->company->timezone) : null;
 
             if (request()->last_date != null && $request->status == 'deactive') {
@@ -439,7 +447,7 @@ class EmployeeController extends AccountBaseController
             }
         }
 
-        if ($id != user()->id) {
+        if ($id != user()->id && $request->has('login')) {
             $user->login = $request->login;
         }
 
@@ -467,10 +475,9 @@ class EmployeeController extends AccountBaseController
         cache()->forget('user_is_active_' . $user->id);
 
         $roleId = request()->role;
+        $userRole = $roleId ? Role::where('id', $roleId)->first() : null;
 
-        $userRole = Role::where('id', request()->role)->first();
-
-        if ($roleId != '' && $userRole->name != $user->user_other_role) {
+        if (!is_null($userRole) && $userRole->name != $user->user_other_role) {
 
             $employeeRole = Role::where('name', 'employee')->first();
 
@@ -489,9 +496,9 @@ class EmployeeController extends AccountBaseController
             $userSession->deleteSessions([$user->id]);
         }
 
-        $tags = json_decode($request->tags);
+        $tags = json_decode($request->tags ?? '[]');
 
-        if (!empty($tags)) {
+        if (is_array($tags)) {
             EmployeeSkill::where('user_id', $user->id)->delete();
 
             foreach ($tags as $tag) {
@@ -515,10 +522,12 @@ class EmployeeController extends AccountBaseController
 
         $this->employeeData($request, $employee);
 
-        $employee->last_date = null;
+        if ($request->has('last_date')) {
+            $employee->last_date = null;
 
-        if ($request->last_date != '') {
-            $employee->last_date = companyToYmd($request->last_date);
+            if ($request->last_date != '') {
+                $employee->last_date = companyToYmd($request->last_date);
+            }
         }
 
         $employee->save();
@@ -959,25 +968,46 @@ class EmployeeController extends AccountBaseController
      */
     public function employeeData($request, $employee): void
     {
-        $employee->employee_id = $request->employee_id;
+        $employeeId = $request->employee_id;
+
+        if (empty($employeeId) && empty($employee->employee_id)) {
+            $nextEmployeeId = EmployeeDetails::where('company_id', company()->id)->count() + 1;
+
+            while (EmployeeDetails::where('company_id', company()->id)->where('employee_id', (string) $nextEmployeeId)->exists()) {
+                $nextEmployeeId++;
+            }
+
+            $employeeId = (string) $nextEmployeeId;
+        }
+
+        if (!empty($employeeId)) {
+            $employee->employee_id = $employeeId;
+        }
+
         $employee->address = $request->address;
         $employee->hourly_rate = $request->hourly_rate;
-        $employee->slack_username = $request->slack_username;
+        $employee->office_phone = $request->office_phone;
+        $employee->website = $request->website;
         $employee->department_id = $request->department;
         $employee->designation_id = $request->designation;
-        $employee->reporting_to = $request->reporting_to;
-        $employee->about_me = $request->about_me;
+        $employee->reporting_to = $request->reporting_to ?: null;
+        $employee->latitude = $request->latitude ?: $employee->latitude;
+        $employee->longitude = $request->longitude ?: $employee->longitude;
+        $employee->employee_type = $request->employee_type ?: ($employee->employee_type ?: 'office_staff');
+        $employee->office_latitude = $request->office_latitude ?: $request->latitude ?: $employee->office_latitude;
+        $employee->office_longitude = $request->office_longitude ?: $request->longitude ?: $employee->office_longitude;
+        $employee->allowed_radius = $request->allowed_radius ?: $employee->allowed_radius;
+        $employee->notice_period = $request->notice_period;
         $employee->joining_date = companyToYmd($request->joining_date);
         $employee->date_of_birth = $request->date_of_birth ? companyToYmd($request->date_of_birth) : null;
         $employee->calendar_view = 'task,events,holiday,tickets,leaves';
-        $employee->probation_end_date = $request->probation_end_date ? companyToYmd($request->probation_end_date) : null;
-        $employee->notice_period_start_date = $request->notice_period_start_date ? companyToYmd($request->notice_period_start_date) : null;
-        $employee->notice_period_end_date = $request->notice_period_end_date ? companyToYmd($request->notice_period_end_date) : null;
-        $employee->marital_status = $request->marital_status;
-        $employee->marriage_anniversary_date = $request->marriage_anniversary_date ? companyToYmd($request->marriage_anniversary_date) : null;
-        $employee->employment_type = $request->employment_type;
-        $employee->internship_end_date = $request->internship_end_date ? companyToYmd($request->internship_end_date) : null;
-        $employee->contract_end_date = $request->contract_end_date ? companyToYmd($request->contract_end_date) : null;
+    }
+
+    private function defaultCountry(): ?Country
+    {
+        return Country::where('iso', 'IN')
+            ->orWhere('nicename', 'India')
+            ->first();
     }
 
     public function importMember()

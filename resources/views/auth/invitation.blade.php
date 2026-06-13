@@ -70,12 +70,21 @@
 
     <x-slot name="scripts">
         <script>
-            $('#email_address').change(function () {
-                var email = $('#email_address').val() + '@' + $('#email_domain').val();
-                $('#user-email').val(email);
+            function syncRestrictedEmail() {
+                const localPart = ($('#email_address').val() || '').trim();
+                const domain = ($('#email_domain').val() || '').trim();
+
+                if (localPart && domain) {
+                    $('#user-email').val(localPart + '@' + domain);
+                }
+            }
+
+            $('#email_address').on('input change blur', function () {
+                syncRestrictedEmail();
             });
 
             $('#submit-signup').click(function () {
+                syncRestrictedEmail();
 
                 var url = "{{ route('accept_invite') . '?invite=' . $invite->invitation_code }}";
                 $.easyAjax({

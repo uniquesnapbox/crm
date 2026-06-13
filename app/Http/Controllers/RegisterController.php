@@ -45,11 +45,11 @@ class RegisterController extends Controller
             ->where('status', 'active')
             ->first();
 
-        $this->company = $invite->company;
-
         if (is_null($invite) || ($invite->invitation_type == 'email' && $request->email != $invite->email)) {
             return Reply::error('messages.acceptInviteError');
         }
+
+        $this->company = $invite->company;
 
         DB::beginTransaction();
         try {

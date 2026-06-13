@@ -230,6 +230,11 @@
             window.location.href = href;
         });
 
+        // Fallback accordion behavior (independent of bundled main.js handlers)
+        $(document).on('click', '#appSideMenuScroll .accordionItemHeading', function(e) {
+            return toggleSidebarAccordion(e, this);
+        });
+
     });
 </script>
 
@@ -266,11 +271,6 @@
 
     aside .main-sidebar {
         z-index: 2147483000 !important;
-    }
-
-    aside .sidebar-brand-box {
-        position: relative;
-        z-index: 2147483002 !important;
     }
 
     aside .sidebar-menu,
