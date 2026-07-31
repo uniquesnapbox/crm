@@ -373,8 +373,8 @@ class TaskController extends AccountBaseController
 
         $task->is_private = $request->has('is_private') ? 1 : 0;
         $task->billable = $request->has('billable') && $request->billable ? 1 : 0;
-        $task->estimate_hours = $request->estimate_hours;
-        $task->estimate_minutes = $request->estimate_minutes;
+        $task->estimate_hours = $request->input('estimate_hours', 0) ?? 0;
+        $task->estimate_minutes = $request->input('estimate_minutes', 0) ?? 0;
 
         if ($request->board_column_id) {
             $task->board_column_id = $request->board_column_id;
@@ -402,7 +402,7 @@ class TaskController extends AccountBaseController
 
         // Save labels
 
-        $task->labels()->sync($request->task_labels);
+        $task->labels()->sync(array_filter((array) $request->input('task_labels', [])));
 
 
         if (!is_null($request->taskId)) {
@@ -692,8 +692,8 @@ class TaskController extends AccountBaseController
         $task->dependent_task_id = $request->has('dependent') && $request->has('dependent_task_id') && $request->dependent_task_id != '' ? $request->dependent_task_id : null;
         $task->is_private = $request->has('is_private') ? 1 : 0;
         $task->billable = $request->has('billable') && $request->billable ? 1 : 0;
-        $task->estimate_hours = $request->estimate_hours;
-        $task->estimate_minutes = $request->estimate_minutes;
+        $task->estimate_hours = $request->input('estimate_hours', 0) ?? 0;
+        $task->estimate_minutes = $request->input('estimate_minutes', 0) ?? 0;
 
         if ($request->project_id != '') {
             $task->project_id = $request->project_id;
@@ -735,7 +735,7 @@ class TaskController extends AccountBaseController
         $task->save();
 
         // save labels
-        $task->labels()->sync($request->task_labels);
+        $task->labels()->sync(array_filter((array) $request->input('task_labels', [])));
 
         // To add custom fields data
         if ($request->custom_fields_data) {

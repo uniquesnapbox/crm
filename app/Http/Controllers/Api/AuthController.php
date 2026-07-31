@@ -53,7 +53,12 @@ class AuthController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
+                'image_url' => $user->image_url,
                 'roles' => $user->roles->pluck('name')->values(),
+            ],
+            'permissions' => [
+                'add_lead' => $user->permission('add_lead'),
+                'add_tasks' => $user->permission('add_tasks'),
             ],
             'employee_id' => $user->employeeDetail?->id ?? $user->id,
         ]);
@@ -68,7 +73,12 @@ class AuthController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
+                'image_url' => $user->image_url,
                 'roles' => $user->roles->pluck('name')->values(),
+            ],
+            'permissions' => [
+                'add_lead' => $user->permission('add_lead'),
+                'add_tasks' => $user->permission('add_tasks'),
             ],
             'employee_id' => $user->employeeDetail?->id ?? $user->id,
         ]);

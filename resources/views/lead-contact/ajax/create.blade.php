@@ -4,6 +4,7 @@ $viewLeadSourcesPermission = user()->permission('view_lead_sources');
 $addLeadSourcesPermission = user()->permission('add_lead_sources');
 $addLeadCategoryPermission = user()->permission('add_lead_category');
 $addProductPermission = user()->permission('add_product');
+$addEmployeePermission = user()->permission('add_employees');
 $assignLeadPermission = in_array('admin', user_roles()) || user()->permission('add_lead') == 'all' || user()->permission('edit_lead') == 'all';
 @endphp
 
@@ -76,24 +77,38 @@ $assignLeadPermission = in_array('admin', user_roles()) || user()->permission('a
 
                     @if ($assignLeadPermission)
                         <div class="col-lg-4 col-md-6">
-                            <x-forms.select fieldId="assigned_to" :fieldLabel="__('modules.tasks.assignTo')"
-                                fieldName="assigned_to" search="true">
-                                <option value="">--</option>
-                                @foreach ($employees as $item)
-                                    <x-user-option :user="$item" />
-                                @endforeach
-                            </x-forms.select>
+                            <div class="form-group my-3">
+                                <x-forms.label fieldId="assigned_to" :fieldLabel="__('modules.tasks.assignTo')">
+                                </x-forms.label>
+                                <x-forms.input-group>
+                                    <select class="form-control select-picker" name="assigned_to" id="assigned_to"
+                                        data-live-search="true" data-size="8">
+                                        <option value="">--</option>
+                                        @foreach ($employees as $item)
+                                            <x-user-option :user="$item" />
+                                        @endforeach
+                                    </select>
+
+                                    @if ($addEmployeePermission == 'all' || $addEmployeePermission == 'added')
+                                        <x-slot name="append">
+                                            <button id="add-employee" type="button"
+                                                    class="btn btn-outline-secondary border-grey"
+                                                    data-toggle="tooltip"
+                                                    data-original-title="{{ __('modules.employees.addNewEmployee') }}">@lang('app.add')</button>
+                                        </x-slot>
+                                    @endif
+                                </x-forms.input-group>
+                            </div>
                         </div>
                     @endif
 
                 </div>
 
                 <h4 class="mb-0 p-20 f-21 font-weight-normal text-capitalize border-top-grey">
-                    <a href="javascript:;" class="text-dark toggle-other-details"><i class="fa fa-chevron-down"></i>
-                        @lang('modules.client.companyDetails')</a>
+                    @lang('modules.client.companyDetails')
                 </h4>
 
-                <div class="row p-20 d-none" id="other-details">
+                <div class="row p-20" id="other-details">
 
                     <div class="col-lg-3 col-md-6">
                         <x-forms.text :fieldLabel="__('modules.lead.companyName')" fieldName="company_name"
@@ -249,20 +264,11 @@ $assignLeadPermission = in_array('admin', user_roles()) || user()->permission('a
                     <x-forms.custom-field :fields="$fields" class="col-md-12"></x-forms.custom-field>
                 </div>
 
-                {{-- Dropdown button for actions --}}
                 <div class="row p-20">
                     <div class="col-md-12">
-                        <div class="btn-group">
-                            <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                @lang('app.actions')
-                            </button>
-                            <div class="dropdown-menu">
-                                <button type="button" class="dropdown-item" id="save-lead-form">@lang('app.save')</button>
-                                <button type="button" class="dropdown-item" id="save-more-lead-form">@lang('app.saveAddMore')</button>
-                                <div class="dropdown-divider"></div>
-                                <a class="dropdown-item" href="{{ route('lead-contact.index') }}">@lang('app.cancel')</a>
-                            </div>
-                        </div>
+                        <button type="button" class="btn btn-primary mr-2 mb-2" id="save-lead-form">@lang('app.save')</button>
+                        <button type="button" class="btn btn-outline-secondary mr-2 mb-2" id="save-more-lead-form">@lang('app.saveAddMore')</button>
+                        <a class="btn btn-cancel mb-2" href="{{ route('lead-contact.index') }}">@lang('app.cancel')</a>
                     </div>
                 </div>
 
@@ -424,9 +430,21 @@ $assignLeadPermission = in_array('admin', user_roles()) || user()->permission('a
             $.ajaxModal(MODAL_LG, url);
         });
 
-        $('.toggle-other-details').click(function() {
-            $(this).find('svg').toggleClass('fa-chevron-down fa-chevron-up');
-            $('#other-details').toggleClass('d-none');
+        $('#add-employee').click(function() {
+            $(MODAL_XL).modal('show');
+            const url = "{{ route('employees.create') }}";
+            $.easyAjax({
+                url: url,
+                blockUI: true,
+                container: MODAL_XL,
+                success: function(response) {
+                    if (response.status == "success") {
+                        $(MODAL_XL + ' .modal-body').html(response.html);
+                        $(MODAL_XL + ' .modal-title').html(response.title);
+                        init(MODAL_XL);
+                    }
+                }
+            });
         });
 
         function toggleContactReason() {

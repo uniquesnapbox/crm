@@ -58,7 +58,7 @@ class StoreRequest extends CoreRequest
             'office_latitude' => 'nullable|numeric|between:-90,90',
             'office_longitude' => 'nullable|numeric|between:-180,180',
             'allowed_radius' => 'nullable|integer|min:1|max:100000',
-            'image' => 'required|image',
+            'image' => 'nullable|image',
         ];
 
         if (request()->telegram_user_id) {

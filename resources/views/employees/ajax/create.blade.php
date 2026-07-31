@@ -149,7 +149,7 @@
                     <div class="col-lg-3 col-md-6">
                         <x-forms.file allowedFileExtensions="png jpg jpeg svg bmp" class="mr-0 mr-lg-2 mr-md-2 cropper"
                                       :fieldLabel="__('modules.profile.profilePicture')" fieldName="image" fieldId="image"
-                                      fieldHeight="90" fieldRequired="true" :popover="__('messages.fileFormat.ImageFile')" />
+                                      fieldHeight="90" :popover="__('messages.fileFormat.ImageFile')" />
                     </div>
 
                     <div class="col-md-12 mt-2">

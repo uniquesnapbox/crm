@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use App\Models\Company;
 use App\Models\PushNotificationSetting;
+use App\Support\BootstrapProfiler;
+use App\Support\BootstrapSettings;
 use Barryvdh\LaravelIdeHelper\IdeHelperServiceProvider;
 use Carbon\CarbonInterval;
 use Illuminate\Support\Facades\DB;
@@ -23,16 +25,19 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register()
     {
+        BootstrapProfiler::measure(static::class, 'register', function () {
         Cashier::ignoreMigrations();
         Sanctum::ignoreMigrations();
 
         if (config('app.redirect_https')) {
             $this->app['request']->server->set('HTTPS', true);
         }
+        });
     }
 
     public function boot()
     {
+        BootstrapProfiler::measure(static::class, 'boot', function () {
         Cashier::useCustomerModel(Company::class);
 
         if (config('app.redirect_https')) {
@@ -43,8 +48,16 @@ class AppServiceProvider extends ServiceProvider
 
         // Handle push notification setting safely
         try {
-            if (Schema::hasTable('push_notification_settings')) {
-                View::share('pushSetting', DB::table('push_notification_settings')->first());
+            if (!BootstrapSettings::shouldSkipWebOnlyBootstrap()) {
+                $pushSetting = BootstrapSettings::remember('push_notification_settings:first', function () {
+                    if (!Schema::hasTable('push_notification_settings')) {
+                        return null;
+                    }
+
+                    return DB::table('push_notification_settings')->first();
+                });
+
+                View::share('pushSetting', $pushSetting);
             } else {
                 View::share('pushSetting', null);
             }
@@ -68,6 +81,7 @@ class AppServiceProvider extends ServiceProvider
             }
 
             return static::minutes($totalMinutes)->cascade()->forHumans(['short' => true, 'options' => 0]); /** @phpstan-ignore-line */
+        });
         });
     }
 }

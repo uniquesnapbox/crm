@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Support\BootstrapProfiler;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
 use Illuminate\Http\Request;
@@ -27,6 +28,7 @@ class RouteServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+        BootstrapProfiler::measure(static::class, 'boot', function () {
         $this->configureRateLimiting();
 
         $this->routes(function () {
@@ -36,6 +38,7 @@ class RouteServiceProvider extends ServiceProvider
             $this->mapApiRoutes();
             $this->mapWebRoutes();
 
+        });
         });
     }
 

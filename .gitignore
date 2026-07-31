@@ -12,6 +12,7 @@ Homestead.json
 Homestead.yaml
 npm-debug.log
 yarn-error.log
+*.log
 .php-cs-fixer.cache
 /.idea
 /.vscode
@@ -39,3 +40,5 @@ database/maxmind/
 .env.*.local
 database/schema/mysql-schema.dump
 database/schema/mysql-schema.dump.bak
+database_backups/
+deploy-hotfix-*/

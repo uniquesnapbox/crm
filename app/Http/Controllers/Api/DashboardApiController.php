@@ -19,28 +19,30 @@ class DashboardApiController extends Controller
         }
 
         $today = Carbon::today();
+        $startOfDay = $today->copy()->startOfDay();
+        $startOfTomorrow = $today->copy()->addDay()->startOfDay();
 
         // total employees
         $totalEmployees = User::whereHas('roles', function ($q) {
             $q->where('name', 'employee');
         })->count();
 
-        // latest location per employee today
-        $latest = EmployeeLocation::whereDate('clock_in_at', $today)
-            ->select('employee_id', 'is_active', 'clock_out_at')
-            ->get()
-            ->groupBy('employee_id')
-            ->map(function ($rows) {
-                return $rows->sortByDesc('clock_in_at')->first();
-            });
+        $latestLocationIds = EmployeeLocation::query()
+            ->where('clock_in_at', '>=', $startOfDay)
+            ->where('clock_in_at', '<', $startOfTomorrow)
+            ->selectRaw('MAX(id)')
+            ->groupBy('employee_id');
 
-        $active = $latest->filter(function ($row) {
-            return $row && $row->is_active;
-        })->count();
+        $attendanceSummary = EmployeeLocation::query()
+            ->whereIn('id', $latestLocationIds)
+            ->selectRaw('
+                COALESCE(SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END), 0) as active_count,
+                COALESCE(SUM(CASE WHEN is_active = 0 AND clock_out_at IS NOT NULL THEN 1 ELSE 0 END), 0) as completed_count
+            ')
+            ->first();
 
-        $completed = $latest->filter(function ($row) {
-            return $row && !$row->is_active && $row->clock_out_at !== null;
-        })->count();
+        $active = (int) ($attendanceSummary->active_count ?? 0);
+        $completed = (int) ($attendanceSummary->completed_count ?? 0);
 
         return response()->json([
             'date' => $today->toDateString(),

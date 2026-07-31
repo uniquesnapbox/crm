@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Support\BootstrapProfiler;
+use App\Support\BootstrapSettings;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Schema;
@@ -12,14 +14,22 @@ class TranslateSettingConfigProvider extends ServiceProvider
 
     public function register()
     {
+        BootstrapProfiler::measure(static::class, 'register', function () {
         try {
+            if (BootstrapSettings::shouldSkipWebOnlyBootstrap()) {
+                return;
+            }
 
-            if (Schema::hasTable('translate_settings')) {
-                $translateSetting = DB::table('translate_settings')->first();
-
-                if ($translateSetting) {
-                    Config::set('laravel_google_translate.google_translate_api_key', $translateSetting->google_key);
+            $translateSetting = BootstrapSettings::remember('translate_settings:first', function () {
+                if (!Schema::hasTable('translate_settings')) {
+                    return null;
                 }
+
+                return DB::table('translate_settings')->first();
+            });
+
+            if ($translateSetting) {
+                Config::set('laravel_google_translate.google_translate_api_key', $translateSetting->google_key);
             }
 
 
@@ -27,6 +37,7 @@ class TranslateSettingConfigProvider extends ServiceProvider
         // @codingStandardsIgnoreLine
         catch (\Exception $e) {
         }
+        });
 
     }
 

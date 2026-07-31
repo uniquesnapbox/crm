@@ -228,7 +228,6 @@
                 </div>
 
                 <x-forms.custom-field :fields="$fields" :model="$employeeDetail"></x-forms.custom-field>
-                <x-forms.custom-field-filejs/>
 
                 <x-form-actions>
                     <x-forms.button-primary id="save-form" class="mr-3" icon="check">@lang('app.save')</x-forms.button-primary>
@@ -358,6 +357,8 @@
                 }
             });
         });
+
+        <x-forms.custom-field-filejs/>
 
         $('#random_password').click(function() {
             const randPassword = Math.random().toString(36).substr(2, 8);

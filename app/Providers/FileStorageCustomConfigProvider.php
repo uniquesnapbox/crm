@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Support\BootstrapProfiler;
+use App\Support\BootstrapSettings;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
@@ -11,8 +13,19 @@ class FileStorageCustomConfigProvider extends ServiceProvider
 
     public function register()
     {
+        BootstrapProfiler::measure(static::class, 'register', function () {
         try {
-            $setting = DB::table('file_storage_settings')->where('status', 'enabled')->first();
+            if (!BootstrapSettings::shouldLoadStorageSettings()) {
+                return;
+            }
+
+            $setting = BootstrapSettings::remember('file_storage_settings:enabled', function () {
+                return DB::table('file_storage_settings')->where('status', 'enabled')->first();
+            });
+
+            if (!$setting) {
+                return;
+            }
 
             switch ($setting->filesystem) {
 
@@ -90,6 +103,7 @@ class FileStorageCustomConfigProvider extends ServiceProvider
         // @codingStandardsIgnoreLine
         catch (\Exception $e) {
         }
+        });
 
     }
 

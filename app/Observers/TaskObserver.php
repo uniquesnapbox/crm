@@ -84,35 +84,35 @@ class TaskObserver
         if (!isRunningInConsoleOrSeeding()) {
             self::createEmployeeActivity(user()->id, 'task-created', $task->id, 'task');
 
-            $mentionIds = [];
+            $mentionIds = $this->requestIds(request()->mention_user_ids);
+            $userIds = $this->requestIds(request()->user_id);
             $mentionDescriptionMembers = null;
-            $unmentionIds = null;
+            $unmentionIds = [];
             $unmentionDescriptionMember = null;
 
-            if (request()->mention_user_ids != null || request()->mention_user_ids != '' || request()->has('mention_user_ids')) {
+            if (!empty($mentionIds)) {
 
-                $task->mentionUser()->sync(request()->mention_user_ids);
-                $mentionIds = explode(',', request()->mention_user_ids);
+                $task->mentionUser()->sync($mentionIds);
                 $mentionDescriptionMembers = User::whereIn('id', $mentionIds)->get();
 
             }
 
-            if (request()->user_id != null || request()->user_id != '' || request()->has('user_id')) {
+            if (!empty($userIds)) {
 
-                $unmentionIds = array_diff(request()->user_id, $mentionIds);
+                $unmentionIds = array_diff($userIds, $mentionIds);
                 $unmentionDescriptionMember = User::whereIn('id', $unmentionIds)->get();
             }
 
             if (request()->has('project_id') && request()->project_id != 'all' && request()->project_id != '') {
-                if ((request()->mention_user_id) != null || request()->mention_user_id != '' || $mentionIds != null && $mentionIds != '') {
+                if (!empty($mentionIds)) {
 
                     $this->dispatchEventSafely(new TaskEvent($task, $mentionDescriptionMembers, 'TaskMention'), 'Task mention notification failed.', [
                         'task_id' => $task->id,
                     ]);
 
-                    if (request()->user_id != null || request()->user_id != '' || request()->has('user_id')) {
+                    if (!empty($userIds)) {
 
-                        if ($unmentionIds != null && $unmentionIds != '') {
+                        if (!empty($unmentionIds)) {
 
                             $this->dispatchEventSafely(new TaskEvent($task, $unmentionDescriptionMember, 'NewTask'), 'New task notification failed.', [
                                 'task_id' => $task->id,
@@ -135,7 +135,7 @@ class TaskObserver
             }
             else {
 
-                if ((request()->mention_user_id) != null || request()->mention_user_id != '') {
+                if (!empty($mentionIds)) {
 
                     $this->dispatchEventSafely(new TaskEvent($task, $mentionDescriptionMembers, 'TaskMention'), 'Task mention notification failed.', [
                         'task_id' => $task->id,
@@ -143,9 +143,9 @@ class TaskObserver
 
                 }
 
-                if (request()->user_id != null || request()->user_id != '' || (isset(request()->user_id))) {
+                if (!empty($userIds)) {
 
-                    if ($unmentionIds != null && $unmentionIds != '') {
+                    if (!empty($unmentionIds)) {
 
                         $this->dispatchEventSafely(new TaskEvent($task, $unmentionDescriptionMember, 'NewTask'), 'New task notification failed.', [
                             'task_id' => $task->id,
@@ -189,11 +189,11 @@ class TaskObserver
     {
 
         $mentionedUser = MentionUser::where('task_id', $task->id)->pluck('user_id');
-        $requestMentionIds = explode(',', request()->mention_user_ids);
+        $requestMentionIds = $this->requestIds(request()->mention_user_ids);
         $newMention = [];
-        $task->mentionUser()->sync(request()->mention_user_ids);
+        $task->mentionUser()->sync($requestMentionIds);
 
-        if ($requestMentionIds != null) {
+        if (!empty($requestMentionIds)) {
             foreach ($requestMentionIds as $value) {
 
                 if (($mentionedUser) != null) {
@@ -220,6 +220,15 @@ class TaskObserver
             }
         }
 
+    }
+
+    private function requestIds($value): array
+    {
+        $ids = is_array($value) ? $value : explode(',', (string) $value);
+
+        return array_values(array_unique(array_filter(array_map('trim', $ids), static function ($id) {
+            return $id !== '';
+        })));
     }
 
     // phpcs:ignore

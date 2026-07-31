@@ -3,15 +3,15 @@
 namespace App\DataTables;
 
 use App\Helper\Common;
-use Carbon\Carbon;
 use App\Models\LeadStatus;
 use App\Models\CustomField;
 use App\Models\CustomFieldGroup;
 use App\Models\Lead;
+use App\Models\Project;
 use App\Models\User;
+use App\Scopes\ActiveScope;
 use Yajra\DataTables\Html\Button;
 use Yajra\DataTables\Html\Column;
-use Illuminate\Support\Facades\DB;
 
 class LeadContactDataTable extends BaseDataTable
 {
@@ -38,8 +38,6 @@ class LeadContactDataTable extends BaseDataTable
         $this->addFollowUpPermission = user()->permission('add_lead_follow_up');
         $this->changeLeadStatusPermission = user()->permission('change_deal_stages');
         $this->viewLeadFollowUpPermission = user()->permission('view_lead_follow_up');
-        $this->status = LeadStatus::get();
-        $this->employees = User::allEmployees();
     }
 
     /**
@@ -140,7 +138,15 @@ class LeadContactDataTable extends BaseDataTable
      */
     public function query(Lead $model)
     {
-        $leadContact = $model->with(['category', 'assignedTo'])
+        $leadContact = $model->with([
+            'category:id,category_name',
+            'addedBy' => fn ($query) => $query
+                ->without(['clientDetails', 'employeeDetail', 'leaves', 'roles'])
+                ->select('id', 'name', 'company_id'),
+            'assignedTo' => fn ($query) => $query
+                ->without(['clientDetails', 'employeeDetail', 'leaves', 'roles'])
+                ->select('id', 'name', 'company_id'),
+        ])
             ->select(
                 'leads.id',
                 'leads.added_by',
@@ -184,23 +190,23 @@ class LeadContactDataTable extends BaseDataTable
         if ($this->request()->startDate !== null && $this->request()->startDate != 'null' && $this->request()->startDate != '' && request()->date_filter_on == 'created_at') {
             $startDate = companyToDateString($this->request()->startDate);
 
-            $leadContact = $leadContact->having(DB::raw('DATE(leads.`created_at`)'), '>=', $startDate);
+            $leadContact = $leadContact->where('leads.created_at', '>=', $startDate . ' 00:00:00');
         }
 
         if ($this->request()->endDate !== null && $this->request()->endDate != 'null' && $this->request()->endDate != '' && request()->date_filter_on == 'created_at') {
             $endDate = companyToDateString($this->request()->endDate);
-            $leadContact = $leadContact->having(DB::raw('DATE(leads.`created_at`)'), '<=', $endDate);
+            $leadContact = $leadContact->where('leads.created_at', '<=', $endDate . ' 23:59:59');
         }
 
 
         if ($this->request()->startDate !== null && $this->request()->startDate != 'null' && $this->request()->startDate != '' && request()->date_filter_on == 'updated_at') {
             $startDate = companyToDateString($this->request()->startDate);
-            $leadContact = $leadContact->having(DB::raw('DATE(leads.`updated_at`)'), '>=', $startDate);
+            $leadContact = $leadContact->where('leads.updated_at', '>=', $startDate . ' 00:00:00');
         }
 
         if ($this->request()->endDate !== null && $this->request()->endDate != 'null' && $this->request()->endDate != '' && request()->date_filter_on == 'updated_at') {
             $endDate = companyToDateString($this->request()->endDate);
-            $leadContact = $leadContact->having(DB::raw('DATE(leads.`updated_at`)'), '<=', $endDate);
+            $leadContact = $leadContact->where('leads.updated_at', '<=', $endDate . ' 23:59:59');
         }
 
         if ($this->request()->category_id != 'all' && $this->request()->category_id != '') {
@@ -348,7 +354,7 @@ class LeadContactDataTable extends BaseDataTable
         $selectedValue = (string) ($row->status_id ?? '');
         $options = '<option value="">Not Set</option>';
 
-        foreach ($this->status as $status) {
+        foreach ($this->statuses() as $status) {
             $statusId = (string) $status->id;
             $selected = $selectedValue === $statusId ? ' selected' : '';
             $options .= '<option value="' . e($statusId) . '"' . $selected . '>' . e($status->type) . '</option>';
@@ -414,7 +420,7 @@ class LeadContactDataTable extends BaseDataTable
         $selectedValue = (string) ($row->assigned_to ?? '');
         $options = '<option value="">Unassigned</option>';
 
-        foreach ($this->employees as $employee) {
+        foreach ($this->assignableEmployees() as $employee) {
             $employeeId = (string) $employee->id;
             $selected = $selectedValue === $employeeId ? ' selected' : '';
             $options .= '<option value="' . e($employeeId) . '"' . $selected . '>' . e($employee->name) . '</option>';
@@ -427,5 +433,53 @@ class LeadContactDataTable extends BaseDataTable
             '</div>';
     }
 
-}
+    private function statuses()
+    {
+        if (is_null($this->status)) {
+            $this->status = LeadStatus::query()->select('id', 'type')->orderBy('priority')->get();
+        }
 
+        return $this->status;
+    }
+
+    private function assignableEmployees()
+    {
+        if (is_null($this->employees)) {
+            $users = User::without(['clientDetails', 'employeeDetail', 'leaves', 'roles'])
+                ->withRole('employee')
+                ->join('employee_details', 'employee_details.user_id', '=', 'users.id')
+                ->select('users.id', 'users.name')
+                ->withoutGlobalScope(ActiveScope::class);
+
+            $viewEmployeePermission = user()->permission('view_employees');
+
+            if (($viewEmployeePermission == 'added' || $viewEmployeePermission == 'both') && !in_array('client', user_roles())) {
+                $users->where(function ($query) {
+                    $query->where('employee_details.user_id', user()->id)
+                        ->orWhere('employee_details.added_by', user()->id);
+                });
+            }
+            elseif (($viewEmployeePermission == 'owned' || $viewEmployeePermission == 'none' || $viewEmployeePermission == '') && !in_array('client', user_roles())) {
+                $users->where('users.id', user()->id);
+            }
+
+            if (in_array('client', user_roles())) {
+                $clientEmployees = Project::where('client_id', user()->id)
+                    ->join('project_members', 'project_members.project_id', '=', 'projects.id')
+                    ->select('project_members.user_id')
+                    ->get()
+                    ->pluck('user_id');
+
+                $users->whereIn('users.id', $clientEmployees);
+            }
+
+            $this->employees = $users
+                ->orderBy('users.name')
+                ->groupBy('users.id')
+                ->get();
+        }
+
+        return $this->employees;
+    }
+
+}

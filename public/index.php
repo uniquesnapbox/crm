@@ -3,6 +3,9 @@
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Http\Request;
 
+set_time_limit(0);
+ini_set('max_execution_time', '0');
+
 if (!file_exists(__DIR__ . '/../.env')) {
     $GLOBALS["error_type"] = "env-missing";
     include('error_install.php');

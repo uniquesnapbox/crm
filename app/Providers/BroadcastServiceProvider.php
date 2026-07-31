@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Support\BootstrapProfiler;
+use App\Support\BootstrapSettings;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
@@ -13,8 +15,15 @@ class BroadcastServiceProvider extends ServiceProvider
 
     public function register()
     {
+        BootstrapProfiler::measure(static::class, 'register', function () {
         try {
-            $pusherSetting = DB::table('pusher_settings')->first();
+            if (BootstrapSettings::shouldSkipWebOnlyBootstrap()) {
+                return;
+            }
+
+            $pusherSetting = BootstrapSettings::remember('pusher_settings:first', function () {
+                return DB::table('pusher_settings')->first();
+            });
 
             if ($pusherSetting) {
 
@@ -33,6 +42,7 @@ class BroadcastServiceProvider extends ServiceProvider
         // @codingStandardsIgnoreLine
         catch (\Exception $e) {
         } // phpcs:ignore
+        });
     }
 
     /**

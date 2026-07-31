@@ -6,9 +6,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Helper\Reply;
 use App\Models\Company;
-use App\Models\Permission;
 use App\Models\PermissionRole;
-use App\Models\PermissionType;
 use App\Models\UserInvitation;
 use App\Models\UserPermission;
 use App\Models\EmployeeDetails;
@@ -41,9 +39,17 @@ class RegisterController extends Controller
 
     public function acceptInvite(AcceptInviteRequest $request)
     {
-        $invite = UserInvitation::where('invitation_code', $request->invite)
-            ->where('status', 'active')
-            ->first();
+        $invite = $request->attributes->get('accepted_invite');
+
+        if (is_null($invite)) {
+            $invite = UserInvitation::with('company')
+                ->where('invitation_code', $request->invite)
+                ->where('status', 'active')
+                ->first();
+        }
+        else {
+            $invite->loadMissing('company');
+        }
 
         if (is_null($invite) || ($invite->invitation_type == 'email' && $request->email != $invite->email)) {
             return Reply::error('messages.acceptInviteError');
@@ -59,6 +65,7 @@ class RegisterController extends Controller
             $user->email = $request->email;
             $user->password = bcrypt($request->password);
             $user->save();
+            $user->setRelation('company', $this->company);
             $user = $user->setAppends([]);
 
             $lastEmployeeID = EmployeeDetails::where('company_id', $invite->company_id)->count();
@@ -72,6 +79,7 @@ class RegisterController extends Controller
                 $employee->joining_date = now($this->company->timezone)->format('Y-m-d');
                 $employee->added_by = $user->id;
                 $employee->last_updated_by = $user->id;
+                $employee->setRelation('user', $user);
                 $employee->save();
             }
 
@@ -79,16 +87,22 @@ class RegisterController extends Controller
             $user->attachRole($employeeRole);
 
 
-            $rolePermissions = PermissionRole::where('role_id', $employeeRole->id)->get();
+            $now = now();
+            $userPermissions = PermissionRole::query()
+                ->select('permission_id', 'permission_type_id')
+                ->where('role_id', $employeeRole->id)
+                ->get()
+                ->map(fn ($permission) => [
+                    'permission_id' => $permission->permission_id,
+                    'user_id' => $user->id,
+                    'permission_type_id' => $permission->permission_type_id,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ])
+                ->all();
 
-            foreach ($rolePermissions as $value) {
-                $userPermission = UserPermission::where('permission_id', $value->permission_id)
-                    ->where('user_id', $user->id)
-                    ->firstOrNew();
-                $userPermission->permission_id = $value->permission_id;
-                $userPermission->user_id = $user->id;
-                $userPermission->permission_type_id = $value->permission_type_id;
-                $userPermission->save();
+            if (!empty($userPermissions)) {
+                UserPermission::insert($userPermissions);
             }
 
             $logSearch = new AccountBaseController();
@@ -103,7 +117,15 @@ class RegisterController extends Controller
             DB::commit();
 
             // Send Notification to all admins about recently added member
-            $admins = User::allAdmins($user->company->id);
+            $admins = User::query()
+                ->without(['clientDetails', 'leaves', 'roles'])
+                ->with([
+                    'employeeDetail:id,user_id,slack_username',
+                    'company.slackSetting',
+                ])
+                ->withRole('admin')
+                ->where('users.company_id', $this->company->id)
+                ->get();
 
             foreach ($admins as $admin) {
                 event(new NewUserRegistrationViaInviteEvent($admin, $user));

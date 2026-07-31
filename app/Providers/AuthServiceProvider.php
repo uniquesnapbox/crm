@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Support\BootstrapProfiler;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 
 class AuthServiceProvider extends ServiceProvider
@@ -23,7 +24,9 @@ class AuthServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+        BootstrapProfiler::measure(static::class, 'boot', function () {
         $this->registerPolicies();
+        });
     }
 
 }

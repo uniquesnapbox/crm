@@ -6,6 +6,7 @@ use App\Enums\MaritalStatus;
 use Illuminate\Support\Carbon;
 use App\Models\EmployeeDetails;
 use App\Models\EmployeeLeaveQuota;
+use App\Models\Company;
 
 class EmployeeDetailsObserver
 {
@@ -33,10 +34,21 @@ class EmployeeDetailsObserver
 
     public function created(EmployeeDetails $detail)
     {
-        $leaveTypes = $detail->company->leaveTypes;
-        $settings = company();
+        $settings = Company::query()
+            ->select('id', 'timezone', 'leaves_start_from', 'year_starts_from')
+            ->with(['leaveTypes' => function ($query) {
+                $query->select('id', 'company_id', 'no_of_leaves');
+            }])
+            ->find($detail->company_id);
 
-        foreach ($leaveTypes as $value) {
+        if (!$settings) {
+            return;
+        }
+
+        $quotas = [];
+        $now = now();
+
+        foreach ($settings->leaveTypes as $value) {
             $leaves = $value->no_of_leaves;
 
             if ($settings && $settings->leaves_start_from == 'year_start' && $detail->joining_date->year == now()->year) {
@@ -57,15 +69,19 @@ class EmployeeDetailsObserver
                 $leaves = floor($value->no_of_leaves / 12 * $countOfMonthsAllowed) + $leaveAdd;
             }
 
-            EmployeeLeaveQuota::create(
-                [
-                    'user_id' => $detail->user_id,
-                    'leave_type_id' => $value->id,
-                    'no_of_leaves' => $leaves,
-                    'leaves_used' => 0,
-                    'leaves_remaining' => $leaves,
-                ]
-            );
+            $quotas[] = [
+                'user_id' => $detail->user_id,
+                'leave_type_id' => $value->id,
+                'no_of_leaves' => $leaves,
+                'leaves_used' => 0,
+                'leaves_remaining' => $leaves,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
+        if (!empty($quotas)) {
+            EmployeeLeaveQuota::insert($quotas);
         }
     }
 

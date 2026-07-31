@@ -4,6 +4,7 @@ $viewLeadSourcesPermission = user()->permission('view_lead_sources');
 $addLeadSourcesPermission = user()->permission('add_lead_sources');
 $addLeadCategoryPermission = user()->permission('add_lead_category');
 $addProductPermission = user()->permission('add_product');
+$addEmployeePermission = user()->permission('add_employees');
 $addPermission = user()->permission('add_lead'); // For Added By field
 $assignLeadPermission = in_array('admin', user_roles()) || user()->permission('add_lead') == 'all' || user()->permission('edit_lead') == 'all';
 $rawEditMobile = preg_replace('/\D+/', '', (string) ($leadContact->mobile ?? ''));
@@ -82,13 +83,28 @@ $editMobileLocal = (str_starts_with($rawEditMobile, '91') && strlen($rawEditMobi
 
                     @if ($assignLeadPermission)
                         <div class="col-lg-4 col-md-6">
-                            <x-forms.select fieldId="assigned_to" :fieldLabel="__('modules.tasks.assignTo')"
-                                fieldName="assigned_to" search="true">
-                                <option value="">--</option>
-                                @foreach ($employees as $item)
-                                    <x-user-option :user="$item" :selected="$leadContact->assigned_to == $item->id" />
-                                @endforeach
-                            </x-forms.select>
+                            <div class="form-group my-3">
+                                <x-forms.label fieldId="assigned_to" :fieldLabel="__('modules.tasks.assignTo')">
+                                </x-forms.label>
+                                <x-forms.input-group>
+                                    <select class="form-control select-picker" name="assigned_to" id="assigned_to"
+                                        data-live-search="true" data-size="8">
+                                        <option value="">--</option>
+                                        @foreach ($employees as $item)
+                                            <x-user-option :user="$item" :selected="$leadContact->assigned_to == $item->id" />
+                                        @endforeach
+                                    </select>
+
+                                    @if ($addEmployeePermission == 'all' || $addEmployeePermission == 'added')
+                                        <x-slot name="append">
+                                            <button id="add-employee" type="button"
+                                                    class="btn btn-outline-secondary border-grey"
+                                                    data-toggle="tooltip"
+                                                    data-original-title="{{ __('modules.employees.addNewEmployee') }}">@lang('app.add')</button>
+                                        </x-slot>
+                                    @endif
+                                </x-forms.input-group>
+                            </div>
                         </div>
                     @endif
 
@@ -257,20 +273,11 @@ $editMobileLocal = (str_starts_with($rawEditMobile, '91') && strlen($rawEditMobi
 
                 <x-forms.custom-field :fields="$fields" :model="$leadContact"></x-forms.custom-field>
 
-                {{-- Dropdown button for actions --}}
                 <div class="row p-20">
                     <div class="col-md-12">
-                        <div class="btn-group">
-                            <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                @lang('app.actions')
-                            </button>
-                            <div class="dropdown-menu">
-                                <button type="button" class="dropdown-item" id="save-lead-form">@lang('app.save')</button>
-                                <button type="button" class="dropdown-item" id="save-more-lead-form">@lang('app.saveAddMore')</button>
-                                <div class="dropdown-divider"></div>
-                                <a class="dropdown-item" href="{{ route('lead-contact.index') }}">@lang('app.cancel')</a>
-                            </div>
-                        </div>
+                        <button type="button" class="btn btn-primary mr-2 mb-2" id="save-lead-form">@lang('app.save')</button>
+                        <button type="button" class="btn btn-outline-secondary mr-2 mb-2" id="save-more-lead-form">@lang('app.saveAddMore')</button>
+                        <a class="btn btn-cancel mb-2" href="{{ route('lead-contact.index') }}">@lang('app.cancel')</a>
                     </div>
                 </div>
 

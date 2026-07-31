@@ -102,7 +102,7 @@ class AccountBaseController extends Controller
         setlocale(LC_TIME, user()->locale . '_' . mb_strtoupper($this->company->locale));
 
         $this->user = user();
-        $this->unreadNotificationCount = isset($this->user->unreadNotifications) ? count($this->user->unreadNotifications) : 0;
+        $this->unreadNotificationCount = $this->user->unreadNotifications()->count();
         $this->stickyNotes = $this->user->sticky;
 
         $this->worksuitePlugins = worksuite_plugins();
@@ -159,5 +159,4 @@ class AccountBaseController extends Controller
     }
 
 }
-
 

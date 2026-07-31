@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Support\BootstrapProfiler;
+use App\Support\BootstrapSettings;
 use Illuminate\Session\SessionServiceProvider;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Config;
@@ -18,9 +20,15 @@ class SessionDriverConfigProvider extends ServiceProvider
      */
     public function register()
     {
+        BootstrapProfiler::measure(static::class, 'register', function () {
         try {
+            if (BootstrapSettings::shouldSkipWebOnlyBootstrap()) {
+                return;
+            }
 
-            $setting = DB::table('global_settings')->first();
+            $setting = BootstrapSettings::remember('global_settings:first', function () {
+                return DB::table('global_settings')->first();
+            });
 
             if ($setting) {
                 Config::set('session.driver', $setting->session_driver != '' ? $setting->session_driver : 'file');
@@ -31,6 +39,7 @@ class SessionDriverConfigProvider extends ServiceProvider
         // @codingStandardsIgnoreLine
         catch (\Exception $e) {
         }
+        });
 
         $app = App::getInstance();
         $app->register(SessionServiceProvider::class);

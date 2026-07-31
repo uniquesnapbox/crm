@@ -16,12 +16,15 @@ class NewUserViaLink extends BaseNotification
      */
     private $new_user;
     private $emailSetting;
+    private static array $emailSettingCache = [];
 
     public function __construct($new_user)
     {
         $this->new_user = $new_user;
         $this->company = $this->new_user->company;
-        $this->emailSetting = EmailNotificationSetting::where('company_id', $this->company->id)->where('slug', 'user-join-via-invitation')->first();
+        $cacheKey = $this->company->id . ':user-join-via-invitation';
+        $this->emailSetting = self::$emailSettingCache[$cacheKey]
+            ??= EmailNotificationSetting::where('company_id', $this->company->id)->where('slug', 'user-join-via-invitation')->first();
     }
 
     /**

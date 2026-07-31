@@ -54,9 +54,9 @@ class LeadContactController extends AccountBaseController
         abort_403(!in_array($viewPermission, ['all', 'added', 'owned', 'both']));
 
         if (!request()->ajax()) {
-            $this->categories = LeadCategory::get();
-            $this->sources = LeadSource::get();
-            $this->statuses = LeadStatus::get();
+            $this->categories = LeadCategory::query()->select('id', 'category_name')->orderBy('category_name')->get();
+            $this->sources = LeadSource::query()->select('id', 'type')->orderBy('type')->get();
+            $this->statuses = LeadStatus::query()->select('id', 'type', 'label_color', 'priority', 'default')->orderBy('priority')->get();
             $this->employees = User::allEmployees();
         }
 
@@ -74,9 +74,9 @@ class LeadContactController extends AccountBaseController
 
         $this->pageTitle = $this->leadContact->client_name; // removed salutation
 
-        $this->categories = LeadCategory::all();
-        $this->sources = LeadSource::all();
-        $this->statuses = LeadStatus::all();
+        $this->categories = LeadCategory::query()->select('id', 'category_name')->orderBy('category_name')->get();
+        $this->sources = LeadSource::query()->select('id', 'type')->orderBy('type')->get();
+        $this->statuses = LeadStatus::query()->select('id', 'type', 'label_color', 'priority', 'default')->orderBy('priority')->get();
         $this->products = Product::query()->select('id', 'name')->orderBy('name')->get();
         $this->countries = countries();
         $this->editPermission = user()->permission('edit_lead');
@@ -278,8 +278,8 @@ class LeadContactController extends AccountBaseController
             $this->employees = User::allEmployees();
         }
 
-        $defaultStatus = LeadStatus::where('default', '1')->first();
-        $this->columnId = ((request('column_id') != '') ? request('column_id') : $defaultStatus->id);
+        $defaultStatus = LeadStatus::query()->select('id')->where('default', '1')->first();
+        $this->columnId = ((request('column_id') != '') ? request('column_id') : $defaultStatus?->id);
 
         $leadContact = new Lead();
 
@@ -287,10 +287,10 @@ class LeadContactController extends AccountBaseController
             $this->fields = $leadContact->getCustomFieldGroupsWithFields()->fields;
         }
 
-        $this->products = Product::all();
-        $this->sources = LeadSource::all();
-        $this->status = LeadStatus::all();
-        $this->categories = LeadCategory::all();
+        $this->products = Product::query()->select('id', 'name')->orderBy('name')->get();
+        $this->sources = LeadSource::query()->select('id', 'type')->orderBy('type')->get();
+        $this->status = LeadStatus::query()->select('id', 'type', 'label_color', 'priority', 'default')->orderBy('priority')->get();
+        $this->categories = LeadCategory::query()->select('id', 'category_name')->orderBy('category_name')->get();
         $this->countries = countries();
         // salutations removed
 
@@ -417,9 +417,9 @@ class LeadContactController extends AccountBaseController
             $this->fields = $this->leadContact->getCustomFieldGroupsWithFields()->fields;
         }
 
-        $this->sources = LeadSource::all();
-        $this->status = LeadStatus::all();
-        $this->categories = LeadCategory::all();
+        $this->sources = LeadSource::query()->select('id', 'type')->orderBy('type')->get();
+        $this->status = LeadStatus::query()->select('id', 'type', 'label_color', 'priority', 'default')->orderBy('priority')->get();
+        $this->categories = LeadCategory::query()->select('id', 'category_name')->orderBy('category_name')->get();
         $this->countries = countries();
 
         $this->pageTitle = __('modules.leadContact.updateTitle');

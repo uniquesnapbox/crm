@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use Illuminate\Notifications\Notifiable;
 
 /**
@@ -169,6 +170,11 @@ class Lead extends BaseModel
     public function assignedTo(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_to')->withoutGlobalScope(ActiveScope::class);
+    }
+
+    public function leadAgent(): HasOneThrough
+    {
+        return $this->hasOneThrough(LeadAgent::class, Deal::class, 'lead_id', 'id', 'id', 'agent_id');
     }
 
     public static function allLeads($contactId = null)

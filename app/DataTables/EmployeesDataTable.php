@@ -311,7 +311,7 @@ class EmployeesDataTable extends BaseDataTable
             $startDate = companyToDateString($request->startDate);
             $endDate = companyToDateString($request->endDate);
 
-            $users = $users->whereRaw('Date(employee_details.joining_date) >= ?', [$startDate])->whereRaw('Date(employee_details.joining_date) <= ?', [$endDate]);
+            $users = $users->whereBetween('employee_details.joining_date', [$startDate, $endDate]);
         }
 
         if ($request->searchText != '') {

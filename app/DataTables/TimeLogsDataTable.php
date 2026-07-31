@@ -9,7 +9,6 @@ use App\Models\ProjectTimeLog;
 use App\Models\CustomFieldGroup;
 use Yajra\DataTables\Html\Button;
 use Yajra\DataTables\Html\Column;
-use Illuminate\Support\Facades\DB;
 
 class TimeLogsDataTable extends BaseDataTable
 {
@@ -216,7 +215,7 @@ class TimeLogsDataTable extends BaseDataTable
             $startDate = companyToDateString($request->startDate);
 
             if (!is_null($startDate)) {
-                $model->where(DB::raw('DATE(project_time_logs.`start_time`)'), '>=', $startDate);
+                $model->where('project_time_logs.start_time', '>=', $startDate . ' 00:00:00');
             }
         }
 
@@ -225,7 +224,7 @@ class TimeLogsDataTable extends BaseDataTable
 
             if (!is_null($endDate)) {
                 $model->where(function ($query) use ($endDate) {
-                    $query->where(DB::raw('DATE(project_time_logs.`end_time`)'), '<=', $endDate);
+                    $query->where('project_time_logs.end_time', '<=', $endDate . ' 23:59:59');
                 });
             }
         }

@@ -34,13 +34,13 @@ class NotificationController extends AccountBaseController
 
     public function markAllRead()
     {
-        $this->user->unreadNotifications->markAsRead();
+        $this->user->unreadNotifications()->update(['read_at' => now()]);
         return Reply::success(__('messages.notificationRead'));
     }
 
     public function markRead(Request $request)
     {
-        $this->user->unreadNotifications->where('id', $request->id)->markAsRead();
+        $this->user->unreadNotifications()->where('id', $request->id)->update(['read_at' => now()]);
         return Reply::dataOnly(['status' => 'success']);
     }
 

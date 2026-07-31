@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Models\SmtpSetting;
+use App\Support\BootstrapProfiler;
+use App\Support\BootstrapSettings;
 use App\Traits\HasMaskImage;
 use Illuminate\Mail\MailServiceProvider;
 use Illuminate\Queue\QueueServiceProvider;
@@ -19,9 +21,18 @@ class SmtpConfigProvider extends ServiceProvider
 
     public function register()
     {
+        BootstrapProfiler::measure(static::class, 'register', function () {
         try {
-            $smtpSetting = DB::table('smtp_settings')->first();
-            $settings = DB::table('global_settings')->first();
+            if (BootstrapSettings::shouldSkipWebOnlyBootstrap()) {
+                return;
+            }
+
+            $smtpSetting = BootstrapSettings::remember('smtp_settings:first', function () {
+                return DB::table('smtp_settings')->first();
+            });
+            $settings = BootstrapSettings::remember('global_settings:first', function () {
+                return DB::table('global_settings')->first();
+            });
 
             if ($smtpSetting && $settings) {
 
@@ -50,7 +61,9 @@ class SmtpConfigProvider extends ServiceProvider
 
                 Config::set('app.logo', asset('img/USB CRM-logo.png'));
 
-                $pushSetting = DB::table('push_notification_settings')->first();
+                $pushSetting = BootstrapSettings::remember('push_notification_settings:first', function () {
+                    return DB::table('push_notification_settings')->first();
+                });
 
                 if ($pushSetting) {
                     Config::set('services.onesignal.app_id', $pushSetting->onesignal_app_id);
@@ -63,6 +76,7 @@ class SmtpConfigProvider extends ServiceProvider
         // @codingStandardsIgnoreLine
         catch (\Exception $e) {
         }
+        });
 
         $app = App::getInstance();
         $app->register(MailServiceProvider::class);

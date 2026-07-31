@@ -500,7 +500,8 @@
 
         const quillContainer = document.querySelector(ID);
 
-        quillArray[ID] = new Quill(ID, {
+        try {
+            quillArray[ID] = new Quill(ID, {
             placeholder: placeholder,
             modules: {
                 magicUrl: {
@@ -561,9 +562,14 @@
             },
             theme: 'snow',
             bounds: quillContainer
-        });
+            });
+        } catch (error) {
+            console.warn('Quill mention module failed. Continuing without mention support.', error);
+        }
 
-        quillArray[ID].getModule('toolbar').addHandler('image', selectLocalImage);
+        if (quillArray[ID] && quillArray[ID].getModule('toolbar')) {
+            quillArray[ID].getModule('toolbar').addHandler('image', selectLocalImage);
+        }
     }
 
     /**

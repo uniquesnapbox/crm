@@ -51,11 +51,19 @@ class LeadObserver
     {
         if (!isRunningInConsoleOrSeeding()) {
             $this->logLeadCreated($leadContact);
-            $leadWhatsAppService = app(LeadWhatsAppNotificationService::class);
-            $leadWhatsAppService->sendLeadCreatedMessage($leadContact);
+            try {
+                $leadWhatsAppService = app(LeadWhatsAppNotificationService::class);
+                $leadWhatsAppService->sendLeadCreatedMessage($leadContact);
 
-            if (filled((string) $leadContact->products_services)) {
-                $leadWhatsAppService->sendLeadProductInterestMessage($leadContact);
+                if (filled((string) $leadContact->products_services)) {
+                    $leadWhatsAppService->sendLeadProductInterestMessage($leadContact);
+                }
+            } catch (\Throwable $exception) {
+                Log::warning('Lead WhatsApp notification failed after lead creation.', [
+                    'lead_id' => $leadContact->id,
+                    'company_id' => $leadContact->company_id,
+                    'error' => $exception->getMessage(),
+                ]);
             }
 
             try {

@@ -9,7 +9,6 @@ use App\Models\CustomFieldGroup;
 use App\DataTables\BaseDataTable;
 use Yajra\DataTables\Html\Button;
 use Yajra\DataTables\Html\Column;
-use Illuminate\Support\Facades\DB;
 
 class   TicketDataTable extends BaseDataTable
 {
@@ -180,12 +179,12 @@ class   TicketDataTable extends BaseDataTable
 
         if (!is_null($request->startDate) && $request->startDate != '') {
             $startDate = companyToDateString($request->startDate);
-            $model->where(DB::raw('DATE(tickets.updated_at)'), '>=', $startDate);
+            $model->where('tickets.updated_at', '>=', $startDate . ' 00:00:00');
         }
 
         if (!is_null($request->endDate) && $request->endDate != '') {
             $endDate = companyToDateString($request->endDate);
-            $model->where(DB::raw('DATE(tickets.updated_at)'), '<=', $endDate);
+            $model->where('tickets.updated_at', '<=', $endDate . ' 23:59:59');
         }
 
         if (!is_null($request->agentId) && $request->agentId != 'all' && $request->ticketFilterStatus != 'unassigned') {

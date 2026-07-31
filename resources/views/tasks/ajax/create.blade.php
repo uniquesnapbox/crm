@@ -700,7 +700,13 @@
         });
              const atValues = @json($userData);
 
-            quillMention(atValues, '#description');
+            if (typeof quillMention === 'function') {
+                try {
+                    quillMention(atValues, '#description');
+                } catch (error) {
+                    console.warn('Task description editor mention setup failed.', error);
+                }
+            }
 
 
         $('#save-task-data-form').on('change', '#project_id', function () {
@@ -718,8 +724,18 @@
                 redirect: true,
                 success: function (data) {
                     var atValues = data.userData;
-                    destory_editor('#description')
-                    quillMention(atValues, '#description');
+
+                    if (typeof destory_editor === 'function') {
+                        destory_editor('#description')
+                    }
+
+                    if (typeof quillMention === 'function') {
+                        try {
+                            quillMention(atValues, '#description');
+                        } catch (error) {
+                            console.warn('Task description editor mention setup failed.', error);
+                        }
+                    }
                     $('#selectAssignee').html(data.data);
                     $('.projectId').text(data.unique_id + '-');
                     $('#selectAssignee').selectpicker('refresh');
@@ -747,8 +763,15 @@
             })
         });
 
+        function taskDescriptionHtml() {
+            const description = document.getElementById('description');
+            const editor = description ? description.querySelector('.ql-editor') : null;
+
+            return editor ? editor.innerHTML : (description ? description.innerHTML : '');
+        }
+
         $('#save-more-task-form').click(function () {
-            let note = document.getElementById('description').children[0].innerHTML;
+            let note = taskDescriptionHtml();
             document.getElementById('description-text').value = note;
 
             const url = "{{ route('tasks.store') }}?taskId={{$task ? $task->id : ''}}&add_more=true";
@@ -759,7 +782,7 @@
         });
 
         $('#save-task-form').click(function () {
-            let note = document.getElementById('description').children[0].innerHTML;
+            let note = taskDescriptionHtml();
             document.getElementById('description-text').value = note;
             var mention_user_id = $('#description span[data-id]').map(function(){
                             return $(this).attr('data-id')

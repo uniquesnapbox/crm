@@ -45,6 +45,8 @@ class CustomField extends BaseModel
 
     use HasCompany;
 
+    private static array $exportCustomFieldsCache = [];
+
     public $timestamps = false;
 
     protected $guarded = ['id'];
@@ -71,16 +73,24 @@ class CustomField extends BaseModel
 
     public static function exportCustomFields($model)
     {
+        $cacheKey = $model::CUSTOM_FIELD_MODEL . ':' . optional(company())->id;
+
+        if (array_key_exists($cacheKey, self::$exportCustomFieldsCache)) {
+            return self::$exportCustomFieldsCache[$cacheKey];
+        }
+
         $customFieldsGroupsId = CustomFieldGroup::where('model', $model::CUSTOM_FIELD_MODEL)->select('id')->first();
         $customFields = collect();
 
         if ($customFieldsGroupsId) {
-            $customFields = CustomField::where('custom_field_group_id', $customFieldsGroupsId->id)->where(function ($q) {
-                return $q->where('export', 1)->orWhere('visible', 'true');
-            })->get();
+            $customFields = CustomField::where('custom_field_group_id', $customFieldsGroupsId->id)
+                ->where(function ($q) {
+                    return $q->where('export', 1)->orWhere('visible', 'true');
+                })
+                ->get();
         }
 
-        return $customFields;
+        return self::$exportCustomFieldsCache[$cacheKey] = $customFields;
     }
 
     public static function customFieldData($datatables, $model, $relation = null)
@@ -88,14 +98,18 @@ class CustomField extends BaseModel
         $customFields = CustomField::exportCustomFields($model);
         $customFieldNames = [];
         $customFieldsId = $customFields->pluck('id');
-        $fieldData = DB::table('custom_fields_data')->where('model', $model)->whereIn('custom_field_id', $customFieldsId)->select('id', 'custom_field_id', 'model_id', 'value')->get();
+        $fieldData = DB::table('custom_fields_data')
+            ->where('model', $model)
+            ->whereIn('custom_field_id', $customFieldsId)
+            ->select('id', 'custom_field_id', 'model_id', 'value')
+            ->get()
+            ->keyBy(fn ($value) => $value->custom_field_id . ':' . $value->model_id);
 
         foreach ($customFields as $customField) {
             $datatables->addColumn($customField->name, function ($row) use ($fieldData, $customField, $relation) {
 
-                $finalData = $fieldData->filter(function ($value) use ($customField, $row, $relation) {
-                    return ($value->custom_field_id == $customField->id) && ($value->model_id == ($relation ? $row->{$relation}->id : $row->id));
-                })->first();
+                $modelId = $relation ? $row->{$relation}->id : $row->id;
+                $finalData = $fieldData->get($customField->id . ':' . $modelId);
 
                 if ($customField->type == 'select') {
                     $data = $customField->values;

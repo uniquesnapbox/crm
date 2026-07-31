@@ -25,9 +25,12 @@ class AcceptInviteRequest extends FormRequest
      */
     public function rules()
     {
-        $invite = UserInvitation::where('invitation_code', request()->invite)
+        $invite = UserInvitation::with('company')
+            ->where('invitation_code', request()->invite)
             ->where('status', 'active')
             ->first();
+
+        $this->attributes->set('accepted_invite', $invite);
 
         $rules = [
             'name' => 'required',
@@ -41,7 +44,7 @@ class AcceptInviteRequest extends FormRequest
         $rules['terms_and_conditions'] = 'accepted';
 
         if (!is_null($invite)) {
-            $rules['email'] = 'required|email:rfc,strict|unique:users,email,null,id,company_id,' . $invite->company->id;
+            $rules['email'] = 'required|email:rfc,strict|unique:users,email,null,id,company_id,' . $invite->company_id;
         }
 
         return $rules;

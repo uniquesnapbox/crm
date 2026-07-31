@@ -56,7 +56,7 @@ class LeadWhatsAppNotificationService
                 'lead_id' => $lead->id,
                 'company_id' => $lead->company_id,
                 'mobile' => $lead->mobile,
-                'sender_number' => $senderNumber,
+                'sender_number' => $setting->resolved_lead_created_sender_number,
                 'error' => $error,
             ]);
         }

@@ -13,7 +13,6 @@ use App\Models\TaskSetting;
 use Carbon\CarbonInterval;
 use Yajra\DataTables\Html\Button;
 use Yajra\DataTables\Html\Column;
-use Illuminate\Support\Facades\DB;
 
 class TasksDataTable extends BaseDataTable
 {
@@ -397,15 +396,15 @@ class TasksDataTable extends BaseDataTable
             $model->where(
                 function ($q) use ($startDate, $endDate) {
                     if (request()->date_filter_on == 'due_date') {
-                        $q->whereBetween(DB::raw('DATE(tasks.`due_date`)'), [$startDate, $endDate]);
+                        $q->whereBetween('tasks.due_date', [$startDate, $endDate]);
 
                     }
                     elseif (request()->date_filter_on == 'start_date') {
-                        $q->whereBetween(DB::raw('DATE(tasks.`start_date`)'), [$startDate, $endDate]);
+                        $q->whereBetween('tasks.start_date', [$startDate, $endDate]);
 
                     }
                     elseif (request()->date_filter_on == 'completed_on') {
-                        $q->whereBetween(DB::raw('DATE(tasks.`completed_on`)'), [$startDate, $endDate]);
+                        $q->whereBetween('tasks.completed_on', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
                     }
 
                 }
@@ -413,7 +412,7 @@ class TasksDataTable extends BaseDataTable
         }
 
         if ($request->overdue == 'yes' && $request->status != 'all') {
-            $model->where(DB::raw('DATE(tasks.`due_date`)'), '<', now(company()->timezone)->toDateString());
+            $model->where('tasks.due_date', '<', now(company()->timezone)->toDateString());
         }
 
         if ($projectId != 0 && $projectId != null && $projectId != 'all') {

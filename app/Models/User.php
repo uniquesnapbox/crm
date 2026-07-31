@@ -231,6 +231,9 @@ class User extends BaseModel implements AuthenticatableContract, AuthorizableCon
 
     const ALL_ADDED_BOTH = ['all', 'added', 'both'];
 
+    protected static array $permissionMapCache = [];
+    protected static array $permissionTypeIdMapCache = [];
+
     public static function boot()
     {
         parent::boot();
@@ -960,14 +963,7 @@ class User extends BaseModel implements AuthenticatableContract, AuthorizableCon
             return cache($cacheKey);
         }
 
-        $permissionType = UserPermission::join('permissions', 'user_permissions.permission_id', '=', 'permissions.id')
-            ->join('permission_types', 'user_permissions.permission_type_id', '=', 'permission_types.id')
-            ->select('permission_types.name')
-            ->where('permissions.name', $permission)
-            ->where('user_permissions.user_id', $this->id)
-            ->first();
-
-        $permissionType = $permissionType ? $permissionType->name : false;
+        $permissionType = $this->permissionMap()[$permission] ?? false;
 
         cache([$cacheKey => $permissionType]);
 
@@ -983,19 +979,51 @@ class User extends BaseModel implements AuthenticatableContract, AuthorizableCon
             return cache($cacheKey);
         }
 
-        $permissionType = UserPermission::join('permissions', 'user_permissions.permission_id', '=', 'permissions.id')
-            ->join('permission_types', 'user_permissions.permission_type_id', '=', 'permission_types.id')
-            ->select('permission_types.name', 'permission_types.id')
-            ->where('permissions.name', $permission)
-            ->where('user_permissions.user_id', $this->id)
-            ->first();
-
-        $permissionName = $permissionType ? $permissionType->name : false;
+        $permissionName = $this->permissionTypeIdMap()[$permission] ?? false;
 
         cache([$cacheKey => $permissionName]);
 
         return $permissionName;
 
+    }
+
+    public static function forgetPermissionMapCache($userId): void
+    {
+        unset(static::$permissionMapCache[$userId]);
+        unset(static::$permissionTypeIdMapCache[$userId]);
+    }
+
+    private function permissionMap(): array
+    {
+        if (!array_key_exists($this->id, static::$permissionMapCache)) {
+            static::$permissionMapCache[$this->id] = UserPermission::join('permissions', 'user_permissions.permission_id', '=', 'permissions.id')
+                ->join('permission_types', 'user_permissions.permission_type_id', '=', 'permission_types.id')
+                ->where('user_permissions.user_id', $this->id)
+                ->select([
+                    'permissions.name as permission_name',
+                    'permission_types.name as permission_type_name',
+                ])
+                ->pluck('permission_type_name', 'permission_name')
+                ->all();
+        }
+
+        return static::$permissionMapCache[$this->id];
+    }
+
+    private function permissionTypeIdMap(): array
+    {
+        if (!array_key_exists($this->id, static::$permissionTypeIdMapCache)) {
+            static::$permissionTypeIdMapCache[$this->id] = UserPermission::join('permissions', 'user_permissions.permission_id', '=', 'permissions.id')
+                ->where('user_permissions.user_id', $this->id)
+                ->select([
+                    'permissions.name as permission_name',
+                    'user_permissions.permission_type_id as permission_type_id',
+                ])
+                ->pluck('permission_type_id', 'permission_name')
+                ->all();
+        }
+
+        return static::$permissionTypeIdMapCache[$this->id];
     }
 
     /**

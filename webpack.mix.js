@@ -22,7 +22,7 @@ mix.js('resources/js/bootstrap.js', 'public/js')
     'public/vendor/jquery/select2.min.js',
     'public/vendor/jquery/plugins.bundle.min.js',
     'public/vendor/jquery/scripts.bundle.min.js',
-    'public/vendor/froiden-helper/helper.js',
+    'public/vendor/froiden-helper/helper.min.js',
 
     'node_modules/dropify/src/js/dropify.js',
     'node_modules/sweetalert2/dist/sweetalert2.all.min.js',

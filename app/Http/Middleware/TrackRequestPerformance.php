@@ -48,6 +48,7 @@ class TrackRequestPerformance
         /** @var Response $response */
         $response = $next($request);
         $durationMs = (microtime(true) - $startedAt) * 1000;
+        $isUnauthenticatedApiRequest = $request->is('api/*') && !$request->user();
         $requestPayload = [
             'path' => $request->path(),
             'method' => $request->method(),
@@ -56,14 +57,14 @@ class TrackRequestPerformance
             'query_time_ms' => round($queryTimeMs, 2),
             'query_count' => $queryCount,
             'route_name' => optional($request->route())->getName(),
-            'company_id' => optional(company())->id,
+            'company_id' => $isUnauthenticatedApiRequest ? null : optional(company())->id,
         ];
 
         if ($logRequestMetrics && $durationMs >= $slowRequestThresholdMs) {
             Log::channel('performance')->warning('Slow request detected', $requestPayload);
         }
 
-        if ($durationMs < (float) config('performance.track_min_request_ms', 200)) {
+        if ($durationMs < (float) config('performance.track_min_request_ms', 200) || $isUnauthenticatedApiRequest) {
             return $response;
         }
 
@@ -89,4 +90,3 @@ class TrackRequestPerformance
         return $response;
     }
 }
-

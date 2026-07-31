@@ -6,12 +6,14 @@ use App\Http\Controllers\Api\Integration\ClientController;
 use App\Http\Controllers\Api\Integration\EmployeeController;
 use App\Http\Controllers\Api\Integration\LeadController;
 use App\Http\Controllers\Api\Integration\ProjectController;
+use App\Http\Controllers\Api\LeadContactApiController;
 use App\Http\Controllers\LeadContactController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\MobileAttendanceController;
 use App\Http\Controllers\Api\AttendanceAdminController;
 use App\Http\Controllers\Api\DashboardApiController;
+use App\Http\Controllers\Api\MobileCrmApiController;
 use App\Http\Controllers\LoginController;
 
 /*
@@ -49,9 +51,12 @@ Route::post('whatsapp/verify-otp', [LoginController::class, 'verifyWhatsappOtp']
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('me', [AuthController::class, 'profile'])->name('api.profile');
-    Route::get('lead-contacts', [LeadContactController::class, 'apiIndex'])->name('api.lead-contacts.index');
+    Route::get('lead-contacts', [LeadContactApiController::class, 'index'])->name('api.lead-contacts.index');
     Route::post('lead-contacts', [LeadContactController::class, 'store'])->name('api.lead-contacts.store');
     Route::patch('lead-contacts/{id}', [LeadContactController::class, 'update'])->name('api.lead-contacts.update');
+    Route::get('clients', [MobileCrmApiController::class, 'clients'])->name('api.clients.index');
+    Route::get('tasks', [MobileCrmApiController::class, 'tasks'])->name('api.tasks.index');
+    Route::get('reports/summary', [MobileCrmApiController::class, 'reportSummary'])->name('api.reports.summary');
 
     // Mobile attendance + live tracking
     Route::post('attendance/clock-in', [MobileAttendanceController::class, 'clockIn'])->name('api.attendance.clock-in');

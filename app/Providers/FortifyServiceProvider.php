@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Support\BootstrapProfiler;
 use Carbon\Carbon;
 use App\Models\User;
 use App\Models\Company;
@@ -37,6 +38,7 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function register()
     {
+        BootstrapProfiler::measure(static::class, 'register', function () {
         $this->app->instance(LogoutResponse::class, new class implements LogoutResponse {
 
             public function toResponse($request)
@@ -45,6 +47,7 @@ class FortifyServiceProvider extends ServiceProvider
                 return redirect()->route('login');
             }
 
+        });
         });
     }
 
@@ -55,6 +58,7 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+        BootstrapProfiler::measure(static::class, 'boot', function () {
         Fortify::authenticateThrough(function (Request $request) {
 
             return array_filter([
@@ -186,6 +190,7 @@ class FortifyServiceProvider extends ServiceProvider
 
         });
 
+        });
     }
 
     public function checkMigrateStatus()
