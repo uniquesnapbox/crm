@@ -1,0 +1,106 @@
+<?php
+
+namespace App\Http\Requests\Lead;
+
+use App\Http\Requests\CoreRequest;
+use App\Traits\CustomFieldsRequestTrait;
+
+class StoreRequest extends CoreRequest
+{
+    use CustomFieldsRequestTrait;
+
+    protected function prepareForValidation()
+    {
+        if ($this->filled('reminder_time')) {
+            $this->merge([
+                'reminder_time' => $this->normalizeTimeInput($this->input('reminder_time')),
+            ]);
+        }
+    }
+
+    /**
+     * Determine if the user is authorized to make this request.
+     *
+     * @return bool
+     */
+    public function authorize()
+    {
+        return true;
+    }
+
+    /**
+     * Get the validation rules that apply to the request.
+     *
+     * @return array
+     */
+
+    public function rules()
+    {
+        $rules = [];
+
+        $rules['client_name'] = 'required';
+        $rules['mobile'] = ['required', 'regex:/^\+\d{7,15}$/'];
+        $rules['client_email'] = 'nullable|email:rfc,strict|unique:leads,client_email,null,id,company_id,' . company()->id;
+        $rules['assigned_to'] = 'nullable|exists:users,id';
+        $rules['status_id'] = 'nullable|exists:lead_status,id';
+        $rules['interest_level'] = 'nullable|in:low,medium,high,very_high';
+        $rules['deal_size'] = 'nullable|numeric|min:0';
+        $rules['contact_status'] = 'nullable|in:pending,connected,not_connected';
+        $rules['contact_status_reason'] = 'nullable|required_if:contact_status,not_connected|max:5000';
+        $rules['products_services'] = 'nullable|string|max:5000';
+        $rules['country'] = 'nullable|string|max:191';
+        $rules['website'] = 'nullable|max:191';
+        $rules['office'] = 'nullable|max:191';
+        $rules['followup_date'] = 'nullable|date_format:"' . company()->date_format . '"';
+        $rules['reminder_time'] = 'nullable|date_format:"' . company()->time_format . '"';
+        $rules['followup_note'] = 'nullable|string';
+        $rules['latitude'] = 'nullable|numeric';
+        $rules['longitude'] = 'nullable|numeric';
+
+        return $this->customFieldRules($rules);
+
+    }
+
+    public function attributes()
+    {
+        $attributes = [];
+
+        $attributes = $this->customFieldsAttributes($attributes);
+
+        $attributes['client_name'] = __('app.name');
+        $attributes['client_email'] = __('app.email');
+        $attributes['mobile'] = __('modules.lead.mobile');
+        $attributes['followup_date'] = __('modules.lead.leadFollowUp');
+        $attributes['reminder_time'] = __('modules.timeLogs.startTime');
+
+        return $attributes;
+    }
+
+    public function messages()
+    {
+        return [
+            'mobile.regex' => 'Mobile number must be in international format with country code (example: +919876543210).',
+        ];
+    }
+
+    private function normalizeTimeInput($time)
+    {
+        if ($time === null) {
+            return null;
+        }
+
+        $time = trim((string) $time);
+        $companyTimeFormat = company()->time_format;
+
+        if ($companyTimeFormat === 'h:i a') {
+            return strtolower($time);
+        }
+
+        if ($companyTimeFormat === 'h:i A') {
+            return strtoupper($time);
+        }
+
+        return $time;
+    }
+
+}
