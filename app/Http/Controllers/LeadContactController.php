@@ -490,6 +490,10 @@ class LeadContactController extends AccountBaseController
         $leadContact->assigned_to = $this->resolvedAssignedTo($request, $leadContact);
         $leadContact->save();
 
+        if ($request->exists('deal_size')) {
+            $this->syncConvertedClientDealSize($leadContact);
+        }
+
         $followUpCreated = $this->createLeadFormFollowUp($leadContact, $request);
 
         // To add custom fields data
@@ -654,6 +658,10 @@ class LeadContactController extends AccountBaseController
 
         $leadContact->{$field} = $value;
         $leadContact->save();
+
+        if ($field === 'deal_size') {
+            $this->syncConvertedClientDealSize($leadContact);
+        }
 
         $leadContact->loadMissing(['leadSource', 'category', 'leadStatus', 'assignedTo']);
 
@@ -1091,6 +1099,21 @@ class LeadContactController extends AccountBaseController
         Lead::whereKey($leadId)->update([
             'next_follow_up' => $hasPendingFollowUps ? 'yes' : 'no',
         ]);
+    }
+
+    private function syncConvertedClientDealSize(Lead $lead): void
+    {
+        if (!$lead->client_id || !Schema::hasTable('client_details')) {
+            return;
+        }
+
+        DB::table('client_details')
+            ->where('user_id', $lead->client_id)
+            ->where('company_id', company()->id)
+            ->update([
+                'lead_deal_size' => $lead->deal_size,
+                'updated_at' => now(),
+            ]);
     }
 
     private function pushLeadHistory(int $leadId, string $eventType, array $payload = []): void

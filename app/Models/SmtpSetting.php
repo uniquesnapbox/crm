@@ -48,6 +48,7 @@ class SmtpSetting extends BaseModel
 
     protected $guarded = ['id'];
     protected $appends = ['set_smtp_message'];
+    protected $hidden = ['mail_password'];
 
     protected $casts = [
         'mail_password' => 'encrypted'

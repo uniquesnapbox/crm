@@ -346,17 +346,6 @@ class WhatsAppManager extends EventEmitter {
 
   async sendMessage({ to, message, channelKey, attachment = null }) {
     const key = channelKey || this.config.defaultSession;
-    const client = await this.ensureClient(key);
-
-    if (!client) {
-      throw new Error(`No client initialized for session: ${key}`);
-    }
-
-    const status = this.getStatus(key);
-    if (status !== "ready") {
-      throw new Error(`Session ${key} not ready. Current status: ${status}`);
-    }
-
     const chatId = this.toChatId(to);
     const media = await this.buildMediaFromAttachment(attachment);
     const text = String(message || "").trim();
@@ -366,19 +355,69 @@ class WhatsAppManager extends EventEmitter {
       throw new Error("Message or attachment is required");
     }
 
-    const sentMessage = hasMedia
-      ? await client.sendMessage(chatId, media, {
-          caption: text || undefined,
-          sendMediaAsDocument: attachment?.sendAsDocument !== false
-        })
-      : await client.sendMessage(chatId, text);
+    const sendWithClient = async (client) => {
+      if (!client) {
+        throw new Error(`No client initialized for session: ${key}`);
+      }
 
-    return {
-      id: sentMessage.id?._serialized || null,
-      to: chatId,
-      contentType: hasMedia ? "media" : "text",
-      timestamp: sentMessage.timestamp || Date.now()
+      const status = this.getStatus(key);
+      if (status !== "ready") {
+        throw new Error(`Session ${key} not ready. Current status: ${status}`);
+      }
+
+      const sentMessage = hasMedia
+        ? await client.sendMessage(chatId, media, {
+            caption: text || undefined,
+            sendMediaAsDocument: attachment?.sendAsDocument !== false
+          })
+        : await client.sendMessage(chatId, text);
+
+      return {
+        id: sentMessage?.id?._serialized || sentMessage?.id || null,
+        to: chatId,
+        contentType: hasMedia ? "media" : "text",
+        timestamp: sentMessage?.timestamp || Date.now()
+      };
     };
+
+    try {
+      const client = await this.ensureClient(key);
+      return await sendWithClient(client);
+    } catch (error) {
+      const transientSendError =
+        /detached Frame/i.test(error.message || "") ||
+        /Execution context was destroyed/i.test(error.message || "") ||
+        /Target closed/i.test(error.message || "");
+
+      if (!transientSendError) {
+        throw error;
+      }
+
+      logger.warn("WhatsApp send hit a transient browser error; retrying once", {
+        sessionKey: key,
+        error: error.message
+      });
+
+      await this.destroyClient(key, { emitDestroyedStatus: false });
+      const refreshedClient = await this.ensureClient(key);
+      await this.waitForStatus(key, "ready", 60000);
+      return await sendWithClient(refreshedClient);
+    }
+  }
+
+  async waitForStatus(sessionKey, desiredStatus, timeoutMs = 30000) {
+    const key = sessionKey || this.config.defaultSession;
+    const startedAt = Date.now();
+
+    while (Date.now() - startedAt < timeoutMs) {
+      if (this.getStatus(key) === desiredStatus) {
+        return true;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+
+    throw new Error(`Session ${key} not ready. Current status: ${this.getStatus(key)}`);
   }
 
   async buildMediaFromAttachment(attachment) {

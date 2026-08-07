@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\Integration\EmployeeController;
 use App\Http\Controllers\Api\Integration\LeadController;
 use App\Http\Controllers\Api\Integration\ProjectController;
 use App\Http\Controllers\Api\LeadContactApiController;
+use App\Http\Controllers\Api\LeadOptionsController;
 use App\Http\Controllers\LeadContactController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -52,10 +53,21 @@ Route::post('whatsapp/verify-otp', [LoginController::class, 'verifyWhatsappOtp']
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('me', [AuthController::class, 'profile'])->name('api.profile');
     Route::get('lead-contacts', [LeadContactApiController::class, 'index'])->name('api.lead-contacts.index');
+    Route::get('lead-options', [LeadOptionsController::class, 'index'])->name('api.lead-options.index');
     Route::post('lead-contacts', [LeadContactController::class, 'store'])->name('api.lead-contacts.store');
     Route::patch('lead-contacts/{id}', [LeadContactController::class, 'update'])->name('api.lead-contacts.update');
+    Route::patch('lead-contacts/{id}/quick-update', [LeadContactController::class, 'quickUpdate'])->name('api.lead-contacts.quick-update');
+    Route::get('employees', [MobileCrmApiController::class, 'employees'])->name('api.employees.index');
     Route::get('clients', [MobileCrmApiController::class, 'clients'])->name('api.clients.index');
+    Route::get('clients/{client}', [MobileCrmApiController::class, 'client'])->name('api.clients.show');
+    Route::patch('clients/{client}', [MobileCrmApiController::class, 'updateClient'])->name('api.clients.update');
     Route::get('tasks', [MobileCrmApiController::class, 'tasks'])->name('api.tasks.index');
+    Route::get('tasks/{task}', [MobileCrmApiController::class, 'task'])->name('api.tasks.show');
+    Route::patch('tasks/{task}', [MobileCrmApiController::class, 'updateTask'])->name('api.tasks.update');
+    Route::post('tasks/{task}/complete', [MobileCrmApiController::class, 'completeTask'])->name('api.tasks.complete');
+    Route::patch('tasks/{task}/assignees', [MobileCrmApiController::class, 'reassignTask'])->name('api.tasks.reassign');
+    Route::delete('tasks/{task}', [MobileCrmApiController::class, 'destroyTask'])->name('api.tasks.destroy');
+    Route::post('tasks/bulk-action', [MobileCrmApiController::class, 'bulkTaskAction'])->name('api.tasks.bulk_action');
     Route::get('reports/summary', [MobileCrmApiController::class, 'reportSummary'])->name('api.reports.summary');
 
     // Mobile attendance + live tracking

@@ -33,6 +33,36 @@
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
-  <script src="flutter_bootstrap.js" async></script>
+  <script>
+    async function loadFlutterApp() {
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        const appRegistrations = registrations.filter((registration) =>
+          registration.scope.includes('/crm-flutter/')
+        );
+
+        if (appRegistrations.length > 0) {
+          await Promise.all(
+            appRegistrations.map((registration) => registration.unregister())
+          );
+
+          if (
+            navigator.serviceWorker.controller &&
+            sessionStorage.getItem('crmFlutterSwCleared') !== 'true'
+          ) {
+            sessionStorage.setItem('crmFlutterSwCleared', 'true');
+            window.location.reload();
+            return;
+          }
+        }
+      }
+
+      const bootstrap = document.createElement('script');
+      bootstrap.src = `flutter_bootstrap.js?v=${Date.now()}`;
+      document.body.appendChild(bootstrap);
+    }
+
+    loadFlutterApp();
+  </script>
 </body>
 </html>
