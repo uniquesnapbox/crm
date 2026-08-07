@@ -4,7 +4,6 @@ namespace App\DataTables;
 
 use App\Helper\Common;
 use App\Models\BaseModel;
-use App\Models\User;
 use Carbon\Carbon;
 use App\Models\Task;
 use App\Models\CustomField;
@@ -24,7 +23,6 @@ class TasksDataTable extends BaseDataTable
     private $changeStatusPermission;
     private $viewUnassignedTasksPermission;
     private $hasTimelogModule;
-    private ?\Illuminate\Support\Collection $activeEmployees = null;
 
     public function __construct()
     {
@@ -115,7 +113,30 @@ class TasksDataTable extends BaseDataTable
         $datatables->editColumn('completed_on', fn($row) => Common::dateColor($row->completed_on));
 
         $datatables->editColumn('users', function ($row) {
-            return $this->renderAssigneesColumn($row);
+
+            if (count($row->users) == 0) {
+                return '--';
+            }
+
+            $key = '';
+            $members = '<div class="position-relative">';
+
+            foreach ($row->users as $key => $member) {
+                if ($key < 4) {
+                    $img = '<img data-toggle="tooltip" data-original-title="' . $member->name . '" src="' . $member->image_url . '">';
+                    $position = $key > 0 ? 'position-absolute' : '';
+
+                    $members .= '<div class="taskEmployeeImg rounded-circle ' . $position . '" style="left:  ' . ($key * 13) . 'px"><a href="' . route('employees.show', $member->id) . '">' . $img . '</a></div> ';
+                }
+            }
+
+            if (count($row->users) > 4 && $key) {
+                $members .= '<div class="taskEmployeeImg more-user-count text-center rounded-circle border bg-amt-grey position-absolute" style="left:  ' . (($key - 1) * 13) . 'px"><a href="' . route('tasks.show', [$row->id]) . '" class="text-dark f-10">+' . (count($row->users) - 4) . '</a></div> ';
+            }
+
+            $members .= '</div>';
+
+            return $members;
         });
 
         $datatables->editColumn('short_code', function ($row) {
@@ -636,51 +657,6 @@ class TasksDataTable extends BaseDataTable
 
         return array_merge($data, CustomFieldGroup::customFieldsDataMerge(new Task()), $action);
 
-    }
-
-    private function canInlineEditAssignees($row): bool
-    {
-        return method_exists($row, 'canEditTicket') ? (bool) $row->canEditTicket() : false;
-    }
-
-    private function assignableEmployees()
-    {
-        if (is_null($this->activeEmployees)) {
-            $this->activeEmployees = User::allEmployees(null, true, ($this->editTaskPermission == 'all' ? 'all' : null));
-        }
-
-        return $this->activeEmployees;
-    }
-
-    private function renderAssigneesColumn($row): string
-    {
-        $editable = $this->canInlineEditAssignees($row);
-        $selectedIds = $row->users
-            ->where('status', 'active')
-            ->pluck('id')
-            ->map(fn ($id) => (string) $id)
-            ->sort()
-            ->values()
-            ->all();
-
-        $options = '';
-
-        foreach ($this->assignableEmployees() as $employee) {
-            $options .= '<option value="' . e($employee->id) . '"'
-                . (in_array((string) $employee->id, $selectedIds, true) ? ' selected' : '')
-                . '>' . e($employee->name) . '</option>';
-        }
-
-        return '<div class="task-inline-select-wrap">'
-            . '<select class="form-control form-control-sm select-picker js-task-table-inline-select" multiple '
-            . 'style="min-width:180px;" data-live-search="true" data-size="8" data-container="body" '
-            . 'data-prev-value="' . e(implode(',', $selectedIds)) . '" '
-            . 'data-url="' . e(route('tasks.quick_update_assignees', $row->id)) . '" '
-            . 'data-id="' . (int) $row->id . '" '
-            . 'data-none-selected-text="--" title="--" ' . (!$editable ? 'disabled' : '') . '>'
-            . $options
-            . '</select>'
-            . '</div>';
     }
 
 }

@@ -8,9 +8,8 @@
     <div class="main-sidebar" id="mobile_menu_collapse">
         <!-- SIDEBAR BRAND START -->
         <div class="sidebar-brand-box dropdown cursor-pointer {{ user()->dark_theme ? 'bg-dark' : '' }}">
-            <div class="dropdown-toggle sidebar-brand d-flex align-items-center justify-content-between w-100"
-                role="button" tabindex="0" id="dropdownMenuLink" aria-haspopup="true"
-                aria-controls="sidebarBrandDropdown" aria-expanded="false">
+            <div class="dropdown-toggle sidebar-brand d-flex align-items-center justify-content-between  w-100"
+                type="link" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
 
                 @if (companyOrGlobalSetting()->sidebar_logo_style !== 'full')
                     <!-- SIDEBAR BRAND NAME START -->
@@ -48,7 +47,7 @@
                 @endif
             </div>
             <!-- DROPDOWN - INFORMATION -->
-            <div class="dropdown-menu dropdown-menu-right sidebar-brand-dropdown ml-3" id="sidebarBrandDropdown"
+            <div class="dropdown-menu dropdown-menu-right sidebar-brand-dropdown ml-3"
                 aria-labelledby="dropdownMenuLink" tabindex="0">
                 <div class="d-flex justify-content-between align-items-center profile-box">
                     <a @if(!in_array('client', user_roles())) href="{{ route('employees.show', user()->id) }}" @endif >
@@ -120,110 +119,6 @@
 <!-- SIDEBAR END -->
 
 <script>
-    (function initSidebarBrandDropdown() {
-        const toggle = document.getElementById('dropdownMenuLink');
-        const menu = document.getElementById('sidebarBrandDropdown');
-
-        if (!toggle || !menu) {
-            return;
-        }
-
-        const brandBox = toggle.closest('.sidebar-brand-box');
-        const originalParent = menu.parentNode;
-        const originalNextSibling = menu.nextSibling;
-        let portalHost = null;
-
-        function positionPortal() {
-            if (!portalHost) {
-                return;
-            }
-
-            const toggleRect = toggle.getBoundingClientRect();
-            const availableWidth = Math.max(240, window.innerWidth - 8);
-            const menuWidth = Math.min(300, availableWidth);
-            const left = Math.max(0, Math.min(toggleRect.left, window.innerWidth - menuWidth - 8));
-
-            portalHost.style.setProperty('top', toggleRect.bottom + 'px', 'important');
-            portalHost.style.setProperty('left', left + 'px', 'important');
-            portalHost.style.setProperty('width', menuWidth + 'px', 'important');
-        }
-
-        function openBrandDropdown() {
-            if (portalHost) {
-                return;
-            }
-
-            portalHost = document.createElement('div');
-            portalHost.className = 'sidebar-brand-box sidebar-brand-dropdown-portal-host';
-            document.body.appendChild(portalHost);
-            portalHost.appendChild(menu);
-
-            brandBox.classList.add('show');
-            menu.classList.add('show');
-            toggle.setAttribute('aria-expanded', 'true');
-            positionPortal();
-        }
-
-        function closeBrandDropdown() {
-            if (!portalHost) {
-                return;
-            }
-
-            menu.classList.remove('show');
-            brandBox.classList.remove('show');
-            toggle.setAttribute('aria-expanded', 'false');
-
-            if (originalNextSibling && originalNextSibling.parentNode === originalParent) {
-                originalParent.insertBefore(menu, originalNextSibling);
-            } else {
-                originalParent.appendChild(menu);
-            }
-
-            portalHost.remove();
-            portalHost = null;
-        }
-
-        function toggleBrandDropdown(event) {
-            event.preventDefault();
-            event.stopPropagation();
-
-            if (typeof event.stopImmediatePropagation === 'function') {
-                event.stopImmediatePropagation();
-            }
-
-            if (portalHost) {
-                closeBrandDropdown();
-            } else {
-                openBrandDropdown();
-            }
-        }
-
-        toggle.addEventListener('click', toggleBrandDropdown);
-        toggle.addEventListener('keydown', function(event) {
-            if (event.key === 'Enter' || event.key === ' ') {
-                toggleBrandDropdown(event);
-            } else if (event.key === 'Escape') {
-                closeBrandDropdown();
-            }
-        });
-
-        document.addEventListener('click', function(event) {
-            if (portalHost && !menu.contains(event.target) && !toggle.contains(event.target)) {
-                closeBrandDropdown();
-            }
-        });
-
-        document.addEventListener('keydown', function(event) {
-            if (event.key === 'Escape') {
-                closeBrandDropdown();
-                toggle.focus();
-            }
-        });
-
-        window.addEventListener('resize', positionPortal);
-        window.addEventListener('scroll', positionPortal, true);
-    })();
-
     function directAccordionContents(item) {
         return Array.prototype.filter.call(item.children, function(child) {
             return child.classList.contains('accordionItemContent');
@@ -368,54 +263,21 @@
         display: block !important;
     }
 
-    /* Keep the account dropdown above the menu and page content. */
+    /* Hard safeguard against invisible overlays intercepting sidebar clicks */
     aside .main-sidebar,
     aside .main-sidebar * {
         pointer-events: auto !important;
     }
 
     aside .main-sidebar {
-        z-index: 1050 !important;
-        overflow: visible !important;
-        isolation: isolate;
+        z-index: 2147483000 !important;
     }
 
-    aside .sidebar-brand-box {
-        position: relative !important;
-        z-index: 3 !important;
-        overflow: visible !important;
-    }
-
-    aside .sidebar-brand-dropdown {
-        z-index: 4 !important;
-    }
-
-    aside .sidebar-menu {
+    aside .sidebar-menu,
+    aside .sidebar-menu ul,
+    aside .sidebar-menu li,
+    aside .sidebar-menu a {
         position: relative;
-        z-index: 1 !important;
-    }
-
-    body > .sidebar-brand-dropdown-portal-host {
-        position: fixed !important;
-        right: auto !important;
-        bottom: auto !important;
-        height: 0 !important;
-        overflow: visible !important;
-        pointer-events: none !important;
-        isolation: isolate;
-        z-index: 2147483647 !important;
-    }
-
-    body > .sidebar-brand-dropdown-portal-host > .sidebar-brand-dropdown {
-        display: block !important;
-        position: absolute !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: auto !important;
-        width: 100% !important;
-        margin: 0 !important;
-        transform: none !important;
-        pointer-events: auto !important;
-        z-index: 1 !important;
+        z-index: 2147483001 !important;
     }
 </style>

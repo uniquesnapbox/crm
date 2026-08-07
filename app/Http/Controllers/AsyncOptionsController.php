@@ -50,7 +50,6 @@ class AsyncOptionsController extends AccountBaseController
     {
         $query = User::withoutGlobalScopes()
             ->whereHas('roles', fn($q) => $q->where('name', 'employee'))
-            ->where('users.status', 'active')
             ->select('users.id', 'users.name');
 
         if ($search !== '') {
@@ -144,3 +143,4 @@ class AsyncOptionsController extends AccountBaseController
         ];
     }
 }
+

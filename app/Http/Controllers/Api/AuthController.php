@@ -53,7 +53,7 @@ class AuthController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
-                'image_url' => $this->actualImageUrl($user),
+                'image_url' => $user->image_url,
                 'roles' => $user->roles->pluck('name')->values(),
             ],
             'permissions' => [
@@ -73,7 +73,7 @@ class AuthController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
-                'image_url' => $this->actualImageUrl($user),
+                'image_url' => $user->image_url,
                 'roles' => $user->roles->pluck('name')->values(),
             ],
             'permissions' => [
@@ -82,17 +82,6 @@ class AuthController extends Controller
             ],
             'employee_id' => $user->employeeDetail?->id ?? $user->id,
         ]);
-    }
-
-    private function actualImageUrl(User $user): ?string
-    {
-        if (!$user->image) {
-            return null;
-        }
-
-        $imageUrl = $user->image_url;
-
-        return $imageUrl === asset('img/avatar.png') ? null : $imageUrl;
     }
 
 }

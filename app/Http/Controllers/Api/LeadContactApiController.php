@@ -29,16 +29,6 @@ class LeadContactApiController extends Controller
             'source_id',
             'status_id',
             'category_id',
-            'company_name',
-            'website',
-            'office',
-            'country',
-            'address',
-            'interest_level',
-            'deal_size',
-            'contact_status',
-            'contact_status_reason',
-            'products_services',
             'assigned_to',
             'added_by',
             'note',
@@ -58,8 +48,6 @@ class LeadContactApiController extends Controller
                     $q->select('id', DB::raw('type as name'), 'label_color');
                 },
                 'category:id,category_name',
-                'addedBy:id,name,email',
-                'assignedTo:id,name,email',
             ])
             ->select($selectColumns)
             ->whereNull('archived_at');

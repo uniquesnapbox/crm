@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Company;
-use App\Services\EmployeeDailyWhatsAppSummaryService;
+use App\Services\TaskWhatsAppNotificationService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -21,9 +21,9 @@ class SendDailyPendingTaskWhatsappSummary extends Command
      *
      * @var string
      */
-    protected $description = 'Send daily morning WhatsApp summary to employees.';
+    protected $description = 'Send daily morning WhatsApp summary of pending tasks to assigned members.';
 
-    public function __construct(private EmployeeDailyWhatsAppSummaryService $summaryService)
+    public function __construct(private TaskWhatsAppNotificationService $taskWhatsAppService)
     {
         parent::__construct();
     }
@@ -33,9 +33,9 @@ class SendDailyPendingTaskWhatsappSummary extends Command
         Company::active()->select('id')->chunk(50, function ($companies) {
             foreach ($companies as $company) {
                 try {
-                    $this->summaryService->sendDailySummaryForCompany((int) $company->id);
+                    $this->taskWhatsAppService->sendDailyPendingSummaryForCompany((int) $company->id);
                 } catch (\Throwable $exception) {
-                    Log::warning('Daily employee WhatsApp summary failed for company.', [
+                    Log::warning('Daily pending-task WhatsApp summary failed for company.', [
                         'company_id' => $company->id,
                         'error' => $exception->getMessage(),
                     ]);

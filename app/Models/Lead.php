@@ -51,7 +51,6 @@ use Illuminate\Notifications\Notifiable;
  * @property-read mixed $image_url
  * @property-read \App\Models\LeadSource|null $leadSource
  * @property-read \App\Models\LeadStatus|null $leadStatus
- * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\LeadAttachment[] $attachments
  * @property-read \Illuminate\Notifications\DatabaseNotificationCollection|\Illuminate\Notifications\DatabaseNotification[] $notifications
  * @property-read int|null $notifications_count
  * @method static \Database\Factories\LeadFactory factory(...$parameters)
@@ -156,11 +155,6 @@ class Lead extends BaseModel
     public function latestFollowUp(): HasOne
     {
         return $this->hasOne(LeadFollowUp::class, 'lead_id')->latestOfMany('next_follow_up_date');
-    }
-
-    public function attachments(): HasMany
-    {
-        return $this->hasMany(LeadAttachment::class, 'lead_id')->orderByDesc('created_at');
     }
 
     public function client(): BelongsTo

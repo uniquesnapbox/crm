@@ -310,9 +310,12 @@ class Task extends BaseModel
             return '';
         }
 
-        $dateFormat = $this->company?->date_format ?: 'Y-m-d';
+        // company relation is null
+        if (is_null($this->company)) {
+            return $this->due_date->format('Y-m-d');
+        }
 
-        return $this->due_date->format($dateFormat);
+        return $this->due_date->format($this->company->date_format);
 
     }
 
@@ -322,9 +325,7 @@ class Task extends BaseModel
             return '';
         }
 
-        $dateFormat = $this->company?->date_format ?: 'Y-m-d';
-
-        return $this->start_date->format($dateFormat);
+        return $this->start_date->format($this->company->date_format);
     }
 
     public function getIsTaskUserAttribute()

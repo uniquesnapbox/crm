@@ -6,7 +6,6 @@ use App\DataTables\LeadFollowupDataTable;
 use App\DataTables\LeadContactDataTable;
 use App\DataTables\LeadNotesDataTable;
 use App\Helper\Reply;
-use App\Helper\Files;
 use App\Http\Requests\Admin\Employee\ImportProcessRequest;
 use App\Http\Requests\Admin\Employee\ImportRequest;
 use App\Http\Requests\Lead\QuickUpdateRequest;
@@ -17,7 +16,6 @@ use App\Jobs\ImportLeadJob;
 use App\Models\ClientNote;
 use App\Models\LeadCategory;
 use App\Models\Lead;
-use App\Models\LeadAttachment;
 use App\Models\LeadCustomForm;
 use App\Models\LeadFollowUp;
 use App\Models\LeadHistory;
@@ -59,23 +57,16 @@ class LeadContactController extends AccountBaseController
             $this->categories = LeadCategory::query()->select('id', 'category_name')->orderBy('category_name')->get();
             $this->sources = LeadSource::query()->select('id', 'type')->orderBy('type')->get();
             $this->statuses = LeadStatus::query()->select('id', 'type', 'label_color', 'priority', 'default')->orderBy('priority')->get();
-            $this->employees = User::allEmployees(null, true);
+            $this->employees = User::allEmployees();
         }
 
-        $response = $dataTable->render('lead-contact.index', $this->data);
-
-        if ($response instanceof \Symfony\Component\HttpFoundation\Response) {
-            $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
-            $response->headers->set('Pragma', 'no-cache');
-        }
-
-        return $response;
+        return $dataTable->render('lead-contact.index', $this->data);
 
     }
 
     public function show($id)
     {
-        $this->leadContact = Lead::with(['leadSource', 'leadStatus', 'category', 'addedBy', 'assignedTo', 'followUps', 'latestFollowUp', 'attachments'])->findOrFail($id)->withCustomFields();
+        $this->leadContact = Lead::with(['leadSource', 'leadStatus', 'category', 'addedBy', 'assignedTo', 'followUps', 'latestFollowUp'])->findOrFail($id)->withCustomFields();
 
         $this->viewPermission = user()->permission('view_lead');
 
@@ -116,8 +107,8 @@ class LeadContactController extends AccountBaseController
         case 'history':
             return $this->history();
         default:
-        $this->view = 'lead-contact.ajax.profile';
-        break;
+            $this->view = 'lead-contact.ajax.profile';
+            break;
         }
 
         if (request()->ajax()) {
@@ -128,56 +119,6 @@ class LeadContactController extends AccountBaseController
 
         return view('lead-contact.show', $this->data);
 
-    }
-
-    public function attachmentCreate($leadId)
-    {
-        $this->editPermission = user()->permission('edit_lead');
-        $this->leadContact = Lead::findOrFail($leadId);
-
-        abort_403(!$this->canAccessLead($this->leadContact));
-        abort_403(!in_array($this->editPermission, ['all', 'added', 'owned', 'both']));
-
-        $this->pageTitle = 'Add Attachment';
-        $this->leadId = $leadId;
-        $this->view = 'lead-contact.attachments.create';
-
-        if (request()->ajax()) {
-            return $this->returnAjax($this->view);
-        }
-
-        return view('lead-contact.attachments.create', $this->data);
-    }
-
-    public function attachmentStore(Request $request)
-    {
-        $this->editPermission = user()->permission('edit_lead');
-        abort_403(!in_array($this->editPermission, ['all', 'added', 'owned', 'both']));
-
-        $lead = Lead::findOrFail($request->lead_id);
-        abort_403(!$this->canAccessLead($lead));
-
-        $request->validate([
-            'lead_id' => 'required|exists:leads,id',
-            'file' => 'required',
-        ]);
-
-        if ($request->hasFile('file')) {
-            $files = $request->file('file');
-            $files = is_array($files) ? $files : [$files];
-
-            foreach ($files as $fileData) {
-                $attachment = new LeadAttachment();
-                $attachment->lead_id = $request->lead_id;
-                $attachment->user_id = $this->user->id;
-                $attachment->filename = $fileData->getClientOriginalName();
-                $attachment->hashname = Files::uploadLocalOrS3($fileData, LeadAttachment::FILE_PATH . '/' . $request->lead_id);
-                $attachment->size = $fileData->getSize();
-                $attachment->save();
-            }
-        }
-
-        return Reply::success(__('messages.fileUploaded'));
     }
 
     public function notes()
@@ -334,7 +275,7 @@ class LeadContactController extends AccountBaseController
         abort_403(!in_array($this->addPermission, ['all', 'added']));
 
         if ($this->shouldLoadLeadEmployees()) {
-            $this->employees = User::allEmployees(null, true);
+            $this->employees = User::allEmployees();
         }
 
         $defaultStatus = LeadStatus::query()->select('id')->where('default', '1')->first();
@@ -392,7 +333,6 @@ class LeadContactController extends AccountBaseController
         }
         $leadContact->source_id = $request->source_id;
         $leadContact->status_id = $request->status_id;
-        $leadContact->category_id = $request->category_id;
         $leadContact->client_id = $existingUser?->id;
         if ($request->has('company_name')) {
             $leadContact->company_name = $request->company_name;
@@ -427,20 +367,6 @@ class LeadContactController extends AccountBaseController
 
         if ($leadContact->client_email) {
             $this->logSearchEntry($leadContact->id, $leadContact->client_name, 'lead-contact.show', 'lead');
-        }
-
-        if ($request->expectsJson()) {
-            return response()->json([
-                'success' => true,
-                'message' => __('messages.recordSaved'),
-                'data' => $leadContact->load([
-                    'leadSource:id,type',
-                    'leadStatus:id,type,label_color',
-                    'category:id,category_name',
-                    'addedBy:id,name,email',
-                    'assignedTo:id,name,email',
-                ]),
-            ], 201);
         }
 
         $redirectUrl = urldecode($request->redirect_url);
@@ -484,7 +410,7 @@ class LeadContactController extends AccountBaseController
         );
 
         if ($this->shouldLoadLeadEmployees()) {
-            $this->employees = User::allEmployees(null, true);
+            $this->employees = User::allEmployees();
         }
 
         if ($this->leadContact->getCustomFieldGroupsWithFields()) {
@@ -571,20 +497,6 @@ class LeadContactController extends AccountBaseController
             $leadContact->updateCustomFieldData($request->custom_fields_data);
         }
 
-        if ($request->expectsJson()) {
-            return response()->json([
-                'success' => true,
-                'message' => __('messages.updateSuccess'),
-                'data' => $leadContact->load([
-                    'leadSource:id,type',
-                    'leadStatus:id,type,label_color',
-                    'category:id,category_name',
-                    'addedBy:id,name,email',
-                    'assignedTo:id,name,email',
-                ]),
-            ]);
-        }
-
         // Handle "Save & Add More" action
         if ($request->add_more == 'true') {
             return Reply::successWithData(__('messages.updateSuccess'), ['redirectUrl' => route('lead-contact.create')]);
@@ -642,7 +554,7 @@ class LeadContactController extends AccountBaseController
 
         if ($field === 'assigned_to') {
             if (!is_null($value)) {
-                $isEmployee = User::allEmployees(null, true)
+                $isEmployee = User::allEmployees()
                     ->pluck('id')
                     ->contains((int) $value);
 
@@ -722,10 +634,6 @@ class LeadContactController extends AccountBaseController
         }
 
         if ($field === 'address') {
-            $value = $value === '' ? null : mb_substr((string) $value, 0, 5000);
-        }
-
-        if (in_array($field, ['contact_status_reason', 'note'], true)) {
             $value = $value === '' ? null : mb_substr((string) $value, 0, 5000);
         }
 
@@ -1089,29 +997,6 @@ class LeadContactController extends AccountBaseController
                 }
             }
 
-            $clientDetails = $clientUser->clientDetails()->firstOrNew([
-                'user_id' => $clientUser->id,
-            ]);
-            $clientDetails->fill([
-                'company_name' => $clientDetails->company_name ?: $lead->company_name,
-                'address' => $clientDetails->address ?: $lead->address,
-                'office' => $clientDetails->office ?: $lead->office,
-                'cell' => $clientDetails->cell ?: $lead->cell,
-                'website' => $clientDetails->website ?: $lead->website,
-                'note' => $clientDetails->note ?: $lead->note,
-                'lead_source_id' => $clientDetails->lead_source_id ?: $lead->source_id,
-                'lead_category_id' => $clientDetails->lead_category_id ?: $lead->category_id,
-                'lead_status_id' => $clientDetails->lead_status_id ?: $lead->status_id,
-                'lead_interest_level' => $clientDetails->lead_interest_level ?: $lead->interest_level,
-                'lead_deal_size' => $clientDetails->lead_deal_size ?: $lead->deal_size,
-                'lead_contact_status' => $clientDetails->lead_contact_status ?: $lead->contact_status,
-                'lead_contact_status_reason' => $clientDetails->lead_contact_status_reason ?: $lead->contact_status_reason,
-                'products_services' => $clientDetails->products_services ?: $lead->products_services,
-            ]);
-            $clientDetails->company_id = company()->id;
-            $clientDetails->added_by ??= user()->id;
-            $clientDetails->save();
-
             $lead->client_id = $clientUser->id;
             $lead->converted_at = now();
 
@@ -1141,16 +1026,6 @@ class LeadContactController extends AccountBaseController
             'source_id',
             'status_id',
             'category_id',
-            'company_name',
-            'website',
-            'office',
-            'country',
-            'address',
-            'interest_level',
-            'deal_size',
-            'contact_status',
-            'contact_status_reason',
-            'products_services',
             'assigned_to',
             'added_by',
             'note',

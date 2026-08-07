@@ -15,9 +15,9 @@ class WhatsappNotificationSetting extends BaseModel
     public const DEFAULT_TICKET_ASSIGNED_STAFF_TEMPLATE = 'A new ticket has been assigned to you. Ticket #{{ticket_number}}: {{subject}}';
     public const DEFAULT_TICKET_ASSIGNED_CLIENT_TEMPLATE = 'Your ticket #{{ticket_number}} has been forwarded to our team. We will get back to you soon.';
     public const DEFAULT_TICKET_RESOLVED_CLIENT_TEMPLATE = 'Your ticket #{{ticket_number}} has been resolved. If you need anything else, please let us know.';
-    public const DEFAULT_TASK_ASSIGNED_TEMPLATE = "*📋 Task Assigned*\n\n*Hello {{recipient_name}},* A new task has been assigned to you.\n\n📝 *Task:* {{task_heading}}\n📅 *Due Date:* {{due_date}}\n👤 *Assigned By:* {{assigned_by}}\n\nPlease complete it before the due date.\n\n*UNIQUZ SNAPBOX Team*";
+    public const DEFAULT_TASK_ASSIGNED_TEMPLATE = 'A new task has been assigned to you. Task: {{task_heading}}';
     public const DEFAULT_TASK_DAILY_PENDING_TEMPLATE = "Good morning {{user_name}}, you have {{pending_count}} pending task(s):\n{{task_list}}";
-    public const DEFAULT_TASK_COMPLETED_TEMPLATE = "*✅ Task Completed*\n\n*Great job, {{recipient_name}}!* 🎉\n\nYou have successfully completed:\n📝 *{{task_heading}}*\n\nThank you for completing your assigned work.\n\n*UNIQUZ SNAPBOX Team*";
+    public const DEFAULT_TASK_COMPLETED_TEMPLATE = "Task completed: {{task_heading}}\nProject: {{project_name}}\nCompleted on: {{completed_on}}";
 
     protected $guarded = ['id'];
 

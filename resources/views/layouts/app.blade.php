@@ -117,7 +117,7 @@
     @if (file_exists(public_path() . '/css/app-custom.css'))
         <link href="{{ asset('css/app-custom.css') }}" rel="stylesheet">
     @endif
-    <link rel="stylesheet" href="{{ asset('css/custom.css') }}?v={{ filemtime(public_path('css/custom.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/custom.css') }}">
 
     <script src="{{ asset('vendor/jquery/jquery.min.js') }}"></script>
     <script src="{{ asset('vendor/jquery/modernizr.min.js') }}"></script>

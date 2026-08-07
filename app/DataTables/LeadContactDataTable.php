@@ -449,7 +449,7 @@ class LeadContactDataTable extends BaseDataTable
                 ->withRole('employee')
                 ->join('employee_details', 'employee_details.user_id', '=', 'users.id')
                 ->select('users.id', 'users.name')
-                ->where('users.status', 'active');
+                ->withoutGlobalScope(ActiveScope::class);
 
             $viewEmployeePermission = user()->permission('view_employees');
 

@@ -101,8 +101,8 @@
                 <div class="select-filter mb-4">
                     <div class="select-others">
                         <select class="form-control select-picker" name="status" id="status" data-container="body">
-                            <option selected value="all">@lang('app.all')</option>
-                            <option value="active">@lang('app.active')</option>
+                            <option value="all">@lang('app.all')</option>
+                            <option selected value="active">@lang('app.active')</option>
                             <option value="deactive">@lang('app.inactive')</option>
                         </select>
                     </div>

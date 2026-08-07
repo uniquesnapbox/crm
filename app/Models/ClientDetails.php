@@ -81,7 +81,7 @@ class ClientDetails extends BaseModel
 
     use CustomFieldsTrait, HasCompany;
 
-    protected $fillable = ['company_name', 'user_id', 'address', 'postal_code', 'state', 'city', 'office', 'cell', 'website', 'note', 'client_type', 'lead_source_id', 'lead_category_id', 'lead_status_id', 'lead_interest_level', 'lead_deal_size', 'lead_contact_status', 'lead_contact_status_reason', 'products_services', 'last_contact_date', 'next_followup_date', 'skype', 'facebook', 'twitter', 'linkedin', 'tax_name', 'gst_number', 'shipping_address', 'category_id', 'sub_category_id', 'company_logo', 'electronic_address', 'electronic_address_scheme'];
+    protected $fillable = ['company_name', 'user_id', 'address', 'postal_code', 'state', 'city', 'office', 'cell', 'website', 'note', 'client_type', 'last_contact_date', 'next_followup_date', 'skype', 'facebook', 'twitter', 'linkedin', 'tax_name', 'gst_number', 'shipping_address', 'category_id', 'sub_category_id', 'company_logo', 'electronic_address', 'electronic_address_scheme'];
 
     protected $default = ['id', 'company_name', 'address', 'website', 'note', 'client_type', 'last_contact_date', 'next_followup_date', 'skype', 'facebook', 'twitter', 'linkedin', 'tax_name', 'gst_number', 'name', 'email', 'company_logo'];
 

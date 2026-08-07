@@ -35,12 +35,10 @@ class UpdateRequest extends CoreRequest
      */
     public function rules()
     {
-        $leadId = $this->route('lead_contact') ?? $this->route('id');
-
         $rules = [
             'client_name' => 'required',
             'mobile' => ['required', 'regex:/^\+\d{7,15}$/'],
-            'client_email' => 'nullable|email:rfc,strict|unique:leads,client_email,'.$leadId.',id,company_id,' . company()->id,
+            'client_email' => 'nullable|email:rfc,strict|unique:leads,client_email,'.$this->route('lead_contact').',id,company_id,' . company()->id,
             'assigned_to' => 'nullable|exists:users,id',
             'status_id' => 'nullable|exists:lead_status,id',
             'interest_level' => 'nullable|in:low,medium,high,very_high',

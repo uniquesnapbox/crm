@@ -438,11 +438,6 @@ class User extends BaseModel implements AuthenticatableContract, AuthorizableCon
         return $this->hasOne(ClientDetails::class, 'user_id');
     }
 
-    public function convertedLead(): HasOne
-    {
-        return $this->hasOne(Lead::class, 'client_id')->latestOfMany();
-    }
-
     public function lead(): HasOne
     {
         return $this->hasOne(Deal::class, 'user_id');
@@ -681,7 +676,7 @@ class User extends BaseModel implements AuthenticatableContract, AuthorizableCon
         $users = User::withRole('employee')
             ->join('employee_details', 'employee_details.user_id', '=', 'users.id')
             ->leftJoin('designations', 'employee_details.designation_id', '=', 'designations.id')
-            ->select('users.id', 'users.company_id', 'users.name', 'users.email', 'users.created_at', 'users.image', 'designations.name as designation_name', 'users.email_notifications', 'users.mobile', 'users.country_id', 'users.country_phonecode');
+            ->select('users.id', 'users.company_id', 'users.name', 'users.email', 'users.created_at', 'users.image', 'designations.name as designation_name', 'users.email_notifications', 'users.mobile', 'users.country_id');
 
         if (!is_null($exceptId)) {
             if (is_array($exceptId)) {

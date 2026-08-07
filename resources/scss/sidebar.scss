@@ -15,7 +15,7 @@
 }
 
 .main-sidebar{
-  z-index: 1050;
+  z-index: 2;
   position: fixed;
   top: 0;
   left: 0;
@@ -33,9 +33,7 @@
 
 /******************** SIDEBAR BRAND *********************/
 .sidebar-brand-box {
-  position: relative;
-  z-index: 3 !important;
-  overflow: visible;
+  z-index: 1 !important;
   transition: width 0.3s;
   // overflow: hidden;
   // @include media-breakpoint-down(sm){
@@ -94,12 +92,6 @@
     // z-index: 99;
     width: 300px;
     left: 0px !important;
-    top: calc(100% + 1px) !important;
-    position: absolute !important;
-    right: auto !important;
-    margin-left: 0 !important;
-    transform: none !important;
-    z-index: 4 !important;
     border-radius: 3px;
     border: 1px solid #e8eef3;
 
@@ -155,30 +147,6 @@
     .custom-control.custom-switch{
         margin-right: -8px;
     }
-  }
-}
-
-body > .sidebar-brand-dropdown-portal-host {
-  position: fixed !important;
-  right: auto !important;
-  bottom: auto !important;
-  height: 0 !important;
-  overflow: visible !important;
-  pointer-events: none !important;
-  isolation: isolate;
-  z-index: 2147483647 !important;
-
-  > .sidebar-brand-dropdown {
-    display: block !important;
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: auto !important;
-    width: 100% !important;
-    margin: 0 !important;
-    transform: none !important;
-    pointer-events: auto !important;
-    z-index: 1 !important;
   }
 }
 

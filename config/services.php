@@ -86,12 +86,6 @@ return [
         'api_key' => env('WHATSAPP_SERVICE_API_KEY', ''),
         'session' => env('WHATSAPP_SERVICE_SESSION', 'default'),
         'timeout' => env('WHATSAPP_SERVICE_TIMEOUT', 30),
-        'task_summary_time' => env('WHATSAPP_TASK_SUMMARY_TIME', '09:00'),
-    ],
-
-    'lead_followup_summary' => [
-        'enabled' => env('LEAD_FOLLOWUP_SUMMARY_ENABLED', true),
-        'time' => env('LEAD_FOLLOWUP_SUMMARY_TIME', '09:00'),
     ],
 
 

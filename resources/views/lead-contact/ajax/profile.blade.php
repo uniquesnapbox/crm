@@ -128,66 +128,17 @@
         border-radius: 16px;
         box-shadow: var(--crm-shadow);
         padding: 18px;
-        height: auto;
-    }
-
-    .lead-profile-shell .lead-profile-layout {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 16px;
-        align-items: start;
+        height: 100%;
     }
 
     .lead-profile-shell .lead-card-title {
         font-size: 15px;
         font-weight: 700;
         color: var(--crm-text);
-        margin-bottom: 0;
+        margin-bottom: 14px;
         display: flex;
         align-items: center;
         gap: 8px;
-    }
-
-    .lead-profile-shell .lead-card-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        width: 100%;
-        border: 0;
-        background: transparent;
-        padding: 0 0 14px;
-        text-align: left;
-    }
-
-    .lead-profile-shell .lead-card-toggle {
-        border: 0;
-        background: #edf3ff;
-        color: #2c6ff3;
-        width: 28px;
-        height: 28px;
-        border-radius: 50%;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        flex: 0 0 28px;
-        transition: transform 0.2s ease, background-color 0.2s ease;
-    }
-
-    .lead-profile-shell .lead-card-header:hover .lead-card-toggle {
-        background: #dfeaff;
-    }
-
-    .lead-profile-shell .lead-card-toggle i {
-        transition: transform 0.2s ease;
-    }
-
-    .lead-profile-shell .lead-card-header.collapsed .lead-card-toggle i {
-        transform: rotate(-90deg);
-    }
-
-    .lead-profile-shell .lead-card-body {
-        padding-top: 14px;
     }
 
     .lead-profile-shell .lead-profile-row {
@@ -446,15 +397,8 @@
 
         .lead-profile-shell .lead-card-title {
             font-size: 14px;
+            margin-bottom: 10px;
             gap: 6px;
-        }
-
-        .lead-profile-shell .lead-card-header {
-            padding-bottom: 10px;
-        }
-
-        .lead-profile-shell .lead-card-body {
-            padding-top: 10px;
         }
 
         .lead-profile-shell .lead-profile-row {
@@ -531,13 +475,15 @@
             $whatsAppUrl = $sanitizedPhone ? 'https://wa.me/' . $sanitizedPhone : null;
             $mailUrl = $leadContact->client_email ? 'mailto:' . $leadContact->client_email : null;
             $callUrl = $contactNumber ? 'tel:' . $contactNumber : null;
+            $directMessageUrl = (!is_null($leadContact->client_id) && in_array('messages', user_modules()))
+                ? route('messages.index') . '?user=' . $leadContact->client_id
+                : null;
             $viewLeadCategoryPermission = user()->permission('view_lead_category');
             $viewLeadSourcesPermission = user()->permission('view_lead_sources');
             $addLeadSourcesPermission = user()->permission('add_lead_sources');
             $addLeadCategoryPermission = user()->permission('add_lead_category');
             $canInlineQuickEdit = (bool) ($canInlineEdit ?? false);
             $quickUpdateUrl = route('lead-contact.quick_update', $leadContact->id);
-            $noteCreateUrl = route('lead-notes.create') . '?lead=' . $leadContact->id;
             $leadSourceCreateUrl = ($addLeadSourcesPermission === 'all' || $addLeadSourcesPermission === 'added') ? route('lead-source-settings.create') : null;
             $leadCategoryCreateUrl = ($addLeadCategoryPermission === 'all' || $addLeadCategoryPermission === 'added') ? route('leadCategory.create') : null;
             $leadStatusCreateUrl = in_array('admin', user_roles()) ? route('lead-stage-setting.create') : null;
@@ -554,13 +500,9 @@
             $statusKey = $leadContact->contact_status ?: 'pending';
             $statusLabel = str($statusKey)->replace('_', ' ')->title();
             $statusClass = $statusKey === 'connected' ? 'status-connected' : ($statusKey === 'not_connected' ? 'status-not-connected' : 'status-pending');
+            $noteCreateUrl = route('lead-notes.create') . '?lead=' . $leadContact->id;
             $followUpCreateUrl = route('lead-contact.follow_up', $leadContact->id);
-            $attachmentCreateUrl = \Illuminate\Support\Facades\Route::has('lead-contact.attachments.create')
-                ? route('lead-contact.attachments.create', $leadContact->id)
-                : null;
-            $locationUrl = !empty($leadContact->address)
-                ? ('https://www.google.com/maps/search/?api=1&query=' . rawurlencode((string) $leadContact->address))
-                : null;
+            $taskCreateUrl = route('tasks.create') . '?lead_id=' . $leadContact->id;
             $timelineCreated = $leadContact->created_at
                 ? $leadContact->created_at->timezone(company()->timezone)->format(company()->date_format . ' ' . company()->time_format)
                 : '--';
@@ -643,40 +585,34 @@
                     </span>
                 @endif
 
-                @if ($attachmentCreateUrl)
-                    <a class="lead-action-tile js-open-lead-popup" href="javascript:;" data-url="{{ $attachmentCreateUrl }}">
-                        <span class="lead-action-icon" style="background:#7c3aed;"><i class="fa fa-paperclip"></i></span>
-                        <div class="lead-action-label">Attachment</div>
-                    </a>
-                @endif
-
-                @if ($locationUrl)
-                    <a class="lead-action-tile" href="{{ $locationUrl }}" target="_blank" rel="noopener">
-                        <span class="lead-action-icon" style="background:#f97316;"><i class="fa fa-map-marker-alt"></i></span>
-                        <div class="lead-action-label">Location</div>
-                    </a>
-                @else
-                    <a class="lead-action-tile js-lead-location" href="javascript:;" data-address="{{ $leadContact->address ?? '' }}">
-                        <span class="lead-action-icon" style="background:#f3a05f;"><i class="fa fa-map-marker-alt"></i></span>
-                        <div class="lead-action-label">Location</div>
-                    </a>
-                @endif
-
-                <a class="lead-action-tile js-open-lead-popup" href="javascript:;" data-url="{{ $followUpCreateUrl }}">
-                    <span class="lead-action-icon" style="background:#0ea5a8;"><i class="fa fa-user-clock"></i></span>
-                    <div class="lead-action-label">Follow</div>
+                <a class="lead-action-tile openRightModal" href="{{ $noteCreateUrl }}">
+                    <span class="lead-action-icon" style="background:#8b5cf6;"><i class="fa fa-sticky-note"></i></span>
+                    <div class="lead-action-label">Add Note</div>
                 </a>
 
+                <a class="lead-action-tile js-open-lead-popup" href="javascript:;" data-url="{{ $followUpCreateUrl }}">
+                    <span class="lead-action-icon" style="background:#0ea5a8;"><i class="fa fa-calendar-plus"></i></span>
+                    <div class="lead-action-label">Add Followup</div>
+                </a>
+
+                <a class="lead-action-tile openRightModal" href="{{ $taskCreateUrl }}">
+                    <span class="lead-action-icon" style="background:#f59e0b;"><i class="fa fa-tasks"></i></span>
+                    <div class="lead-action-label">Create Task</div>
+                </a>
+
+                @if ($directMessageUrl)
+                    <a class="lead-action-tile" href="{{ $directMessageUrl }}">
+                        <span class="lead-action-icon" style="background:#5761ff;"><i class="fa fa-comments"></i></span>
+                        <div class="lead-action-label">Messages</div>
+                    </a>
+                @endif
             </div>
         </div>
 
-        <div class="lead-profile-layout">
-            <div class="lead-card">
-                <button type="button" class="lead-card-header" data-toggle="collapse" data-target="#lead-qualifiers-body" aria-expanded="true" aria-controls="lead-qualifiers-body">
+        <div class="row">
+            <div class="col-xl-6 mb-4">
+                <div class="lead-card">
                     <div class="lead-card-title"><i class="fa fa-chart-line text-primary"></i>Qualifiers</div>
-                    <span class="lead-card-toggle"><i class="fa fa-chevron-down"></i></span>
-                </button>
-                <div class="collapse show lead-card-body" id="lead-qualifiers-body">
 
                     @if ($canInlineQuickEdit && $viewLeadSourcesPermission !== 'none')
                         <div class="lead-profile-row">
@@ -852,15 +788,13 @@
                                 <p class="mb-0 text-dark">{{ !empty($leadContact->products_services) ? $leadContact->products_services : '--' }}</p>
                             @endif
                         </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="lead-card">
-                <button type="button" class="lead-card-header" data-toggle="collapse" data-target="#lead-contact-body" aria-expanded="true" aria-controls="lead-contact-body">
+            <div class="col-xl-6 mb-4">
+                <div class="lead-card">
                     <div class="lead-card-title"><i class="fa fa-address-book text-primary"></i>Contact Info</div>
-                    <span class="lead-card-toggle"><i class="fa fa-chevron-down"></i></span>
-                </button>
-                <div class="collapse show lead-card-body" id="lead-contact-body">
 
                     @if ($canInlineQuickEdit)
                         <div class="lead-profile-row">
@@ -1006,12 +940,9 @@
                 </div>
             </div>
 
-            <div class="lead-card">
-                <button type="button" class="lead-card-header" data-toggle="collapse" data-target="#lead-notes-body" aria-expanded="true" aria-controls="lead-notes-body">
+            <div class="col-xl-6 mb-4">
+                <div class="lead-card">
                     <div class="lead-card-title"><i class="fa fa-sticky-note text-primary"></i>Notes</div>
-                    <span class="lead-card-toggle"><i class="fa fa-chevron-down"></i></span>
-                </button>
-                <div class="collapse show lead-card-body" id="lead-notes-body">
                     @if (!empty($leadContact->note))
                         <p class="mb-3 text-dark-grey">{{ strip_tags($leadContact->note) }}</p>
                     @else
@@ -1021,69 +952,9 @@
                 </div>
             </div>
 
-            <div class="lead-card">
-                <button type="button" class="lead-card-header" data-toggle="collapse" data-target="#lead-attachments-body" aria-expanded="true" aria-controls="lead-attachments-body">
-                    <div class="lead-card-title"><i class="fa fa-paperclip text-primary"></i>Attachments</div>
-                    <span class="lead-card-toggle"><i class="fa fa-chevron-down"></i></span>
-                </button>
-                <div class="collapse show lead-card-body" id="lead-attachments-body">
-
-                    <div class="mb-3">
-                        <a class="btn btn-outline-primary btn-sm js-open-lead-popup" href="javascript:;" data-url="{{ $attachmentCreateUrl }}">
-                            <i class="fa fa-plus mr-1"></i>Add Attachment
-                        </a>
-                    </div>
-
-                    @forelse ($leadContact->attachments as $attachment)
-                        <div class="lead-history-row">
-                            <span class="lead-history-status status-info">
-                                <i class="fa {{ $attachment->icon }}"></i>File
-                            </span>
-
-                            <div class="lead-history-main">
-                                <span class="lead-history-item-title">{{ $attachment->filename }}</span>
-                                <span class="lead-history-item-desc">Quotation attached</span>
-                                <span class="lead-history-item-meta">
-                                    {{ $attachment->created_at->timezone(company()->timezone)->format(company()->date_format . ' ' . company()->time_format) }}
-                                </span>
-                            </div>
-
-                            <a href="{{ $attachment->file_url }}" target="_blank" class="btn btn-sm btn-outline-secondary">View</a>
-                        </div>
-                    @empty
-                        <div class="text-center text-muted py-3">
-                            Attachment is not available for this lead.
-                        </div>
-                    @endforelse
-                </div>
-            </div>
-
-            <div class="lead-card">
-                <button type="button" class="lead-card-header" data-toggle="collapse" data-target="#lead-location-body" aria-expanded="true" aria-controls="lead-location-body">
-                    <div class="lead-card-title"><i class="fa fa-map-marker-alt text-primary"></i>Location</div>
-                    <span class="lead-card-toggle"><i class="fa fa-chevron-down"></i></span>
-                </button>
-                <div class="collapse show lead-card-body" id="lead-location-body">
-
-                    @if (!empty($leadContact->address))
-                        <p class="mb-3 text-dark-grey">{{ $leadContact->address }}</p>
-                        <a href="{{ $locationUrl }}" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm">
-                            <i class="fa fa-external-link-alt mr-1"></i>Open Map
-                        </a>
-                    @else
-                        <div class="text-center text-muted py-3">
-                            Location data is not available for this lead.
-                        </div>
-                    @endif
-                </div>
-            </div>
-
-            <div class="lead-card">
-                <button type="button" class="lead-card-header" data-toggle="collapse" data-target="#lead-timeline-body" aria-expanded="true" aria-controls="lead-timeline-body">
+            <div class="col-xl-6 mb-4">
+                <div class="lead-card">
                     <div class="lead-card-title"><i class="fa fa-history text-primary"></i>Activity Timeline</div>
-                    <span class="lead-card-toggle"><i class="fa fa-chevron-down"></i></span>
-                </button>
-                <div class="collapse show lead-card-body" id="lead-timeline-body">
                     <div class="timeline-item">
                         <span class="timeline-dot"></span>
                         <div>
@@ -1147,71 +1018,8 @@
             if (!url || url === 'javascript:;') {
                 return;
             }
-
-            const $modal = $(MODAL_LG);
-            $modal.find('.modal-content').html(`
-                <div class="modal-header">
-                    <h5 class="modal-title" id="modelHeading">Loading...</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">{{ __('app.loading') }}</div>
-            `);
-            $modal.modal('show');
-
-            $.easyAjax({
-                type: 'GET',
-                url: url,
-                container: MODAL_LG,
-                blockUI: false,
-                success: function(response) {
-                    if (response.status === 'success') {
-                        $modal.find('.modal-content').html(response.html);
-                        $modal.modal('show');
-                        init(MODAL_LG);
-                    }
-                },
-                error: function(request) {
-                    let message = 'Unable to load attachment form.';
-                    if (request.status == 403) {
-                        message = '403 | Permission Denied';
-                    } else if (request.status == 404) {
-                        message = '404 | Not Found';
-                    } else if (request.status == 500) {
-                        message = '500 | Something Went Wrong';
-                    }
-
-                    $modal.find('.modal-content').html(`
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="modelHeading">Error</h5>
-                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                <span aria-hidden="true">&times;</span>
-                            </button>
-                        </div>
-                        <div class="modal-body">
-                            <div class="alert alert-danger mb-0">${message}</div>
-                        </div>
-                    `);
-                    $modal.modal('show');
-                }
-            });
-        });
-
-        $('body').off('click.leadLocationOpen').on('click.leadLocationOpen', '.js-lead-location', function() {
-            const address = ($(this).data('address') || '').toString().trim();
-
-            if (!address) {
-                if (typeof toastr !== 'undefined') {
-                    toastr.info('Location data is not available for this lead.');
-                } else {
-                    Swal.fire({ icon: 'info', title: 'Info', text: 'Location data is not available for this lead.' });
-                }
-                return;
-            }
-
-            const url = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(address);
-            window.open(url, '_blank', 'noopener');
+            $(MODAL_LG + ' ' + MODAL_HEADING).html('...');
+            $.ajaxModal(MODAL_LG, url);
         });
 
         $('body').off('click.leadInlineCreateOption').on('click.leadInlineCreateOption', '.js-inline-create-option', function() {
@@ -1678,3 +1486,4 @@
     syncProfileCountryToCode();
     updateProfileMobilePrefix();
 </script>
+

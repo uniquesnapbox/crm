@@ -87,8 +87,6 @@ class UpdateTask extends CoreRequest
         }
 
         $rules['user_id.0'] = 'required_with:is_private';
-        $rules['user_id'] = 'nullable|array';
-        $rules['user_id.*'] = 'exists:users,id,status,active';
 
         if ($unassignedPermission != 'all') {
             $rules['user_id.0'] = 'required';

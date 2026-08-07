@@ -560,49 +560,6 @@ $viewUnassignedTasksPermission = user()->permission('view_unassigned_tasks');
             }
         });
 
-        $('#allTasks-table').on('draw.dt', function() {
-            $('.js-task-table-inline-select').selectpicker();
-        });
-
-        $('body').on('change', '.js-task-table-inline-select', function() {
-            const $field = $(this);
-            const url = $field.data('url');
-            const previousValue = ($field.attr('data-prev-value') || '').toString();
-            const currentValue = (($field.val() || []).map(String).sort()).join(',');
-
-            if (!url || currentValue === previousValue) {
-                return;
-            }
-
-            $field.prop('disabled', true);
-
-            $.easyAjax({
-                url: url,
-                type: 'POST',
-                data: {
-                    _token: "{{ csrf_token() }}",
-                    user_id: $field.val() || []
-                },
-                success: function(response) {
-                    $field.prop('disabled', false);
-
-                    if (response.status === 'success') {
-                        $field.attr('data-prev-value', currentValue);
-                        showTable();
-                    }
-                    else {
-                        $field.val(previousValue ? previousValue.split(',') : []);
-                        $field.selectpicker('refresh');
-                    }
-                },
-                error: function() {
-                    $field.prop('disabled', false);
-                    $field.val(previousValue ? previousValue.split(',') : []);
-                    $field.selectpicker('refresh');
-                }
-            });
-        });
-
         $('#filter-my-task').click(function () {
             $('.filter-box #assignedTo').val('{{ user()->id }}');
             $('.filter-box .select-picker').selectpicker("refresh");

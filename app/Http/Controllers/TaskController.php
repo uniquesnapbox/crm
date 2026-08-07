@@ -32,7 +32,6 @@ use App\Models\ProjectTimeLogBreak;
 use App\Http\Requests\Tasks\StoreTask;
 use Illuminate\Support\Facades\Config;
 use App\Http\Requests\Tasks\UpdateTask;
-use Illuminate\Validation\Rule;
 
 class TaskController extends AccountBaseController
 {
@@ -187,50 +186,6 @@ class TaskController extends AccountBaseController
         $clockHtml = view('sections.timer_clock', $this->data)->render();
 
         return Reply::successWithData(__('messages.updateSuccess'), ['clockHtml' => $clockHtml]);
-
-    }
-
-    public function quickUpdateAssignees(Request $request, $id)
-    {
-        $task = Task::with('users', 'project')->findOrFail($id);
-        $existingAssignedUsers = $task->users->pluck('id')->toArray();
-        $editTaskPermission = user()->permission('edit_tasks');
-        $taskUsers = $task->users->pluck('id')->toArray();
-
-        abort_403(
-            !($editTaskPermission == 'all'
-                || ($editTaskPermission == 'owned' && in_array(user()->id, $taskUsers))
-                || ($editTaskPermission == 'added' && $task->added_by == user()->id)
-                || ($task->project && ($task->project->project_admin == user()->id))
-                || ($editTaskPermission == 'both' && (in_array(user()->id, $taskUsers) || $task->added_by == user()->id))
-                || ($editTaskPermission == 'owned' && (in_array('client', user_roles()) && $task->project && ($task->project->client_id == user()->id)))
-                || ($editTaskPermission == 'both' && (in_array('client', user_roles()) && ($task->project && ($task->project->client_id == user()->id)) || $task->added_by == user()->id))
-            )
-        );
-
-        $assignableEmployees = User::allEmployees(null, true, ($editTaskPermission == 'all' ? 'all' : null))->pluck('id')->map(fn ($id) => (int) $id)->all();
-
-        $request->validate([
-            'user_id' => ['nullable', 'array'],
-            'user_id.*' => ['integer', Rule::in($assignableEmployees)],
-        ]);
-
-        $assignedUsers = array_values(array_map(
-            'intval',
-            array_filter((array) $request->input('user_id', []), fn ($userId) => $userId !== null && $userId !== '')
-        ));
-
-        $task->users()->sync($assignedUsers);
-        $newAssignedUsers = array_values(array_diff($assignedUsers, $existingAssignedUsers));
-
-        if (!empty($newAssignedUsers)) {
-            $this->taskWhatsAppNotificationService->sendAssignedNotifications(
-                $task->fresh(['boardColumn', 'project', 'addedByUser']),
-                $newAssignedUsers
-            );
-        }
-
-        return Reply::success(__('messages.updateSuccess'));
 
     }
 
@@ -622,7 +577,7 @@ class TaskController extends AccountBaseController
 
         if ($this->task->project_id) {
             if ($this->task->project->public) {
-                $this->employees = User::allEmployees(null, true, ($editTaskPermission == 'all' ? 'all' : null));
+                $this->employees = User::allEmployees(null, null, ($editTaskPermission == 'all' ? 'all' : null));
 
             }
             else {
@@ -631,14 +586,11 @@ class TaskController extends AccountBaseController
         }
         else {
             if ($editTaskPermission == 'added' || $editTaskPermission == 'owned') {
-                $activeTaskUsers = $this->task->users->where('status', 'active')->values();
-                $this->employees = $activeTaskUsers->isNotEmpty()
-                    ? $activeTaskUsers
-                    : User::allEmployees(null, true, ($editTaskPermission == 'all' ? 'all' : null));
+                $this->employees = ((count($this->task->users) > 0) ? $this->task->users : User::allEmployees(null, null, ($editTaskPermission == 'all' ? 'all' : null)));
 
             }
             else {
-                $this->employees = User::allEmployees(null, true, ($editTaskPermission == 'all' ? 'all' : null));
+                $this->employees = User::allEmployees(null, null, ($editTaskPermission == 'all' ? 'all' : null));
             }
         }
 

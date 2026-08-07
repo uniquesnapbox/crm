@@ -97,28 +97,6 @@ $addLeadCustomFormPermission = user()->permission('manage_lead_custom_forms');
     <script>
         const leadShowRouteTemplate = "{{ route('lead-contact.show', ':id') }}";
         const leadContactTableId = "lead-contact-table";
-        const activeLeadAssigneeIds = new Set(
-            @json($employees->pluck('id')->map(fn ($id) => (string) $id)->values())
-        );
-
-        function enforceActiveLeadAssignees() {
-            $('#' + leadContactTableId + ' .js-lead-table-inline-select[data-field="assigned_to"]').each(function() {
-                const $select = $(this);
-
-                $select.find('option').each(function() {
-                    const employeeId = String($(this).val() || '');
-
-                    if (employeeId !== '' && !activeLeadAssigneeIds.has(employeeId)) {
-                        $(this).remove();
-                    }
-                });
-
-                if (!activeLeadAssigneeIds.has(String($select.val() || ''))) {
-                    $select.val('');
-                    $select.attr('data-prev-value', '');
-                }
-            });
-        }
 
         function getLeadContactFilters() {
             var dateRangePicker = $('#datatableRange').data('daterangepicker');
@@ -152,10 +130,7 @@ $addLeadCustomFormPermission = user()->permission('manage_lead_custom_forms');
 
         $('#' + leadContactTableId).on('preXhr.dt', function(e, settings, data) {
             Object.assign(data, getLeadContactFilters());
-            data.activeAssigneesVersion = Date.now();
         });
-
-        $('#' + leadContactTableId).on('draw.dt', enforceActiveLeadAssignees);
 
         const showTable = () => {
             window.LaravelDataTables["lead-contact-table"].draw(false);

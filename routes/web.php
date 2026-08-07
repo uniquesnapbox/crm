@@ -394,7 +394,6 @@ Route::group(['middleware' => 'auth:sanctum,web', 'prefix' => 'account'], functi
     /* TASKS */
     Route::get('tasks/client-detail', [TaskController::class, 'clientDetail'])->name('tasks.clientDetail');
     Route::post('tasks/change-status', [TaskController::class, 'changeStatus'])->name('tasks.change_status');
-    Route::post('tasks/quick-update-assignees/{id}', [TaskController::class, 'quickUpdateAssignees'])->name('tasks.quick_update_assignees');
     Route::post('tasks/apply-quick-action', [TaskController::class, 'applyQuickAction'])->name('tasks.apply_quick_action');
     Route::post('tasks/store-pin', [TaskController::class, 'storePin'])->name('tasks.store_pin');
     Route::post('tasks/reminder', [TaskController::class, 'reminder'])->name('tasks.reminder');
@@ -510,8 +509,6 @@ Route::group(['middleware' => 'auth:sanctum,web', 'prefix' => 'account'], functi
         Route::post('follow-up-update', [LeadContactController::class, 'updateFollow'])->name('lead-contact.follow_up_update');
         Route::post('follow-up-delete/{id}', [LeadContactController::class, 'deleteFollow'])->name('lead-contact.follow_up_delete');
         Route::post('change-follow-up-status', [LeadContactController::class, 'changeFollowUpStatus'])->name('lead-contact.change_follow_up_status');
-        Route::get('{lead}/attachments/create', [LeadContactController::class, 'attachmentCreate'])->name('lead-contact.attachments.create');
-        Route::post('attachments-store', [LeadContactController::class, 'attachmentStore'])->name('lead-contact.attachments.store');
         Route::post('{lead}/convert-to-client', [LeadContactController::class, 'convertToClient'])->name('lead-contact.convert_to_client');
     });
 
