@@ -14,8 +14,10 @@ return new class extends Migration
 
         Schema::create('lead_contact_attachments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('lead_id')->constrained('leads')->cascadeOnDelete();
-            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->unsignedInteger('lead_id');
+            $table->foreign('lead_id')->references('id')->on('leads')->cascadeOnDelete();
+            $table->unsignedInteger('user_id')->nullable();
+            $table->foreign('user_id')->references('id')->on('users')->nullOnDelete();
             $table->string('filename');
             $table->string('hashname');
             $table->string('size')->nullable();
