@@ -19,6 +19,8 @@ use App\Console\Commands\SendAttendanceReminder;
 use App\Console\Commands\SendAutoTaskReminder;
 use App\Console\Commands\SendEventReminder;
 use App\Console\Commands\SendAutoFollowUpReminder;
+use App\Console\Commands\SendDailyLeadFollowUpWhatsappSummary;
+use App\Console\Commands\SendLeadFollowUpWhatsappReminders;
 use App\Console\Commands\SendDailyPendingTaskWhatsappSummary;
 use App\Console\Commands\SendFollowupMessages;
 use App\Console\Commands\SendDailyTimelogReport;
@@ -61,6 +63,8 @@ class Kernel extends ConsoleKernel
         SyncUserPermissions::class,
         SendAutoFollowUpReminder::class,
         SendDailyPendingTaskWhatsappSummary::class,
+        SendDailyLeadFollowUpWhatsappSummary::class,
+        SendLeadFollowUpWhatsappReminders::class,
         SendFollowupMessages::class,
         FetchTicketEmails::class,
         AddMissingRolePermission::class,
@@ -120,7 +124,9 @@ class Kernel extends ConsoleKernel
         $schedule->command('app:leaves-quota-renew')->dailyAt('02:30');
         $schedule->command('log:clean --keep-last')->dailyAt('02:40');
         $schedule->command('inactive-employee')->dailyAt('02:50');
-        $schedule->command('send-daily-pending-task-whatsapp-summary')->dailyAt('08:00');
+        $schedule->command('send-daily-pending-task-whatsapp-summary')->everyMinute()->withoutOverlapping();
+        $schedule->command('send-daily-lead-follow-up-whatsapp-summary')->everyMinute()->withoutOverlapping();
+        $schedule->command('send-lead-followup-whatsapp-reminders')->everyMinute();
         $schedule->command('daily-schedule-reminder')->daily();
 
         // Hourly

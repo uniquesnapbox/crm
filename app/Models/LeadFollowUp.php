@@ -12,6 +12,7 @@ class LeadFollowUp extends BaseModel
         'next_follow_up_date' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'whatsapp_reminder_sent_at' => 'datetime',
         'latitude' => 'float',
         'longitude' => 'float',
     ];

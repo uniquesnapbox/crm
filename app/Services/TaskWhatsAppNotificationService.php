@@ -29,15 +29,6 @@ class TaskWhatsAppNotificationService
             return;
         }
 
-        $message = $this->renderTemplate(
-            $setting->task_assigned_staff_template ?: WhatsappNotificationSetting::DEFAULT_TASK_ASSIGNED_TEMPLATE,
-            $task
-        );
-
-        if ($message === '') {
-            return;
-        }
-
         $senderNumber = $setting->resolved_lead_created_sender_number;
         $users = User::withoutGlobalScopes()->whereIn('id', $userIds)->get();
 
@@ -50,6 +41,16 @@ class TaskWhatsAppNotificationService
                     'user_id' => $user->id,
                 ]);
 
+                continue;
+            }
+
+            $message = $this->renderTemplate(
+                $setting->task_assigned_staff_template ?: WhatsappNotificationSetting::DEFAULT_TASK_ASSIGNED_TEMPLATE,
+                $task,
+                $user
+            );
+
+            if ($message === '') {
                 continue;
             }
 
@@ -82,15 +83,6 @@ class TaskWhatsAppNotificationService
             return;
         }
 
-        $message = $this->renderTemplate(
-            $setting->task_completed_template ?: WhatsappNotificationSetting::DEFAULT_TASK_COMPLETED_TEMPLATE,
-            $task
-        );
-
-        if ($message === '') {
-            return;
-        }
-
         $senderNumber = $setting->resolved_lead_created_sender_number;
         $users = User::withoutGlobalScopes()->whereIn('id', $userIds)->get();
 
@@ -98,6 +90,16 @@ class TaskWhatsAppNotificationService
             $mobile = $this->userMobile($user);
 
             if ($mobile === '') {
+                continue;
+            }
+
+            $message = $this->renderTemplate(
+                $setting->task_completed_template ?: WhatsappNotificationSetting::DEFAULT_TASK_COMPLETED_TEMPLATE,
+                $task,
+                $user
+            );
+
+            if ($message === '') {
                 continue;
             }
 
@@ -183,7 +185,7 @@ class TaskWhatsAppNotificationService
         }
     }
 
-    private function renderTemplate(string $template, Task $task): string
+    private function renderTemplate(string $template, Task $task, ?User $recipient = null): string
     {
         $placeholders = [
             '{{task_id}}' => (string) $task->id,
@@ -194,6 +196,7 @@ class TaskWhatsAppNotificationService
             '{{assigned_by}}' => (string) ($task->addedByUser?->name ?: optional(user())->name ?: ''),
             '{{completed_on}}' => (string) ($task->completed_on?->format('Y-m-d H:i') ?: now()->format('Y-m-d H:i')),
             '{{completed_by}}' => (string) (optional(user())->name ?: ''),
+            '{{recipient_name}}' => (string) ($recipient?->name ?: ''),
         ];
 
         return trim(strtr($template, $placeholders));
@@ -224,10 +227,23 @@ class TaskWhatsAppNotificationService
 
     private function userMobile(User $user): string
     {
-        if (!empty($user->mobile) && !empty($user->country_phonecode)) {
-            return preg_replace('/\D+/', '', $user->country_phonecode . $user->mobile);
+        $mobile = preg_replace('/\D+/', '', (string) $user->mobile);
+        $countryCode = preg_replace('/\D+/', '', (string) $user->country_phonecode);
+
+        if ($mobile === '') {
+            return '';
         }
 
-        return preg_replace('/\D+/', '', (string) $user->mobile);
+        if ($countryCode !== '') {
+            $mobile = ltrim($mobile, '0');
+
+            if (str_starts_with($mobile, $countryCode)) {
+                return $mobile;
+            }
+
+            return $countryCode . $mobile;
+        }
+
+        return $mobile;
     }
 }

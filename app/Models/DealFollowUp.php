@@ -50,6 +50,7 @@ class DealFollowUp extends BaseModel
     protected $casts = [
         'next_follow_up_date' => 'datetime',
         'created_at' => 'datetime',
+        'whatsapp_reminder_sent_at' => 'datetime',
     ];
 
     public function lead(): BelongsTo
