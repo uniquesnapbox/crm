@@ -38,8 +38,27 @@ class ProductionReadinessSmokeTest extends TestCase
             'send-daily-pending-task-whatsapp-summary',
             'send-daily-lead-follow-up-whatsapp-summary',
             'send-auto-followup-reminder',
+            'send-lead-followup-whatsapp-reminders',
         ] as $command) {
             $this->assertContains($command, $commands);
+        }
+    }
+
+    public function testCriticalCrmRoutesAreRegistered(): void
+    {
+        foreach ([
+            'login',
+            'user-permissions.index',
+            'lead-contact.index',
+            'lead-contact.convert_to_client',
+            'deals.index',
+            'tasks.index',
+            'invoices.index',
+            'payments.index',
+            'whatsapp.send-message',
+            'api.login',
+        ] as $routeName) {
+            $this->assertTrue(Route::has($routeName), "Missing route [{$routeName}].");
         }
     }
 
