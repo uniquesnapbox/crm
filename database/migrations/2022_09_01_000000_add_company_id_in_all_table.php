@@ -5,6 +5,7 @@ use App\Observers\CompanyObserver;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use App\Models\Company;
 use Illuminate\Support\Str;
@@ -55,7 +56,12 @@ return new class extends Migration {
             }
 
         } catch (Exception $e) {
-            dd($e->getMessage());
+            Log::error('Failed while adding company_id columns during migration.', [
+                'migration' => __FILE__,
+                'exception' => $e,
+            ]);
+
+            throw $e;
         }
 
         if (!Schema::hasColumn('companies', 'status')) {

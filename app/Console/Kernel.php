@@ -20,6 +20,7 @@ use App\Console\Commands\SendAutoTaskReminder;
 use App\Console\Commands\SendEventReminder;
 use App\Console\Commands\SendAutoFollowUpReminder;
 use App\Console\Commands\SendDailyPendingTaskWhatsappSummary;
+use App\Console\Commands\SendDailyLeadFollowUpWhatsappSummary;
 use App\Console\Commands\SendFollowupMessages;
 use App\Console\Commands\SendDailyTimelogReport;
 use App\Console\Commands\SendProjectReminder;
@@ -61,6 +62,7 @@ class Kernel extends ConsoleKernel
         SyncUserPermissions::class,
         SendAutoFollowUpReminder::class,
         SendDailyPendingTaskWhatsappSummary::class,
+        SendDailyLeadFollowUpWhatsappSummary::class,
         SendFollowupMessages::class,
         FetchTicketEmails::class,
         AddMissingRolePermission::class,
@@ -80,8 +82,8 @@ class Kernel extends ConsoleKernel
      */
     protected function scheduleTimezone(): DateTimeZone|string|null
     {
-        // Get the timezone from the configuration
-        return config('app.cron_timezone');
+        // Keep the scheduler anchored to India time so the 9:00 AM jobs fire at 9:00 AM IST.
+        return new DateTimeZone('Asia/Kolkata');
 
     }
 
@@ -120,7 +122,12 @@ class Kernel extends ConsoleKernel
         $schedule->command('app:leaves-quota-renew')->dailyAt('02:30');
         $schedule->command('log:clean --keep-last')->dailyAt('02:40');
         $schedule->command('inactive-employee')->dailyAt('02:50');
-        $schedule->command('send-daily-pending-task-whatsapp-summary')->dailyAt('08:00');
+        $schedule->command('send-daily-pending-task-whatsapp-summary')
+            ->dailyAt('09:00')
+            ->withoutOverlapping();
+        $schedule->command('send-daily-lead-follow-up-whatsapp-summary')
+            ->dailyAt('09:00')
+            ->withoutOverlapping();
         $schedule->command('daily-schedule-reminder')->daily();
 
         // Hourly

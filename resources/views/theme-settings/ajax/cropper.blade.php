@@ -39,8 +39,10 @@
             u8arr[n] = bstr.charCodeAt(n);
         }
 
-        return new File([u8arr], Math.random().toString(36).substr(2, 10) + '.png', {
-            type: 'image/png',
+        var extension = mime === 'image/jpeg' ? 'jpg' : 'png';
+
+        return new File([u8arr], Math.random().toString(36).substr(2, 10) + '.' + extension, {
+            type: mime,
             lastModified: Date.now()
         });
     }
@@ -63,16 +65,35 @@
     }
 
     $('#cropImage').click(function () {
+        if (!cropper) {
+            return;
+        }
+
         $('#cropImage').attr('disabled', true);
-        canvas = cropper.getCroppedCanvas();
+        var isLoginBackground = elementId === 'login_background';
+        var canvasOptions = isLoginBackground
+            ? { maxWidth: 1600, maxHeight: 900, imageSmoothingQuality: 'high' }
+            : { maxWidth: 1000, maxHeight: 500, imageSmoothingQuality: 'high' };
+        var outputType = isLoginBackground ? 'image/jpeg' : 'image/png';
+        var outputQuality = isLoginBackground ? 0.85 : 1;
+
+        canvas = cropper.getCroppedCanvas(canvasOptions);
+        var croppedDataUrl = canvas.toDataURL(outputType, outputQuality);
+        var croppedFile = dataURLtoFile(croppedDataUrl);
+
+        if (croppedFile.size > 2 * 1024 * 1024) {
+            $('#cropImage').attr('disabled', false);
+            toastr.error('The cropped image must be smaller than 2 MB. Please crop a smaller area.');
+            return;
+        }
 
         // set the new file to the input file on the element
         let container = new DataTransfer();
-        container.items.add(dataURLtoFile(canvas.toDataURL()));
+        container.items.add(croppedFile);
         input.files = container.files;
 
         // change dropify image
-        $('#' + elementId).parent().find('.dropify-render img').attr('src', canvas.toDataURL());
+        $('#' + elementId).parent().find('.dropify-render img').attr('src', croppedDataUrl);
 
         // close modal
         elementId = '';
@@ -82,7 +103,9 @@
     function onModelClose() {
         if(elementId != undefined && elementId != '') {
             $('#' + elementId).parent().find('.dropify-clear').click();
-            cropper.destroy();
+            if (cropper) {
+                cropper.destroy();
+            }
             elementId = '';
         }
     }

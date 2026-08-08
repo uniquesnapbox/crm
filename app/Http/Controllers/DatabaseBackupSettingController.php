@@ -9,6 +9,7 @@ use App\Models\GlobalSetting;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class DatabaseBackupSettingController extends AccountBaseController
@@ -44,7 +45,12 @@ class DatabaseBackupSettingController extends AccountBaseController
 
             $files = $disk->files('/backup');
         } catch (\Exception $e) {
-            dd($e->getMessage());
+            Log::error('Unable to list database backup files.', [
+                'disk' => 'localBackup',
+                'exception' => $e,
+            ]);
+
+            return [];
         }
         $backups = [];
 

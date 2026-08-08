@@ -9,15 +9,18 @@
     </div>
     <!-- DATE END -->
 
+    @php
+        $selectedType = request('type') ?: 'lead';
+    @endphp
+
     <!-- CLIENT START -->
     <div class="select-box d-flex py-2 px-lg-2 px-md-2 px-0 border-right-grey border-right-grey-sm-0">
         <p class="mb-0 pr-2 f-14 text-dark-grey d-flex align-items-center">@lang('modules.invoices.type')</p>
         <div class="select-status">
             <select class="form-control select-picker" name="type" id="type">
-                <option value="all">@lang('modules.lead.all')</option>
-                <option {{ request('type') == 'lead' ? 'selected' : '' }} value="lead">@lang('modules.lead.lead')
+                <option {{ $selectedType == 'lead' ? 'selected' : '' }} value="lead">@lang('modules.lead.lead')
                 </option>
-                <option {{ request('type') == 'client' ? 'selected' : '' }} value="client">
+                <option {{ $selectedType == 'client' ? 'selected' : '' }} value="client">
                     @lang('modules.lead.client')</option>
             </select>
         </div>
@@ -96,10 +99,10 @@
                 <div class="select-others">
                     <select class="form-control select-picker" id="filter_interest_level" data-container="body" data-size="8">
                         <option value="all">@lang('app.all')</option>
-                        <option value="low">Low</option>
-                        <option value="medium">Medium</option>
-                        <option value="high">High</option>
-                        <option value="very_high">Very High</option>
+                        <option value="low" data-content="<span><i class='fa fa-circle mr-2' style='color:#64748b'></i>Low</span>">Low</option>
+                        <option value="medium" data-content="<span><i class='fa fa-circle mr-2' style='color:#2563eb'></i>Medium</span>">Medium</option>
+                        <option value="high" data-content="<span><i class='fa fa-circle mr-2' style='color:#ea580c'></i>High</span>">High</option>
+                        <option value="very_high" data-content="<span><i class='fa fa-circle mr-2' style='color:#16a34a'></i>Very High</span>">Very High</option>
                     </select>
                 </div>
             </div>
@@ -155,7 +158,7 @@
     <script>
         $('#type, #filter_assigned_to, #filter_category_id, #filter_status_id, #filter_interest_level, #filter_source_id, #date_filter_on, #min, #max, #filter_addedBy')
             .on('change keyup', function() {
-                if ($('#type').val() != "all") {
+                if ($('#type').val() != "lead") {
                     $('#reset-filters').removeClass('d-none');
                     showTable();
                 } else if ($('#min').val() != "all") {
@@ -201,6 +204,7 @@
         $('#reset-filters,#reset-filters-2').click(function() {
             $('#filter-form')[0].reset();
 
+            $('#type').val('lead');
             $('.filter-box #status').val('not finished');
             $('.filter-box #date_filter_on').val('created_at');
             $('.filter-box .select-picker').selectpicker("refresh");

@@ -14,17 +14,18 @@ class SendDailyLeadFollowUpSummaryJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function __construct(public int $companyId)
+    public function __construct(public int $companyId, public bool $force = false)
     {
     }
 
     public function handle(LeadFollowUpWhatsAppSummaryService $service): void
     {
         try {
-            $service->sendDailySummaryForCompany($this->companyId);
+            $service->sendDailySummaryForCompany($this->companyId, $this->force);
         } catch (\Throwable $exception) {
             Log::warning('Daily lead follow-up WhatsApp summary job failed.', [
                 'company_id' => $this->companyId,
+                'force' => $this->force,
                 'error' => $exception->getMessage(),
             ]);
 

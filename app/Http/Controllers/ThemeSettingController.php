@@ -7,6 +7,7 @@ use App\Helper\Reply;
 use App\Http\Requests\UpdateThemeSetting;
 use App\Models\GlobalSetting;
 use App\Models\ThemeSetting;
+use Illuminate\Support\Facades\DB;
 use Storage;
 
 class ThemeSettingController extends AccountBaseController
@@ -46,70 +47,74 @@ class ThemeSettingController extends AccountBaseController
     public function store(UpdateThemeSetting $request)
     {
         $setting = $this->company;
+        $oldFiles = [];
+        $newFiles = [];
 
-        $adminTheme = ThemeSetting::where('panel', 'admin')->first();
-        $this->themeUpdate($adminTheme, $request->theme_settings[1], $request->primary_color[0]);
+        try {
+            $this->prepareFileChange($request, $setting, 'logo', 'app-logo', $oldFiles, $newFiles);
+            $this->prepareFileChange($request, $setting, 'light_logo', 'app-logo', $oldFiles, $newFiles);
+            $this->prepareFileChange($request, $setting, 'login_background', 'login-background', $oldFiles, $newFiles);
+            $this->prepareFileChange($request, $setting, 'favicon', 'favicon', $oldFiles, $newFiles);
 
-        $employeeTheme = ThemeSetting::where('panel', 'employee')->first();
-        $this->themeUpdate($employeeTheme, $request->theme_settings[3], $request->primary_color[1]);
+            DB::transaction(function () use ($request, $setting) {
+                $adminTheme = ThemeSetting::where('panel', 'admin')->first();
+                $this->themeUpdate($adminTheme, $request->theme_settings[1], $request->primary_color[0]);
 
-        $clientTheme = ThemeSetting::where('panel', 'client')->first();
-        $this->themeUpdate($clientTheme, $request->theme_settings[4], $request->primary_color[2]);
+                $employeeTheme = ThemeSetting::where('panel', 'employee')->first();
+                $this->themeUpdate($employeeTheme, $request->theme_settings[3], $request->primary_color[1]);
 
-        $setting->logo_background_color = $request->logo_background_color;
-        $setting->auth_theme = $request->auth_theme;
-        $setting->auth_theme_text = $request->auth_theme_text;
-        $setting->app_name = $request->app_name;
-        $setting->header_color = $request->global_header_color;
+                $clientTheme = ThemeSetting::where('panel', 'client')->first();
+                $this->themeUpdate($clientTheme, $request->theme_settings[4], $request->primary_color[2]);
 
-        if ($request->logo_delete == 'yes') {
-            Files::deleteFile($setting->logo, 'app-logo');
-            $setting->logo = null;
+                $setting->logo_background_color = $request->logo_background_color;
+                $setting->auth_theme = $request->auth_theme;
+                $setting->auth_theme_text = $request->auth_theme_text;
+                $setting->app_name = $request->app_name;
+                $setting->header_color = $request->global_header_color;
+                $setting->sidebar_logo_style = $request->sidebar_logo_style;
+                $setting->save();
+            });
+        } catch (\Throwable $exception) {
+            foreach ($newFiles as $file) {
+                Files::deleteFile($file['name'], $file['folder']);
+            }
+
+            throw $exception;
         }
 
-        if ($request->hasFile('logo')) {
-            Files::deleteFile($setting->logo, 'app-logo');
-            $setting->logo = Files::uploadLocalOrS3($request->logo, 'app-logo');
+        foreach ($oldFiles as $file) {
+            Files::deleteFile($file['name'], $file['folder']);
         }
 
-
-        if ($request->light_logo_delete == 'yes') {
-            Files::deleteFile($setting->light_logo, 'app-logo');
-            $setting->light_logo = null;
-        }
-
-        if ($request->hasFile('light_logo')) {
-            Files::deleteFile($setting->light_logo, 'app-logo');
-            $setting->light_logo = Files::uploadLocalOrS3($request->light_logo, 'app-logo');
-        }
-
-        if ($request->login_background_delete == 'yes') {
-            Files::deleteFile($setting->login_background, 'login-background');
-            $setting->login_background = null;
-        }
-
-        if ($request->hasFile('login_background')) {
-            Files::deleteFile($setting->login_background, 'login-background');
-            $setting->login_background = Files::uploadLocalOrS3($request->login_background, 'login-background');
-        }
-
-
-        if ($request->favicon_delete == 'yes') {
-            Files::deleteFile($setting->favicon, 'favicon');
-            $setting->favicon = null;
-        }
-
-        if ($request->hasFile('favicon')) {
-            $setting->favicon = Files::uploadLocalOrS3($request->favicon, 'favicon');
-        }
-
-        $setting->sidebar_logo_style = $request->sidebar_logo_style;
-
-        $setting->save();
         session()->forget(['admin_theme', 'employee_theme', 'client_theme', 'company', 'companyOrGlobalSetting', 'user.company']);
         cache()->forget('global_setting');
 
         return Reply::redirect(route('theme-settings.index'), __('messages.updateSuccess'));
+    }
+
+    private function prepareFileChange($request, $setting, string $field, string $folder, array &$oldFiles, array &$newFiles): void
+    {
+        $oldFile = $setting->{$field};
+
+        if ($request->hasFile($field)) {
+            $newFile = Files::uploadLocalOrS3($request->file($field), $folder);
+            $setting->{$field} = $newFile;
+            $newFiles[] = ['name' => $newFile, 'folder' => $folder];
+
+            if ($oldFile && $oldFile !== $newFile) {
+                $oldFiles[] = ['name' => $oldFile, 'folder' => $folder];
+            }
+
+            return;
+        }
+
+        if ($request->input($field . '_delete') === 'yes') {
+            $setting->{$field} = null;
+
+            if ($oldFile) {
+                $oldFiles[] = ['name' => $oldFile, 'folder' => $folder];
+            }
+        }
     }
 
     private function themeUpdate($updateObject, $themeSetting, $primaryColor)

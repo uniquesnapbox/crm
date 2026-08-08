@@ -5,6 +5,7 @@
 !public/user-uploads/.htaccess
 /storage/*.key
 /vendor
+/.composer-cache/
 .env
 .env.backup
 .phpunit.result.cache
@@ -42,3 +43,4 @@ database/schema/mysql-schema.dump
 database/schema/mysql-schema.dump.bak
 database_backups/
 deploy-hotfix-*/
+temp_*.sh

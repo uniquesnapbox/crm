@@ -1184,7 +1184,7 @@ class HomeController extends Controller
     public function syncPermissions()
     {
         abort_unless(
-            app()->environment(['local', 'staging']) || (Auth::check() && Auth::user()->hasRole('admin')),
+            Auth::check() && Auth::user()->hasRole('admin'),
             403
         );
 

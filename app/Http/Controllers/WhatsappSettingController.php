@@ -35,6 +35,7 @@ class WhatsappSettingController extends AccountBaseController
         $setting->status = 'active';
         $setting->send_lead_created_message = $request->has('send_lead_created_message') ? 'yes' : 'no';
         $setting->send_lead_interest_message = $request->has('send_lead_interest_message') ? 'yes' : 'no';
+        $setting->send_lead_followup_message = $request->has('send_lead_followup_message') ? 'yes' : 'no';
         $setting->send_ticket_message = $request->has('send_ticket_message') ? 'yes' : 'no';
         $setting->send_ticket_assigned_staff_message = $request->has('send_ticket_assigned_staff_message') ? 'yes' : 'no';
         $setting->send_ticket_assigned_client_message = $request->has('send_ticket_assigned_client_message') ? 'yes' : 'no';
@@ -44,6 +45,7 @@ class WhatsappSettingController extends AccountBaseController
         $setting->send_task_completed_message = $request->has('send_task_completed_message') ? 'yes' : 'no';
         $setting->lead_created_template = trim((string) ($request->lead_created_template ?: WhatsappNotificationSetting::DEFAULT_LEAD_CREATED_TEMPLATE));
         $setting->lead_interest_template = trim((string) ($request->lead_interest_template ?: WhatsappNotificationSetting::DEFAULT_LEAD_INTEREST_TEMPLATE));
+        $setting->lead_followup_template = trim((string) ($request->lead_followup_template ?: WhatsappNotificationSetting::DEFAULT_LEAD_FOLLOWUP_TEMPLATE));
         $setting->lead_created_sender_number = preg_replace('/\D+/', '', (string) $request->lead_created_sender_number);
         $setting->ticket_assigned_staff_template = trim((string) ($request->ticket_assigned_staff_template ?: WhatsappNotificationSetting::DEFAULT_TICKET_ASSIGNED_STAFF_TEMPLATE));
         $setting->ticket_assigned_client_template = trim((string) ($request->ticket_assigned_client_template ?: WhatsappNotificationSetting::DEFAULT_TICKET_ASSIGNED_CLIENT_TEMPLATE));

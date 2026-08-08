@@ -40,6 +40,7 @@
 @php
 $addLeadPermission = user()->permission('add_lead');
 $addLeadCustomFormPermission = user()->permission('manage_lead_custom_forms');
+$canBulkAssignLead = $canBulkAssignLead ?? false;
 @endphp
 
 @section('content')
@@ -71,9 +72,22 @@ $addLeadCustomFormPermission = user()->permission('manage_lead_custom_forms');
                 <div class="select-status mr-3 pl-3">
                     <select name="action_type" class="form-control select-picker" id="quick-action-type" disabled>
                         <option value="">@lang('app.selectAction')</option>
+                        @if ($canBulkAssignLead)
+                            <option value="assign-to">@lang('modules.tasks.assignTo')</option>
+                        @endif
                         <option value="delete">@lang('app.delete')</option>
                     </select>
                 </div>
+                @if ($canBulkAssignLead)
+                    <div class="select-status mr-3 d-none quick-action-field" id="change-agent-action">
+                        <select name="assigned_to" id="assigned_to" class="form-control select-picker" data-live-search="true" data-size="8">
+                            <option value="">@lang('modules.tasks.assignTo')</option>
+                            @foreach ($assignableEmployees ?? $employees as $employee)
+                                <x-user-option :user="$employee" />
+                            @endforeach
+                        </select>
+                    </div>
+                @endif
             </x-datatable.actions>
 
         </div>
@@ -175,9 +189,10 @@ $addLeadCustomFormPermission = user()->permission('manage_lead_custom_forms');
             if (actionValue != '') {
                 $('#quick-action-apply').removeAttr('disabled');
 
-                if (actionValue == 'change-agent') {
+                if (actionValue == 'assign-to') {
                     $('.quick-action-field').addClass('d-none');
                     $('#change-agent-action').removeClass('d-none');
+                    $('#assigned_to').selectpicker('refresh');
                 } else {
                     $('.quick-action-field').addClass('d-none');
                 }
@@ -189,6 +204,19 @@ $addLeadCustomFormPermission = user()->permission('manage_lead_custom_forms');
 
         $('#quick-action-apply').click(function() {
             const actionValue = $('#quick-action-type').val();
+            if (actionValue == 'assign-to' && ($('#assigned_to').val() || '') === '') {
+                Swal.fire({
+                    title: "@lang('messages.sweetAlertTitle')",
+                    text: "Please select an employee to assign the selected leads.",
+                    icon: 'warning',
+                    confirmButtonText: "@lang('app.ok')",
+                    customClass: {
+                        confirmButton: 'btn btn-primary'
+                    },
+                    buttonsStyling: false
+                });
+                return;
+            }
             if (actionValue == 'delete') {
                 Swal.fire({
                     title: "@lang('messages.sweetAlertTitle')",
@@ -291,7 +319,7 @@ $addLeadCustomFormPermission = user()->permission('manage_lead_custom_forms');
         });
 
         $('body').on('click', '#lead-contact-table tbody tr.lead-table-row', function(e) {
-            if ($(e.target).closest('a,button,input,select,option,label,.select-picker,.js-lead-table-inline-select,.dropdown,.dropdown-menu,.swal2-container').length) {
+            if ($(e.target).closest('a,button,input,select,option,label,.select-picker,.bootstrap-select,.bootstrap-select *,.js-lead-table-inline-select,.dropdown,.dropdown-menu,.swal2-container').length) {
                 return;
             }
 

@@ -28,7 +28,7 @@ class LeadFollowUpWhatsAppReminderService
 
         $setting = WhatsappNotificationSetting::where('company_id', $companyId)->first();
 
-        if (!$setting || $setting->status !== 'active') {
+        if (!$setting || $setting->status !== 'active' || !$setting->isLeadFollowUpMessageEnabled()) {
             return;
         }
 
@@ -39,6 +39,7 @@ class LeadFollowUpWhatsAppReminderService
 
         $windowStart = $target->copy()->startOfMinute()->setTimezone('UTC');
         $windowEnd = $target->copy()->endOfMinute()->setTimezone('UTC');
+        $activeEmployees = User::allEmployees(null, true, null, $companyId)->keyBy('id');
 
         $followUps = LeadFollowUp::with([
             'lead:id,client_name,mobile,cell,office,assigned_to,added_by,company_id',
@@ -62,7 +63,7 @@ class LeadFollowUpWhatsAppReminderService
                 continue;
             }
 
-            $recipient = $this->resolveFollowUpRecipient($followUp);
+            $recipient = $this->resolveFollowUpRecipient($followUp, $activeEmployees);
 
             if (!$recipient) {
                 Cache::forget($followUpLockKey);
@@ -76,7 +77,12 @@ class LeadFollowUpWhatsAppReminderService
                 continue;
             }
 
-            $message = $this->buildReminderMessage($company, $followUp, $recipient);
+            $message = $this->buildReminderMessage(
+                $company,
+                $followUp,
+                $recipient,
+                $setting->lead_followup_template ?: WhatsappNotificationSetting::DEFAULT_LEAD_FOLLOWUP_TEMPLATE
+            );
 
             if ($message === '') {
                 Cache::forget($followUpLockKey);
@@ -109,7 +115,7 @@ class LeadFollowUpWhatsAppReminderService
         }
     }
 
-    private function buildReminderMessage(Company $company, LeadFollowUp $followUp, User $recipient): string
+    private function buildReminderMessage(Company $company, LeadFollowUp $followUp, User $recipient, string $template): string
     {
         if (!$followUp->next_follow_up_date) {
             return '';
@@ -129,70 +135,56 @@ class LeadFollowUpWhatsAppReminderService
         $remark = trim(strip_tags((string) $followUp->remark));
         $contact = trim((string) ($lead?->mobile ?: $lead?->cell ?: $lead?->office ?: ''));
 
-        $lines = [];
-        $lines[] = '*📞 Lead Follow-up Reminder*';
-        $lines[] = '';
-        $lines[] = '*Hello ' . $recipient->name . ',* ⏰ Your follow-up starts in *10 minutes*.';
-        $lines[] = '';
-        $lines[] = '👤 *Lead:* ' . $leadName;
-        $lines[] = '🕒 *Time:* ' . $followUpAt;
-
-        if ($contact !== '') {
-            $lines[] = '📞 *Contact:* ' . $contact;
-        }
-
-        if ($remark !== '') {
-            $lines[] = '📝 *Note:* ' . mb_strimwidth($remark, 0, 120, '...');
-        }
-
-        $lines[] = '';
-        $lines[] = 'Please update the follow-up after the call.';
-        $lines[] = '';
-        $lines[] = '*UNIQUZ SNAPBOX CRM*';
-
-        return trim(implode("\n", $lines));
+        return trim(strtr($template, [
+            '{{user_name}}' => (string) $recipient->name,
+            '{{lead_name}}' => $leadName,
+            '{{follow_up_time}}' => $followUpAt,
+            '{{contact}}' => $contact,
+            '{{note}}' => mb_strimwidth($remark, 0, 120, '...'),
+            '{{company_name}}' => (string) $company->company_name,
+        ]));
     }
 
-    private function resolveFollowUpRecipient(LeadFollowUp $followUp): ?User
+    /**
+     * @param \Illuminate\Support\Collection<int, User> $activeEmployees
+     */
+    private function resolveFollowUpRecipient(LeadFollowUp $followUp, $activeEmployees): ?User
     {
-        $lead = $followUp->lead;
-
-        if (!$lead) {
+        if (is_null($followUp->added_by)) {
             return null;
         }
 
-        $userId = null;
+        $recipient = $activeEmployees->get((int) $followUp->added_by);
 
-        if (!is_null($lead->assigned_to)) {
-            $userId = (int) $lead->assigned_to;
-        } elseif (!is_null($lead->added_by)) {
-            $userId = (int) $lead->added_by;
-        }
-
-        if (!$userId) {
+        if (!$recipient instanceof User) {
             return null;
         }
 
-        return User::withoutGlobalScopes()->find($userId);
+        return $recipient;
     }
 
     private function normalizeUserMobile(User $user): string
     {
         $mobile = preg_replace('/\D+/', '', (string) $user->mobile);
         $countryCode = preg_replace('/\D+/', '', (string) $user->country_phonecode);
+        $fallbackCountryCode = preg_replace('/\D+/', '', (string) config('services.whatsapp_service.default_country_code', '91'));
 
         if ($mobile === '') {
             return '';
         }
 
-        if ($countryCode !== '') {
-            $mobile = ltrim($mobile, '0');
+        $mobile = ltrim($mobile, '0');
 
+        if ($countryCode !== '') {
             if (str_starts_with($mobile, $countryCode)) {
                 return $mobile;
             }
 
             return $countryCode . $mobile;
+        }
+
+        if ($fallbackCountryCode !== '' && strlen($mobile) === 10) {
+            return $fallbackCountryCode . $mobile;
         }
 
         return $mobile;

@@ -270,23 +270,23 @@ class Company extends BaseModel
 
     public function getLogoUrlAttribute()
     {
-        return $this->resolvedBrandLogoUrl();
+        return $this->resolvedBrandLogoUrl($this->logo);
 
     }
 
     public function defaultLogo()
     {
-        return $this->resolvedBrandLogoUrl();
+        return $this->resolvedBrandLogoUrl($this->logo);
     }
 
     public function getLightLogoUrlAttribute()
     {
-        return $this->resolvedBrandLogoUrl();
+        return $this->resolvedBrandLogoUrl($this->light_logo ?: $this->logo);
     }
 
     public function getDarkLogoUrlAttribute()
     {
-        return $this->resolvedBrandLogoUrl();
+        return $this->resolvedBrandLogoUrl($this->logo ?: $this->light_logo);
     }
 
     public function getLoginBackgroundUrlAttribute()
@@ -303,7 +303,7 @@ class Company extends BaseModel
     {
         return Attribute::make(
             get: function () {
-                return $this->resolvedBrandLogoUrl();
+                return $this->maskedBrandLogoUrl($this->logo);
             },
         );
 
@@ -313,7 +313,7 @@ class Company extends BaseModel
     {
         return Attribute::make(
             get: function () {
-                return $this->resolvedBrandLogoUrl();
+                return $this->maskedBrandLogoUrl($this->logo);
             },
         );
     }
@@ -322,7 +322,7 @@ class Company extends BaseModel
     {
         return Attribute::make(
             get: function () {
-                return $this->resolvedBrandLogoUrl();
+                return $this->maskedBrandLogoUrl($this->light_logo ?: $this->logo);
             },
         );
 
@@ -332,13 +332,27 @@ class Company extends BaseModel
     {
         return Attribute::make(
             get: function () {
-                return $this->resolvedBrandLogoUrl();
+                return $this->maskedBrandLogoUrl($this->logo ?: $this->light_logo);
             },
         );
 
     }
 
-    private function resolvedBrandLogoUrl(): string
+    private function resolvedBrandLogoUrl(?string $value = null): string
+    {
+        $uploadedLogo = $this->themeAssetUrl($value, 'app-logo');
+
+        return $uploadedLogo ?: $this->defaultBrandLogoUrl();
+    }
+
+    private function maskedBrandLogoUrl(?string $value = null): string
+    {
+        $uploadedLogo = $this->maskedThemeAssetUrl($value, 'app-logo');
+
+        return $uploadedLogo ?: $this->defaultBrandLogoUrl();
+    }
+
+    private function defaultBrandLogoUrl(): string
     {
         $candidates = [
             'img/USB CRM-logo.png',

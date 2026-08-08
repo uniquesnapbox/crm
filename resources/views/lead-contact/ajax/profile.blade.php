@@ -484,11 +484,13 @@
             $addLeadCategoryPermission = user()->permission('add_lead_category');
             $canInlineQuickEdit = (bool) ($canInlineEdit ?? false);
             $quickUpdateUrl = route('lead-contact.quick_update', $leadContact->id);
-            $leadSourceCreateUrl = ($addLeadSourcesPermission === 'all' || $addLeadSourcesPermission === 'added') ? route('lead-source-settings.create') : null;
-            $leadCategoryCreateUrl = ($addLeadCategoryPermission === 'all' || $addLeadCategoryPermission === 'added') ? route('leadCategory.create') : null;
-            $leadStatusCreateUrl = in_array('admin', user_roles()) ? route('lead-stage-setting.create') : null;
+            $leadSourceCreateUrl = ($addLeadSourcesPermission === 'all' || $addLeadSourcesPermission === 'added') ? route('lead-contact.quick_add_form', 'source') : null;
+            $leadCategoryCreateUrl = ($addLeadCategoryPermission === 'all' || $addLeadCategoryPermission === 'added') ? route('lead-contact.quick_add_form', 'category') : null;
+            $leadStatusCreateUrl = in_array('admin', user_roles()) ? route('lead-contact.quick_add_form', 'status') : null;
             $addProductPermission = user()->permission('add_product');
-            $leadProductCreateUrl = in_array($addProductPermission, ['all', 'added']) ? route('products.create') : null;
+            $leadProductCreateUrl = in_array('products', user_modules()) && in_array($addProductPermission, ['all', 'added'])
+                ? route('lead-contact.quick_add_form', 'product')
+                : null;
             $rawProfileMobile = preg_replace('/\D+/', '', (string) ($leadContact->mobile ?? ''));
             $profileMobileLocal = (str_starts_with($rawProfileMobile, '91') && strlen($rawProfileMobile) === 12) ? substr($rawProfileMobile, 2) : substr($rawProfileMobile, -10);
             $selectedProductServices = collect(preg_split('/[\r\n,]+/', (string) ($leadContact->products_services ?? '')))
@@ -672,10 +674,14 @@
                             <div class="lead-value-wrap w-100">
                                 <div class="lead-inline-select-group">
                                     <select class="form-control select-picker js-lead-inline-field js-lead-inline-select js-inline-autosave" data-live-search="true"
+                                        data-container="body"
                                         data-field="status_id" data-url="{{ $quickUpdateUrl }}" data-prev-value="{{ $leadContact->status_id ?? '' }}">
                                         <option value="">--</option>
                                         @foreach ($statuses as $statusItem)
-                                            <option value="{{ $statusItem->id }}" @selected($leadContact->status_id == $statusItem->id)>{{ $statusItem->type }}</option>
+                                            <option value="{{ $statusItem->id }}" @selected($leadContact->status_id == $statusItem->id)
+                                                data-content="<span><i class='fa fa-circle mr-2' style='color: {{ $statusItem->label_color }}'></i>{{ $statusItem->type }}</span>">
+                                                {{ $statusItem->type }}
+                                            </option>
                                         @endforeach
                                     </select>
                                     <button type="button" class="btn-inline-add js-inline-create-option"
@@ -702,13 +708,17 @@
                             <p class="lead-label">Interest Level</p>
                             <div class="lead-value-wrap w-100">
                                 <div class="lead-inline-select-group">
-                                    <select class="form-control select-picker js-lead-inline-field js-lead-inline-select js-inline-autosave" data-live-search="true"
+                                    <select class="form-control select-picker js-lead-inline-field js-lead-inline-select js-inline-autosave" data-live-search="true" data-container="body"
                                         data-field="interest_level" data-url="{{ $quickUpdateUrl }}" data-prev-value="{{ $leadContact->interest_level ?? '' }}">
                                         <option value="">--</option>
-                                        <option value="low" @selected($leadContact->interest_level === 'low')>Low</option>
-                                        <option value="medium" @selected($leadContact->interest_level === 'medium')>Medium</option>
-                                        <option value="high" @selected($leadContact->interest_level === 'high')>High</option>
-                                        <option value="very_high" @selected($leadContact->interest_level === 'very_high')>Very High</option>
+                                        <option value="low" @selected($leadContact->interest_level === 'low')
+                                            data-content="<span><i class='fa fa-circle mr-2' style='color:#64748b'></i>Low</span>">Low</option>
+                                        <option value="medium" @selected($leadContact->interest_level === 'medium')
+                                            data-content="<span><i class='fa fa-circle mr-2' style='color:#2563eb'></i>Medium</span>">Medium</option>
+                                        <option value="high" @selected($leadContact->interest_level === 'high')
+                                            data-content="<span><i class='fa fa-circle mr-2' style='color:#ea580c'></i>High</span>">High</option>
+                                        <option value="very_high" @selected($leadContact->interest_level === 'very_high')
+                                            data-content="<span><i class='fa fa-circle mr-2' style='color:#16a34a'></i>Very High</span>">Very High</option>
                                     </select>
                                 </div>
                                 <small class="text-muted d-none js-inline-save-state"></small>
@@ -1037,24 +1047,41 @@
                 return;
             }
 
-            // Product create endpoint returns JSON payload for Right Modal flow.
-            // Opening it with $.ajaxModal shows raw JSON, so route it via openRightModal handler.
-            if (createUrl.indexOf('products/create') !== -1) {
-                const $tempLink = $('<a/>', {
-                    href: createUrl,
-                    class: 'openRightModal d-none js-temp-right-modal-link'
-                });
+            const sameOriginUrl = new URL(createUrl, window.location.origin);
+            const $modal = $(MODAL_LG);
 
-                $('body').append($tempLink);
-                $tempLink.trigger('click');
-                setTimeout(function() {
-                    $tempLink.remove();
-                }, 0);
-                return;
+            if (sameOriginUrl.origin !== window.location.origin) {
+                sameOriginUrl.protocol = window.location.protocol;
+                sameOriginUrl.host = window.location.host;
             }
 
-            $(MODAL_LG + ' ' + MODAL_HEADING).html('...');
-            $.ajaxModal(MODAL_LG, createUrl);
+            $modal.find('.modal-content').html(
+                '<div class="modal-header"><h5 class="modal-title">Loading...</h5>' +
+                '<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>' +
+                '<div class="modal-body">Loading...</div>'
+            );
+            $modal.modal({ show: true, backdrop: 'static', keyboard: false });
+
+            $.ajax({
+                url: sameOriginUrl.pathname + sameOriginUrl.search,
+                type: 'GET',
+                dataType: 'html',
+                timeout: 20000
+            }).done(function(html) {
+                $modal.find('.modal-content').html(html);
+                if (typeof init === 'function') {
+                    init(MODAL_LG);
+                }
+            }).fail(function(xhr) {
+                let message = 'Unable to load this form. Please try again.';
+                if (xhr.status === 403) {
+                    message = 'You do not have permission to add this option.';
+                } else if (xhr.status === 404) {
+                    message = 'This add form is not available.';
+                }
+
+                $modal.find('.modal-body').html('<div class="alert alert-danger mb-0">' + message + '</div>');
+            });
         });
 
         $('body').off('change.leadStatusBadge').on('change.leadStatusBadge', '.js-lead-inline-field[data-field="contact_status"]', function() {

@@ -676,7 +676,7 @@ class User extends BaseModel implements AuthenticatableContract, AuthorizableCon
         $users = User::withRole('employee')
             ->join('employee_details', 'employee_details.user_id', '=', 'users.id')
             ->leftJoin('designations', 'employee_details.designation_id', '=', 'designations.id')
-            ->select('users.id', 'users.company_id', 'users.name', 'users.email', 'users.created_at', 'users.image', 'designations.name as designation_name', 'users.email_notifications', 'users.mobile', 'users.country_id');
+            ->select('users.id', 'users.company_id', 'users.name', 'users.email', 'users.created_at', 'users.image', 'designations.name as designation_name', 'users.email_notifications', 'users.mobile', 'users.country_id', 'users.country_phonecode');
 
         if (!is_null($exceptId)) {
             if (is_array($exceptId)) {

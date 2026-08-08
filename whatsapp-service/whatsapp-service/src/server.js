@@ -395,20 +395,32 @@ app.get("/health", (_req, res) => {
   });
 });
 
-app.get("/qr", requireApiKey, (req, res) => {
+app.get("/qr", requireApiKey, async (req, res) => {
   const sessionKey = String(req.query.sessionKey || req.query.channelKey || config.defaultSession);
+  const forceRefresh = ["1", "true", "yes"].includes(
+    String(req.query.refresh || "").toLowerCase()
+  );
 
-  const status = manager.getStatus(sessionKey);
-  const qr = manager.getQr(sessionKey);
+  try {
+    const qrInfo = forceRefresh
+      ? await manager.refreshQr(sessionKey)
+      : manager.getQrInfo(sessionKey);
 
-  res.status(200).json({
-    success: true,
-    data: {
+    return res.status(200).json({
+      success: true,
+      data: qrInfo
+    });
+  } catch (error) {
+    logger.error("WhatsApp QR refresh failed", {
       sessionKey,
-      status,
-      qr
-    }
-  });
+      error: error.message
+    });
+
+    return res.status(500).json({
+      success: false,
+      error: error.message || "Unable to refresh WhatsApp QR"
+    });
+  }
 });
 
 app.post("/messages/send", requireApiKey, async (req, res) => {
@@ -542,12 +554,34 @@ async function bootstrap() {
   pruneIdempotencyStore();
   setInterval(pruneIdempotencyStore, 10 * 60 * 1000).unref();
 
-  try {
-    await manager.initAll();
-  } catch (error) {
-    logger.error("Failed to initialize one or more sessions", {
-      error: error.message
-    });
+  const initSessions = async () => {
+    try {
+      await manager.initAll();
+      return true;
+    } catch (error) {
+      logger.error("Failed to initialize one or more sessions", {
+        error: error.message
+      });
+      return false;
+    }
+  };
+
+  const initialReady = await initSessions();
+  if (!initialReady) {
+    const retryTimer = setInterval(async () => {
+      const sessions = manager.sessionsSummary();
+      if (sessions.some((session) => session.status === "ready")) {
+        clearInterval(retryTimer);
+        return;
+      }
+
+      const retrySucceeded = await initSessions();
+      if (retrySucceeded) {
+        clearInterval(retryTimer);
+      }
+    }, 30000);
+
+    retryTimer.unref();
   }
 
   server.listen(config.port, () => {

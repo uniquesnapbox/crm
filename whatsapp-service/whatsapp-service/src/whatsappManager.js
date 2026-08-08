@@ -1,3 +1,5 @@
+const fs = require("fs");
+const path = require("path");
 const { EventEmitter } = require("events");
 const { Client, LocalAuth, MessageMedia } = require("whatsapp-web.js");
 const logger = require("./logger");
@@ -10,6 +12,7 @@ class WhatsAppManager extends EventEmitter {
     this.initializingClients = new Map();
     this.status = new Map();
     this.qrCode = new Map();
+    this.qrGeneratedAt = new Map();
     this.reconnectTimers = new Map();
     this.reconnectAttempts = new Map();
     this.manualDisconnectedSessions = new Set();
@@ -32,111 +35,7 @@ class WhatsAppManager extends EventEmitter {
       return this.initializingClients.get(key);
     }
 
-    const initializePromise = (async () => {
-      this.manualDisconnectedSessions.delete(key);
-      this.status.set(key, "initializing");
-      this.emit("whatsapp-status", {
-        sessionKey: key,
-        status: "initializing"
-      });
-
-      const client = new Client({
-        authStrategy: new LocalAuth({
-          clientId: key,
-          dataPath: this.config.dataPath
-        }),
-        puppeteer: {
-          headless: this.config.headless,
-          args: ["--no-sandbox", "--disable-setuid-sandbox"]
-        }
-      });
-
-      client.on("qr", (qr) => {
-        this.status.set(key, "qr_required");
-        this.qrCode.set(key, qr);
-        logger.info("WhatsApp QR generated", { sessionKey: key });
-
-        const payload = {
-          sessionKey: key,
-          qr,
-          status: "qr_required"
-        };
-        this.emit("whatsapp-qr", payload);
-        this.emit("whatsapp-status", payload);
-      });
-
-      client.on("authenticated", () => {
-        this.status.set(key, "authenticated");
-        logger.info("WhatsApp authenticated", { sessionKey: key });
-
-        const payload = {
-          sessionKey: key,
-          status: "authenticated"
-        };
-        this.emit("whatsapp-authenticated", payload);
-        this.emit("whatsapp-status", payload);
-      });
-
-      client.on("ready", () => {
-        this.status.set(key, "ready");
-        this.qrCode.delete(key);
-        this.clearReconnectState(key);
-        logger.info("WhatsApp client ready", { sessionKey: key });
-
-        const payload = {
-          sessionKey: key,
-          status: "ready"
-        };
-        this.emit("whatsapp-ready", payload);
-        this.emit("whatsapp-status", payload);
-      });
-
-      client.on("auth_failure", (message) => {
-        this.status.set(key, "auth_failure");
-        logger.error("WhatsApp auth failure", { sessionKey: key, message });
-
-        const payload = {
-          sessionKey: key,
-          status: "auth_failure",
-          message
-        };
-        this.emit("whatsapp-auth-failure", payload);
-        this.emit("whatsapp-status", payload);
-      });
-
-      client.on("disconnected", (reason) => {
-        this.status.set(key, "disconnected");
-        logger.warn("WhatsApp disconnected", { sessionKey: key, reason });
-
-        const payload = {
-          sessionKey: key,
-          status: "disconnected",
-          reason
-        };
-        this.emit("whatsapp-disconnected", payload);
-        this.emit("whatsapp-status", payload);
-
-        if (this.manualDisconnectedSessions.has(key)) {
-          this.clearReconnectState(key);
-          logger.info("Skipping auto-reconnect due to manual disconnect", {
-            sessionKey: key
-          });
-          return;
-        }
-
-        this.scheduleReconnect(key, reason);
-      });
-
-      this.clients.set(key, client);
-      await client.initialize();
-
-      this.emit("whatsapp-status", {
-        sessionKey: key,
-        status: this.getStatus(key)
-      });
-
-      return client;
-    })();
+    const initializePromise = this.initializeClientWithRetry(key);
 
     this.initializingClients.set(key, initializePromise);
     try {
@@ -152,6 +51,247 @@ class WhatsAppManager extends EventEmitter {
     } finally {
       this.initializingClients.delete(key);
     }
+  }
+
+  async initializeClientWithRetry(key) {
+    const attempts = 3;
+    let lastError = null;
+
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+      this.manualDisconnectedSessions.delete(key);
+      this.status.set(key, "initializing");
+      this.emit("whatsapp-status", {
+        sessionKey: key,
+        status: "initializing"
+      });
+
+      const client = this.createClient(key);
+      this.clients.set(key, client);
+
+      try {
+        const initialization = client.initialize();
+        await Promise.race([
+          initialization,
+          this.waitForBootstrapState(key, 90000)
+        ]);
+
+        initialization.catch((error) => {
+          if (this.clients.get(key) !== client) {
+            return;
+          }
+
+          logger.error("WhatsApp client failed after bootstrap", {
+            sessionKey: key,
+            error: error.message
+          });
+          this.status.set(key, "failed");
+          this.scheduleReconnect(key, "post_bootstrap_failure");
+        });
+
+        return client;
+      } catch (error) {
+        lastError = error;
+        logger.warn("WhatsApp client initialization attempt failed", {
+          sessionKey: key,
+          attempt,
+          error: error.message
+        });
+
+        await this.destroyClient(key, { emitDestroyedStatus: false });
+        await this.cleanupSessionArtifacts(key);
+
+        if (!this.isRetryableBootstrapError(error) || attempt === attempts) {
+          break;
+        }
+
+        await this.sleep(this.computeReconnectDelay(attempt));
+      }
+    }
+
+    throw lastError || new Error(`Failed to initialize WhatsApp session ${key}`);
+  }
+
+  createClient(key) {
+    const client = new Client({
+      authStrategy: new LocalAuth({
+        clientId: key,
+        dataPath: this.config.dataPath
+      }),
+      puppeteer: {
+        headless: "new",
+        args: [
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--disable-dev-shm-usage",
+          "--disable-gpu",
+          "--no-zygote",
+          "--no-first-run",
+          "--disable-site-isolation-trials",
+          "--disable-features=IsolateOrigins,site-per-process"
+        ]
+      }
+    });
+
+    client.on("qr", (qr) => {
+      this.qrCode.set(key, qr);
+      this.qrGeneratedAt.set(key, new Date().toISOString());
+      this.status.set(key, "qr_required");
+      logger.info("WhatsApp QR generated", { sessionKey: key });
+
+      const payload = {
+        sessionKey: key,
+        status: "qr_required"
+      };
+
+      this.emit("whatsapp-qr", {
+        ...payload,
+        qr
+      });
+      this.emit("whatsapp-status", payload);
+    });
+
+    client.on("authenticated", () => {
+      this.status.set(key, "authenticated");
+      logger.info("WhatsApp authenticated", { sessionKey: key });
+      this.emit("whatsapp-authenticated", {
+        sessionKey: key,
+        status: "authenticated"
+      });
+      this.emit("whatsapp-status", {
+        sessionKey: key,
+        status: "authenticated"
+      });
+    });
+
+    client.on("ready", () => {
+      this.status.set(key, "ready");
+      this.qrCode.delete(key);
+      this.qrGeneratedAt.delete(key);
+      this.clearReconnectState(key);
+      logger.info("WhatsApp client ready", { sessionKey: key });
+
+      const payload = {
+        sessionKey: key,
+        status: "ready"
+      };
+
+      this.emit("whatsapp-ready", payload);
+    });
+
+    client.on("auth_failure", (message) => {
+      this.status.set(key, "failed");
+      logger.error("WhatsApp auth failure", { sessionKey: key, message });
+      this.emit("whatsapp-auth-failure", {
+        sessionKey: key,
+        status: "failed",
+        error: message || "Authentication failed"
+      });
+      this.scheduleReconnect(key, "auth_failure");
+    });
+
+    client.on("disconnected", (reason) => {
+      this.qrCode.delete(key);
+      this.qrGeneratedAt.delete(key);
+
+      if (this.manualDisconnectedSessions.has(key)) {
+        this.status.set(key, "disconnected");
+        return;
+      }
+
+      this.status.set(key, "disconnected");
+      logger.warn("WhatsApp disconnected", { sessionKey: key, reason });
+      this.emit("whatsapp-disconnected", {
+        sessionKey: key,
+        status: "disconnected",
+        reason: reason || "unknown"
+      });
+      this.scheduleReconnect(key, reason || "disconnected");
+    });
+
+    client.on("change_state", (state) => {
+      if (state && typeof state === "string") {
+        logger.info("WhatsApp client state changed", {
+          sessionKey: key,
+          state
+        });
+      }
+    });
+
+    return client;
+  }
+
+  async cleanupSessionArtifacts(sessionKey) {
+    const sessionDir = path.join(this.config.dataPath, `session-${sessionKey}`);
+    const targets = [
+      path.join(sessionDir, "DevToolsActivePort"),
+      path.join(sessionDir, "SingletonCookie"),
+      path.join(sessionDir, "SingletonLock"),
+      path.join(sessionDir, "SingletonSocket"),
+      path.join(sessionDir, "LOCK"),
+      path.join(sessionDir, "Default", "LOCK"),
+      path.join(sessionDir, "Default", "DevToolsActivePort")
+    ];
+
+    for (const filePath of targets) {
+      try {
+        if (fs.existsSync(filePath)) {
+          fs.rmSync(filePath, { force: true, recursive: false });
+        }
+      } catch (_) {
+        // no-op
+      }
+    }
+  }
+
+  isRetryableBootstrapError(error) {
+    const message = String(error?.message || error || "").toLowerCase();
+
+    return [
+      "execution context was destroyed",
+      "cannot find context with specified id",
+      "target closed",
+      "detached frame",
+      "protocol error",
+      "navigation",
+      "session closed"
+    ].some((needle) => message.includes(needle));
+  }
+
+  sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  withTimeout(promise, timeoutMs, message) {
+    let timer;
+
+    const timeoutPromise = new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+    });
+
+    return Promise.race([promise, timeoutPromise]).finally(() => {
+      if (timer) {
+        clearTimeout(timer);
+      }
+    });
+  }
+
+  async waitForBootstrapState(sessionKey, timeoutMs = 90000) {
+    const key = sessionKey || this.config.defaultSession;
+    const startedAt = Date.now();
+
+    while (Date.now() - startedAt < timeoutMs) {
+      const status = this.getStatus(key);
+      if (["qr_required", "authenticated", "ready"].includes(status)) {
+        return true;
+      }
+      if (status === "failed") {
+        throw new Error(`WhatsApp client bootstrap failed for session ${key}`);
+      }
+
+      await this.sleep(250);
+    }
+
+    throw new Error(`WhatsApp client bootstrap timed out for session ${key}`);
   }
 
   scheduleReconnect(sessionKey, reason = "unknown") {
@@ -219,6 +359,7 @@ class WhatsAppManager extends EventEmitter {
     this.manualDisconnectedSessions.add(key);
     this.clearReconnectState(key);
     this.qrCode.delete(key);
+    this.qrGeneratedAt.delete(key);
 
     if (!client) {
       const payload = {
@@ -282,6 +423,75 @@ class WhatsAppManager extends EventEmitter {
     return this.initClient(key);
   }
 
+  async refreshQr(sessionKey) {
+    const key = sessionKey || this.config.defaultSession;
+    const currentStatus = this.getStatus(key);
+    const currentQr = this.getQr(key);
+    const generatedAt = this.qrGeneratedAt.get(key);
+    const qrAgeMs = generatedAt ? Date.now() - Date.parse(generatedAt) : Number.POSITIVE_INFINITY;
+
+    if (["ready", "authenticated"].includes(currentStatus)) {
+      return this.getQrInfo(key);
+    }
+
+    // Old dashboard tabs may still poll with refresh=1. Never recycle a fresh QR mid-scan.
+    if (currentStatus === "qr_required" && currentQr && qrAgeMs < 60000) {
+      return this.getQrInfo(key);
+    }
+
+    await this.destroyClient(key, { emitDestroyedStatus: false });
+    await this.removeUnauthenticatedSession(key);
+    this.manualDisconnectedSessions.delete(key);
+    this.status.set(key, "initializing");
+
+    this.initClient(key).catch((error) => {
+      logger.error("WhatsApp QR client initialization failed", {
+        sessionKey: key,
+        error: error.message
+      });
+    });
+    await this.waitForQrOrReady(key, 30000);
+    return this.getQrInfo(key);
+  }
+
+  async waitForQrOrReady(sessionKey, timeoutMs = 30000) {
+    const key = sessionKey || this.config.defaultSession;
+    const startedAt = Date.now();
+
+    while (Date.now() - startedAt < timeoutMs) {
+      const status = this.getStatus(key);
+      if (status === "ready" || status === "authenticated" || this.getQr(key)) {
+        return true;
+      }
+      if (status === "failed") {
+        throw new Error(`Unable to generate QR for session ${key}`);
+      }
+
+      await this.sleep(250);
+    }
+
+    throw new Error(`Timed out waiting for a fresh QR for session ${key}`);
+  }
+
+  async removeUnauthenticatedSession(sessionKey) {
+    const sessionDir = path.resolve(this.config.dataPath, `session-${sessionKey}`);
+    const dataRoot = `${path.resolve(this.config.dataPath)}${path.sep}`;
+
+    if (!sessionDir.startsWith(dataRoot)) {
+      throw new Error("Invalid WhatsApp session path");
+    }
+
+    try {
+      await fs.promises.rm(sessionDir, { recursive: true, force: true });
+    } catch (error) {
+      logger.warn("Unable to clear unauthenticated WhatsApp session", {
+        sessionKey,
+        error: error.message
+      });
+      throw error;
+    }
+  }
+
   async destroyClient(sessionKey, options = {}) {
     const key = sessionKey || this.config.defaultSession;
     const emitDestroyedStatus = options.emitDestroyedStatus !== false;
@@ -304,6 +514,7 @@ class WhatsAppManager extends EventEmitter {
 
     this.clients.delete(key);
     this.qrCode.delete(key);
+    this.qrGeneratedAt.delete(key);
 
     if (emitDestroyedStatus) {
       this.status.set(key, "destroyed");
@@ -342,6 +553,17 @@ class WhatsAppManager extends EventEmitter {
   getQr(sessionKey) {
     const key = sessionKey || this.config.defaultSession;
     return this.qrCode.get(key) || null;
+  }
+
+  getQrInfo(sessionKey) {
+    const key = sessionKey || this.config.defaultSession;
+
+    return {
+      sessionKey: key,
+      status: this.getStatus(key),
+      qr: this.getQr(key),
+      generatedAt: this.qrGeneratedAt.get(key) || null
+    };
   }
 
   async sendMessage({ to, message, channelKey, attachment = null }) {
@@ -471,7 +693,8 @@ class WhatsAppManager extends EventEmitter {
     return uniqueSessionKeys.map((sessionKey) => ({
       sessionKey,
       status: this.getStatus(sessionKey),
-      qrAvailable: Boolean(this.getQr(sessionKey))
+      qrAvailable: Boolean(this.getQr(sessionKey)),
+      qrGeneratedAt: this.qrGeneratedAt.get(sessionKey) || null
     }));
   }
 }

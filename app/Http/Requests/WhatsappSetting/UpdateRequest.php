@@ -16,9 +16,11 @@ class UpdateRequest extends FormRequest
         return [
             'lead_created_template' => ['nullable', 'string'],
             'lead_interest_template' => ['nullable', 'string'],
+            'lead_followup_template' => ['nullable', 'string'],
             'lead_created_sender_number' => ['nullable', 'regex:/^[0-9]+$/', 'max:30'],
             'send_lead_created_message' => ['nullable', 'in:on'],
             'send_lead_interest_message' => ['nullable', 'in:on'],
+            'send_lead_followup_message' => ['nullable', 'in:on'],
             'send_ticket_message' => ['nullable', 'in:on'],
             'send_ticket_assigned_staff_message' => ['nullable', 'in:on'],
             'send_ticket_assigned_client_message' => ['nullable', 'in:on'],

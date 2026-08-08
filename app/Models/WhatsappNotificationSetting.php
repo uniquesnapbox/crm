@@ -12,6 +12,7 @@ class WhatsappNotificationSetting extends BaseModel
     public const NO = 'no';
     public const DEFAULT_LEAD_CREATED_TEMPLATE = "Hello {{client_name}}, thank you for your interest. We have received your lead and our team will contact you soon.";
     public const DEFAULT_LEAD_INTEREST_TEMPLATE = "Hello {{client_name}}, thank you for sharing your interest in {{products_services}}. Our team will contact you soon.";
+    public const DEFAULT_LEAD_FOLLOWUP_TEMPLATE = "Hello *{{user_name}}*,\n\nYour follow-up with *{{lead_name}}* starts in *10 minutes*.\nTime: {{follow_up_time}}\nContact: {{contact}}\nNote: {{note}}\n\nPlease update the follow-up after the call.";
     public const DEFAULT_TICKET_ASSIGNED_STAFF_TEMPLATE = 'A new ticket has been assigned to you. Ticket #{{ticket_number}}: {{subject}}';
     public const DEFAULT_TICKET_ASSIGNED_CLIENT_TEMPLATE = 'Your ticket #{{ticket_number}} has been forwarded to our team. We will get back to you soon.';
     public const DEFAULT_TICKET_RESOLVED_CLIENT_TEMPLATE = 'Your ticket #{{ticket_number}} has been resolved. If you need anything else, please let us know.';
@@ -53,6 +54,11 @@ class WhatsappNotificationSetting extends BaseModel
     public function isLeadInterestMessageEnabled(): bool
     {
         return ($this->send_lead_interest_message ?? self::YES) === self::YES;
+    }
+
+    public function isLeadFollowUpMessageEnabled(): bool
+    {
+        return ($this->send_lead_followup_message ?? self::YES) === self::YES;
     }
 
     public function isTicketMessageEnabled(): bool

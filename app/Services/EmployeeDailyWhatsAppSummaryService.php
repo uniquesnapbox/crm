@@ -193,19 +193,24 @@ class EmployeeDailyWhatsAppSummaryService
     {
         $mobile = preg_replace('/\D+/', '', (string) $user->mobile);
         $countryCode = preg_replace('/\D+/', '', (string) $user->country_phonecode);
+        $fallbackCountryCode = preg_replace('/\D+/', '', (string) config('services.whatsapp_service.default_country_code', '91'));
 
         if ($mobile === '') {
             return '';
         }
 
-        if ($countryCode !== '') {
-            $mobile = ltrim($mobile, '0');
+        $mobile = ltrim($mobile, '0');
 
+        if ($countryCode !== '') {
             if (str_starts_with($mobile, $countryCode)) {
                 return $mobile;
             }
 
             return $countryCode . $mobile;
+        }
+
+        if ($fallbackCountryCode !== '' && strlen($mobile) === 10) {
+            return $fallbackCountryCode . $mobile;
         }
 
         return $mobile;

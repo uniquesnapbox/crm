@@ -30,6 +30,12 @@ class WhatsAppGatewayService
         $timeout = (int) config('services.whatsapp_service.timeout', 30);
         $timeout = max(10, min(60, $timeout));
         $phone = preg_replace('/\D+/', '', $mobile);
+        $payload = [
+            'to' => $phone,
+            'message' => trim($message),
+            'channelKey' => $session,
+            'idempotencyKey' => $this->createIdempotencyKey($phone, $session, $message),
+        ];
 
         if ($baseUrl === '' || $apiKey === '') {
             $this->lastError = 'WhatsApp service is not configured.';
@@ -41,45 +47,65 @@ class WhatsAppGatewayService
             return false;
         }
 
-        try {
-            $response = $this->client($baseUrl, $apiKey, $timeout)
-                ->post('/messages/send', [
-                    'to' => $phone,
-                    'message' => trim($message),
-                    'channelKey' => $session,
+        $attempts = 3;
+
+        for ($attempt = 1; $attempt <= $attempts; $attempt++) {
+            try {
+                $response = $this->client($baseUrl, $apiKey, $timeout)
+                    ->post('/messages/send', $payload);
+            } catch (ConnectionException $exception) {
+                $this->lastError = 'WhatsApp service connection failed: ' . $exception->getMessage();
+                Log::warning('WhatsApp gateway connection failed.', [
+                    'mobile' => $phone,
+                    'attempt' => $attempt,
+                    'error' => $exception->getMessage(),
                 ]);
-        } catch (ConnectionException $exception) {
-            $this->lastError = 'WhatsApp service connection failed: ' . $exception->getMessage();
-            Log::error('WhatsApp gateway connection failed.', [
+
+                if ($attempt < $attempts && $this->isRetryableError($this->lastError)) {
+                    usleep($this->retryDelayMicros($attempt));
+                    continue;
+                }
+
+                return false;
+            } catch (\Throwable $exception) {
+                $this->lastError = $exception->getMessage();
+                Log::warning('WhatsApp gateway send exception.', [
+                    'mobile' => $phone,
+                    'attempt' => $attempt,
+                    'error' => $exception->getMessage(),
+                ]);
+
+                if ($attempt < $attempts && $this->isRetryableError($this->lastError)) {
+                    usleep($this->retryDelayMicros($attempt));
+                    continue;
+                }
+
+                return false;
+            }
+
+            $json = $response->json();
+
+            if ($response->successful() && ($json['success'] ?? false) === true) {
+                $this->lastError = null;
+                return true;
+            }
+
+            $this->lastError = (string) ($json['error'] ?? ($response->body() ?: 'WhatsApp service send failed.'));
+
+            Log::warning('WhatsApp gateway send failed.', [
                 'mobile' => $phone,
-                'error' => $exception->getMessage(),
+                'attempt' => $attempt,
+                'status' => $response->status(),
+                'response' => $json ?: $response->body(),
             ]);
 
-            return false;
-        } catch (\Throwable $exception) {
-            $this->lastError = $exception->getMessage();
-            Log::error('WhatsApp gateway send exception.', [
-                'mobile' => $phone,
-                'error' => $exception->getMessage(),
-            ]);
+            if ($attempt < $attempts && $this->isRetryableError($this->lastError, $response)) {
+                usleep($this->retryDelayMicros($attempt));
+                continue;
+            }
 
             return false;
         }
-
-        $json = $response->json();
-
-        if ($response->successful() && ($json['success'] ?? false) === true) {
-            $this->lastError = null;
-            return true;
-        }
-
-        $this->lastError = (string) ($json['error'] ?? ($response->body() ?: 'WhatsApp service send failed.'));
-
-        Log::error('WhatsApp gateway send failed.', [
-            'mobile' => $phone,
-            'status' => $response->status(),
-            'response' => $json ?: $response->body(),
-        ]);
 
         return false;
     }
@@ -198,5 +224,52 @@ class WhatsAppGatewayService
         $fallback = trim((string) config('services.whatsapp_service.session', 'default'));
 
         return $fallback !== '' ? $fallback : 'default';
+    }
+
+    private function createIdempotencyKey(string $mobile, string $session, string $message): string
+    {
+        try {
+            $nonce = bin2hex(random_bytes(16));
+        } catch (\Throwable) {
+            $nonce = uniqid('', true);
+        }
+
+        return hash('sha256', $mobile . '|' . $session . '|' . mb_substr(trim($message), 0, 512) . '|' . $nonce);
+    }
+
+    private function isRetryableError(string $error, ?Response $response = null): bool
+    {
+        $normalized = strtolower($error);
+
+        if ($response && in_array($response->status(), [408, 425, 429, 500, 502, 503, 504], true)) {
+            return true;
+        }
+
+        foreach ([
+            'session not ready',
+            'not ready',
+            'timeout',
+            'curl error 28',
+            'connection failed',
+            'connection reset',
+            'temporarily unavailable',
+            'cannot read properties of undefined',
+            'no lid for user',
+        ] as $needle) {
+            if (str_contains($normalized, $needle)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function retryDelayMicros(int $attempt): int
+    {
+        return match ($attempt) {
+            1 => 500000,
+            2 => 1500000,
+            default => 2000000,
+        };
     }
 }

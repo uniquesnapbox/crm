@@ -64,7 +64,12 @@ $editMobileLocal = (str_starts_with($rawEditMobile, '91') && strlen($rawEditMobi
                         <x-forms.select fieldId="status_id" fieldLabel="Lead Status" fieldName="status_id" search="true">
                             <option value="">--</option>
                             @foreach ($status as $item)
-                                <option @selected($leadContact->status_id == $item->id) value="{{ $item->id }}">{{ $item->type }}</option>
+                                <option
+                                    @selected($leadContact->status_id == $item->id)
+                                    value="{{ $item->id }}"
+                                    data-content="<span><i class='fa fa-circle mr-2' style='color: {{ $item->label_color }}'></i>{{ $item->type }}</span>">
+                                    {{ $item->type }}
+                                </option>
                             @endforeach
                         </x-forms.select>
                     </div>
@@ -199,10 +204,10 @@ $editMobileLocal = (str_starts_with($rawEditMobile, '91') && strlen($rawEditMobi
                     <div class="col-lg-4 col-md-6">
                         <x-forms.select fieldId="interest_level" fieldLabel="Interest Level" fieldName="interest_level">
                             <option value="">--</option>
-                            <option @selected($leadContact->interest_level === 'low') value="low">Low</option>
-                            <option @selected($leadContact->interest_level === 'medium') value="medium">Medium</option>
-                            <option @selected($leadContact->interest_level === 'high') value="high">High</option>
-                            <option @selected($leadContact->interest_level === 'very_high') value="very_high">Very High</option>
+                            <option @selected($leadContact->interest_level === 'low') value="low" data-content="<span><i class='fa fa-circle mr-2' style='color:#64748b'></i>Low</span>">Low</option>
+                            <option @selected($leadContact->interest_level === 'medium') value="medium" data-content="<span><i class='fa fa-circle mr-2' style='color:#2563eb'></i>Medium</span>">Medium</option>
+                            <option @selected($leadContact->interest_level === 'high') value="high" data-content="<span><i class='fa fa-circle mr-2' style='color:#ea580c'></i>High</span>">High</option>
+                            <option @selected($leadContact->interest_level === 'very_high') value="very_high" data-content="<span><i class='fa fa-circle mr-2' style='color:#16a34a'></i>Very High</span>">Very High</option>
                         </x-forms.select>
                     </div>
 

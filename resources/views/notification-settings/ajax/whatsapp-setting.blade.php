@@ -55,7 +55,7 @@
     }
 </style>
 
-<div class="col-xl-8 col-lg-12 col-md-12 ntfcn-tab-content-left w-100 p-4 ">
+<div class="col-xl-12 col-lg-12 col-md-12 ntfcn-tab-content-left w-100 p-4 ">
     <div class="row" id="whatsapp-row">
         <div class="col-lg-12">
             <div class="row mt-3">
@@ -105,9 +105,9 @@
 
                 <div class="col-lg-12 mt-4">
                     <div class="wa-section-title">Lead Messages</div>
-                    <div class="wa-section-subtitle">Messages sent on lead creation and product-interest updates.</div>
+                    <div class="wa-section-subtitle">Messages for lead creation, product-interest updates, and follow-up reminders.</div>
                     <div class="row wa-grid-gap">
-                        <div class="col-md-6">
+                        <div class="col-xl-4 col-md-6">
                             <div class="wa-msg-card">
                                 <div class="wa-msg-title">Lead Creation Message</div>
                                 <x-forms.toggle-switch class="mb-2 mt-0"
@@ -123,7 +123,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-xl-4 col-md-6">
                             <div class="wa-msg-card">
                                 <div class="wa-msg-title">Lead Product-Interest Message</div>
                                 <x-forms.toggle-switch class="mb-2 mt-0"
@@ -139,6 +139,22 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="col-xl-4 col-md-6">
+                            <div class="wa-msg-card">
+                                <div class="wa-msg-title">Lead Follow-up Reminder</div>
+                                <x-forms.toggle-switch class="mb-2 mt-0"
+                                    :checked="($whatsappSettings->send_lead_followup_message ?? 'yes') === 'yes'"
+                                    :fieldLabel="'Enable'" fieldName="send_lead_followup_message"
+                                    fieldId="send_lead_followup_message" />
+                                <x-forms.textarea :fieldLabel="'Template'" fieldName="lead_followup_template"
+                                    fieldId="lead_followup_template" fieldRequired="true"
+                                    :fieldValue="$whatsappSettings->lead_followup_template ?: \App\Models\WhatsappNotificationSetting::DEFAULT_LEAD_FOLLOWUP_TEMPLATE"
+                                    fieldPlaceholder="Your follow-up with @{{lead_name}} starts in 10 minutes." />
+                                <div class="wa-placeholder">
+                                    Placeholders: <code>@{{user_name}}</code>, <code>@{{lead_name}}</code>, <code>@{{follow_up_time}}</code>, <code>@{{contact}}</code>, <code>@{{note}}</code>, <code>@{{company_name}}</code>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -150,7 +166,7 @@
                         :fieldLabel="'Enable Ticket WhatsApp Messages'" fieldName="send_ticket_message"
                         fieldId="send_ticket_message" />
                     <div class="row wa-grid-gap">
-                        <div class="col-md-6">
+                        <div class="col-xl-4 col-md-6">
                             <div class="wa-msg-card">
                                 <div class="wa-msg-title">Assigned Message for Staff</div>
                                 <x-forms.toggle-switch class="mb-2 mt-0"
@@ -163,7 +179,7 @@
                                     fieldPlaceholder="A new ticket has been assigned to you. Ticket #@{{ticket_number}}: @{{subject}}" />
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-xl-4 col-md-6">
                             <div class="wa-msg-card">
                                 <div class="wa-msg-title">Resolved Message for Client</div>
                                 <x-forms.toggle-switch class="mb-2 mt-0"
@@ -179,7 +195,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-xl-4 col-md-6">
                             <div class="wa-msg-card">
                                 <div class="wa-msg-title">Assigned Message for Client</div>
                                 <x-forms.toggle-switch class="mb-2 mt-0"
@@ -199,7 +215,7 @@
                     <div class="wa-section-title">Task Messages</div>
                     <div class="wa-section-subtitle">Messages for assignment, pending summary, and completion.</div>
                     <div class="row wa-grid-gap">
-                        <div class="col-md-6">
+                        <div class="col-xl-4 col-md-6">
                             <div class="wa-msg-card">
                                 <div class="wa-msg-title">Assigned Message for Staff</div>
                                 <x-forms.toggle-switch class="mb-2 mt-0"
@@ -215,7 +231,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-xl-4 col-md-6">
                             <div class="wa-msg-card">
                                 <div class="wa-msg-title">Daily Pending Task Summary</div>
                                 <x-forms.toggle-switch class="mb-2 mt-0"
@@ -231,7 +247,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-xl-4 col-md-6">
                             <div class="wa-msg-card">
                                 <div class="wa-msg-title">Task Completed Message</div>
                                 <x-forms.toggle-switch class="mb-2 mt-0"
@@ -290,6 +306,7 @@
                 const sessionKey = response.sessionKey || qrData.sessionKey || 'default';
                 const sessionStatus = qrData.status || 'unknown';
                 const isReady = Boolean(health.data && health.data.ready);
+                const generatedAt = qrData.generatedAt ? new Date(qrData.generatedAt) : null;
 
                 $serviceStatus.removeClass('badge-secondary').addClass(health.success ? (isReady ? 'badge-success' : 'badge-warning') : 'badge-danger');
                 $serviceStatus.text(health.success ? (isReady ? 'Service Ready' : 'Service Online') : 'Service Error');
@@ -300,7 +317,11 @@
                 );
                 $sessionStatus.text('Session: ' + sessionStatus.replace(/_/g, ' '));
 
-                $meta.html('Session: <code>' + sessionKey + '</code>' + (response.baseUrl ? ' | URL: <code>' + response.baseUrl + '</code>' : ''));
+                let metaHtml = 'Session: <code>' + sessionKey + '</code>' + (response.baseUrl ? ' | URL: <code>' + response.baseUrl + '</code>' : '');
+                if (generatedAt && !Number.isNaN(generatedAt.getTime())) {
+                    metaHtml += ' | Fresh QR: <strong>' + generatedAt.toLocaleTimeString() + '</strong>';
+                }
+                $meta.html(metaHtml);
 
                 if (qr.image) {
                     $image.attr('src', qr.image).removeClass('d-none');
@@ -344,7 +365,7 @@
         })
     });
 
-    loadWhatsAppConnectionStatus(true);
+    loadWhatsAppConnectionStatus(false);
 
     if (whatsappQrPoller) {
         clearInterval(whatsappQrPoller);
@@ -352,7 +373,6 @@
 
     whatsappQrPoller = setInterval(function () {
         whatsappQrPollTick++;
-        const force = whatsappQrPollTick % 3 === 0; // force refresh roughly every 45 seconds
-        loadWhatsAppConnectionStatus(force);
+        loadWhatsAppConnectionStatus(false);
     }, 15000);
 </script>

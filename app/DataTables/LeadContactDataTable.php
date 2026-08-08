@@ -177,14 +177,11 @@ class LeadContactDataTable extends BaseDataTable
             });
         }
 
-        if ($this->request()->type != 'all' && $this->request()->type != '') {
-
-            if ($this->request()->type == 'lead') {
-                $leadContact = $leadContact->whereNull('client_id');
-            }
-            else {
-                $leadContact = $leadContact->whereNotNull('client_id');
-            }
+        if ($this->request()->type === 'client') {
+            $leadContact = $leadContact->whereNotNull('client_id');
+        }
+        else {
+            $leadContact = $leadContact->whereNull('client_id');
         }
 
         if ($this->request()->startDate !== null && $this->request()->startDate != 'null' && $this->request()->startDate != '' && request()->date_filter_on == 'created_at') {
@@ -261,6 +258,7 @@ class LeadContactDataTable extends BaseDataTable
                     $("body").tooltip({
                         selector: \'[data-toggle="tooltip"]\'
                     });
+                    $("#lead-contact-table .select-picker").selectpicker();
                 }',
             ]);
 
@@ -352,16 +350,19 @@ class LeadContactDataTable extends BaseDataTable
 
         $url = route('lead-contact.quick_update', $row->id);
         $selectedValue = (string) ($row->status_id ?? '');
-        $options = '<option value="">Not Set</option>';
+        $options = '<option value="" data-content="<span class=&quot;text-muted&quot;><i class=&quot;fa fa-circle mr-2&quot; style=&quot;color:#9aa7bd&quot;></i>Not Set</span>">Not Set</option>';
 
         foreach ($this->statuses() as $status) {
             $statusId = (string) $status->id;
             $selected = $selectedValue === $statusId ? ' selected' : '';
-            $options .= '<option value="' . e($statusId) . '"' . $selected . '>' . e($status->type) . '</option>';
+            $labelColor = $status->label_color ?: '#4f6fad';
+            $statusLabel = e($status->type);
+
+            $options .= '<option value="' . e($statusId) . '" data-content="<span><i class=&quot;fa fa-circle mr-2&quot; style=&quot;color:' . e($labelColor) . '&quot;></i>' . $statusLabel . '</span>"' . $selected . '>' . e($status->type) . '</option>';
         }
 
         return '<div class="lead-inline-select-wrap">' .
-            '<select class="form-control form-control-sm js-lead-table-inline-select" style="min-width:140px;" data-field="status_id" data-prev-value="' . e($selectedValue) . '" data-url="' . e($url) . '" data-id="' . (int) $row->id . '">' .
+            '<select class="form-control form-control-sm select-picker js-lead-table-inline-select" style="min-width:140px;" data-container="body" data-live-search="true" data-field="status_id" data-prev-value="' . e($selectedValue) . '" data-url="' . e($url) . '" data-id="' . (int) $row->id . '">' .
             $options .
             '</select>' .
             '</div>';
@@ -389,22 +390,18 @@ class LeadContactDataTable extends BaseDataTable
 
         $url = route('lead-contact.quick_update', $row->id);
         $selectedValue = $interestLevel;
-        $options = [
-            '' => '--',
-            'low' => 'Low',
-            'medium' => 'Medium',
-            'high' => 'High',
-            'very_high' => 'Very High',
-        ];
+        $options = $this->interestLevelOptions();
 
         $htmlOptions = '';
-        foreach ($options as $value => $label) {
+        foreach ($options as $value => $data) {
+            $label = $data['label'];
+            $color = $data['color'];
             $selected = $selectedValue === $value ? ' selected' : '';
-            $htmlOptions .= '<option value="' . e($value) . '"' . $selected . '>' . e($label) . '</option>';
+            $htmlOptions .= '<option value="' . e($value) . '" data-content="<span><i class=&quot;fa fa-circle mr-2&quot; style=&quot;color:' . e($color) . '&quot;></i>' . e($label) . '</span>"' . $selected . '>' . e($label) . '</option>';
         }
 
         return '<div class="lead-inline-select-wrap">' .
-            '<select class="form-control form-control-sm js-lead-table-inline-select" style="min-width:120px;" data-field="interest_level" data-prev-value="' . e($selectedValue) . '" data-url="' . e($url) . '" data-id="' . (int) $row->id . '">' .
+            '<select class="form-control form-control-sm select-picker js-lead-table-inline-select" style="min-width:120px;" data-container="body" data-live-search="true" data-field="interest_level" data-prev-value="' . e($selectedValue) . '" data-url="' . e($url) . '" data-id="' . (int) $row->id . '">' .
             $htmlOptions .
             '</select>' .
             '</div>';
@@ -436,10 +433,21 @@ class LeadContactDataTable extends BaseDataTable
     private function statuses()
     {
         if (is_null($this->status)) {
-            $this->status = LeadStatus::query()->select('id', 'type')->orderBy('priority')->get();
+            $this->status = LeadStatus::query()->select('id', 'type', 'label_color')->orderBy('priority')->get();
         }
 
         return $this->status;
+    }
+
+    private function interestLevelOptions(): array
+    {
+        return [
+            '' => ['label' => '--', 'color' => '#9aa7bd'],
+            'low' => ['label' => 'Low', 'color' => '#64748b'],
+            'medium' => ['label' => 'Medium', 'color' => '#2563eb'],
+            'high' => ['label' => 'High', 'color' => '#ea580c'],
+            'very_high' => ['label' => 'Very High', 'color' => '#16a34a'],
+        ];
     }
 
     private function assignableEmployees()

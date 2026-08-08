@@ -502,6 +502,8 @@ Route::group(['middleware' => 'auth:sanctum,web', 'prefix' => 'account'], functi
         Route::get('import', [LeadContactController::class, 'importLead'])->name('lead-contact.import');
         Route::post('import', [LeadContactController::class, 'importStore'])->name('lead-contact.import.store');
         Route::post('import/process', [LeadContactController::class, 'importProcess'])->name('lead-contact.import.process');
+        Route::get('quick-add/{type}', [LeadContactController::class, 'quickAddForm'])->name('lead-contact.quick_add_form');
+        Route::post('quick-add/{type}', [LeadContactController::class, 'quickAddStore'])->name('lead-contact.quick_add_store');
         Route::post('{lead}/quick-update', [LeadContactController::class, 'quickUpdate'])->name('lead-contact.quick_update');
         Route::get('{lead}/follow-up/create', [LeadContactController::class, 'followUpCreate'])->name('lead-contact.follow_up');
         Route::post('follow-up-store', [LeadContactController::class, 'followUpStore'])->name('lead-contact.follow_up_store');

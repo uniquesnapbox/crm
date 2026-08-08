@@ -17,7 +17,7 @@ class LeadFollowUpWhatsAppSummaryService
     {
     }
 
-    public function sendDailySummaryForCompany(int $companyId): void
+    public function sendDailySummaryForCompany(int $companyId, bool $force = false): void
     {
         if (!config('services.lead_followup_summary.enabled', true)) {
             return;
@@ -41,7 +41,7 @@ class LeadFollowUpWhatsAppSummaryService
         $sendTime = $this->normalizedTime(config('services.lead_followup_summary.time', '09:00'));
         $now = now($timezone);
 
-        if ($now->format('H:i') !== $sendTime) {
+        if (!$force && $now->format('H:i') !== $sendTime) {
             return;
         }
 
@@ -52,7 +52,7 @@ class LeadFollowUpWhatsAppSummaryService
             $sendTime
         );
 
-        if (!Cache::add($cacheKey, now()->timestamp, $now->copy()->endOfDay()->addHours(2))) {
+        if (!$force && !Cache::add($cacheKey, now()->timestamp, $now->copy()->endOfDay()->addHours(2))) {
             return;
         }
 
@@ -60,13 +60,14 @@ class LeadFollowUpWhatsAppSummaryService
             ->filter(function (User $user) {
                 return $this->normalizeUserMobile($user) !== '';
             })
-            ->values();
+            ->values()
+            ->keyBy('id');
 
         if ($employees->isEmpty()) {
             return;
         }
 
-        $employeeIds = $employees->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $employeeIds = $employees->keys()->map(fn ($id) => (int) $id)->all();
         $followUpBuckets = $this->bucketFollowUpsByEmployee($companyId, $timezone, $employeeIds);
 
         foreach ($employees as $employee) {
@@ -252,18 +253,20 @@ class LeadFollowUpWhatsAppSummaryService
 
     private function resolveFollowUpRecipientId(LeadFollowUp $followUp): ?int
     {
-        $lead = $followUp->lead;
-
-        if (!$lead) {
-            return null;
+        if (!is_null($followUp->lead?->added_by)) {
+            return (int) $followUp->lead->added_by;
         }
 
-        if (!is_null($lead->assigned_to)) {
-            return (int) $lead->assigned_to;
+        if (!is_null($followUp->lead?->assigned_to)) {
+            return (int) $followUp->lead->assigned_to;
         }
 
-        if (!is_null($lead->added_by)) {
-            return (int) $lead->added_by;
+        if (!is_null($followUp->assigned_to)) {
+            return (int) $followUp->assigned_to;
+        }
+
+        if (!is_null($followUp->added_by)) {
+            return (int) $followUp->added_by;
         }
 
         return null;
@@ -293,19 +296,24 @@ class LeadFollowUpWhatsAppSummaryService
     {
         $mobile = preg_replace('/\D+/', '', (string) $user->mobile);
         $countryCode = preg_replace('/\D+/', '', (string) $user->country_phonecode);
+        $fallbackCountryCode = preg_replace('/\D+/', '', (string) config('services.whatsapp_service.default_country_code', '91'));
 
         if ($mobile === '') {
             return '';
         }
 
-        if ($countryCode !== '') {
-            $mobile = ltrim($mobile, '0');
+        $mobile = ltrim($mobile, '0');
 
+        if ($countryCode !== '') {
             if (str_starts_with($mobile, $countryCode)) {
                 return $mobile;
             }
 
             return $countryCode . $mobile;
+        }
+
+        if ($fallbackCountryCode !== '' && strlen($mobile) === 10) {
+            return $fallbackCountryCode . $mobile;
         }
 
         return $mobile;

@@ -58,6 +58,8 @@ class LeadContactController extends AccountBaseController
             $this->sources = LeadSource::query()->select('id', 'type')->orderBy('type')->get();
             $this->statuses = LeadStatus::query()->select('id', 'type', 'label_color', 'priority', 'default')->orderBy('priority')->get();
             $this->employees = User::allEmployees();
+            $this->assignableEmployees = User::allEmployees(null, true, null, company()->id);
+            $this->canBulkAssignLead = $this->canManageLeadAssignment();
         }
 
         return $dataTable->render('lead-contact.index', $this->data);
@@ -676,6 +678,86 @@ class LeadContactController extends AccountBaseController
         ]);
     }
 
+    public function quickAddForm(string $type)
+    {
+        $this->authorizeQuickAdd($type);
+        $this->quickAddType = $type;
+
+        return view('lead-contact.quick-add-option-modal', $this->data);
+    }
+
+    public function quickAddStore(Request $request, string $type)
+    {
+        $this->authorizeQuickAdd($type);
+
+        $rules = [
+            'name' => ['required', 'string', 'max:191'],
+        ];
+
+        if ($type === 'status') {
+            $rules['name'][] = 'unique:lead_status,type';
+            $rules['label_color'] = ['required', 'regex:/^#[0-9A-Fa-f]{6}$/'];
+        }
+
+        if ($type === 'product') {
+            $rules['price'] = ['required', 'numeric', 'min:0'];
+        }
+
+        $validated = $request->validate($rules);
+
+        if ($type === 'source') {
+            $option = new LeadSource();
+            $option->type = $validated['name'];
+            $field = 'source_id';
+            $value = null;
+        } elseif ($type === 'category') {
+            $option = new LeadCategory();
+            $option->category_name = $validated['name'];
+            $field = 'category_id';
+            $value = null;
+        } elseif ($type === 'status') {
+            $option = new LeadStatus();
+            $option->type = $validated['name'];
+            $option->label_color = $validated['label_color'];
+            $option->priority = ((int) LeadStatus::max('priority')) + 1;
+            $option->default = false;
+            $field = 'status_id';
+            $value = null;
+        } else {
+            $option = new Product();
+            $option->name = $validated['name'];
+            $option->price = $validated['price'];
+            $field = 'products_services';
+            $value = $validated['name'];
+        }
+
+        $option->save();
+
+        return Reply::successWithData(__('messages.recordSaved'), [
+            'field' => $field,
+            'option' => [
+                'value' => $value ?? $option->id,
+                'label' => $validated['name'],
+            ],
+        ]);
+    }
+
+    private function authorizeQuickAdd(string $type): void
+    {
+        abort_unless(in_array($type, ['source', 'category', 'status', 'product'], true), 404);
+
+        if ($type === 'source') {
+            abort_403(!in_array(user()->permission('add_lead_sources'), ['all', 'added'], true));
+        } elseif ($type === 'category') {
+            abort_403(!in_array(user()->permission('add_lead_category'), ['all', 'added'], true));
+        } elseif ($type === 'status') {
+            abort_403(!in_array('admin', user_roles(), true));
+        } else {
+            abort_403(!in_array('products', user_modules(), true)
+                || !in_array(user()->permission('add_product'), ['all', 'added'], true));
+        }
+    }
+
     /**
      * Remove the specified resource from storage.
      *
@@ -705,19 +787,84 @@ class LeadContactController extends AccountBaseController
 
     public function applyQuickAction(Request $request)
     {
-        $leadIds = array_filter(explode(',', $request->row_ids));
-        $query = Lead::whereIn('id', $leadIds);
+        $actionType = (string) $request->input('action_type');
+        $leadIds = collect(explode(',', (string) $request->row_ids))
+            ->map(fn ($id) => (int) trim((string) $id))
+            ->filter()
+            ->unique()
+            ->values();
 
-        if (!$this->isAdminUser()) {
-            $query->where(function ($builder) {
-                $builder->where('added_by', user()->id)
-                    ->orWhere('assigned_to', user()->id);
-            });
+        if ($leadIds->isEmpty()) {
+            return Reply::error(__('messages.selectAction'));
         }
 
-        $query->delete();
+        if ($actionType === 'delete') {
+            $query = Lead::whereIn('id', $leadIds->all());
 
-        return Reply::success(__('messages.deleteSuccess'));
+            if (!$this->isAdminUser()) {
+                $query->where(function ($builder) {
+                    $builder->where('added_by', user()->id)
+                        ->orWhere('assigned_to', user()->id);
+                });
+            }
+
+            $deletedCount = $query->delete();
+
+            return Reply::successWithData(__('messages.deleteSuccess'), [
+                'deleted_count' => $deletedCount,
+            ]);
+        }
+
+        if ($actionType === 'assign-to') {
+            abort_403(!$this->canManageLeadAssignment());
+
+            $request->validate([
+                'assigned_to' => 'required|exists:users,id',
+            ]);
+
+            $assignedTo = (int) $request->input('assigned_to');
+            $employeeIds = User::allEmployees(null, true, null, company()->id)
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+            if (!in_array($assignedTo, $employeeIds, true)) {
+                return Reply::error('Invalid assignee selected.');
+            }
+
+            $updatedCount = 0;
+            $skippedCount = 0;
+
+            DB::transaction(function () use ($leadIds, $assignedTo, &$updatedCount, &$skippedCount) {
+                Lead::whereIn('id', $leadIds->all())
+                    ->get()
+                    ->each(function (Lead $lead) use ($assignedTo, &$updatedCount, &$skippedCount) {
+                        if (!$this->canAccessLead($lead)) {
+                            $skippedCount++;
+                            return;
+                        }
+
+                        if ((int) $lead->assigned_to === $assignedTo) {
+                            return;
+                        }
+
+                        $lead->assigned_to = $assignedTo;
+                        $lead->save();
+                        $updatedCount++;
+                    });
+            });
+
+            if ($updatedCount === 0) {
+                return Reply::error('No selected leads could be assigned.');
+            }
+
+            return Reply::successWithData('Selected leads assigned successfully.', [
+                'updated_count' => $updatedCount,
+                'skipped_count' => $skippedCount,
+            ]);
+        }
+
+        return Reply::error(__('messages.selectAction'));
     }
 
     public function followUpCreate($leadId)

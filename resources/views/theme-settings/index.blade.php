@@ -272,16 +272,45 @@
                 blockUI: true,
                 type: "POST",
                 file: true,
-                data: $('#editSettings').serialize()
+                data: {}
             })
         });
 
         $('.cropper').on('dropify.fileReady', function (e) {
             var inputId = $(this).find('input').attr('id');
-            var url = "{{ route('cropper', ':element') }}";
-            url = url.replace(':element', inputId);
-            $(MODAL_LG + ' ' + MODAL_HEADING).html('...');
-            $.ajaxModal(MODAL_LG, url);
+            var url = "{{ route('cropper', ':element', false) }}";
+            var $modal = $(MODAL_LG);
+            var cropTitle = @json(__('app.cropImage'));
+            var loadingText = @json(__('app.loading'));
+
+            url = url.replace(':element', encodeURIComponent(inputId));
+            $modal.find('.modal-content').html(
+                '<div class="modal-header"><h5 class="modal-title">' + cropTitle + '</h5>' +
+                '<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>' +
+                '<div class="modal-body">' + loadingText + '</div>'
+            );
+            $modal.modal({ show: true, backdrop: 'static', keyboard: false });
+
+            $.ajax({
+                url: url,
+                type: 'GET',
+                dataType: 'html',
+                timeout: 20000
+            }).done(function (html) {
+                $modal.find('.modal-content').html(html);
+            }).fail(function (xhr, status) {
+                var message = 'Unable to load the image cropper. Please try again.';
+
+                if (xhr.status === 403) {
+                    message = 'You do not have permission to open the image cropper.';
+                } else if (xhr.status === 404) {
+                    message = 'The image cropper could not be found.';
+                } else if (status === 'timeout') {
+                    message = 'The image cropper took too long to load. Please try again.';
+                }
+
+                $modal.find('.modal-body').html('<div class="alert alert-danger mb-0">' + message + '</div>');
+            });
         });
 
     </script>

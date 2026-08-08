@@ -142,9 +142,6 @@ Route::get('quill-image/{image}', [ImageController::class, 'getImage'])->name('i
 // Cropper Model
 Route::get('cropper/{element}', [ImageController::class, 'cropper'])->name('cropper');
 
-// Sync user permissions
-Route::get('sync-user-permissions', [HomeController::class, 'syncPermissions'])->name('sync_user_permissions');
-
 Route::get('file/{type}/{path}', [FileController::class, 'getFile'])->middleware('signed')->name('file.getFile');
 
 // SIGNED URLS ->middleware('signed')

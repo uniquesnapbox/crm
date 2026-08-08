@@ -378,7 +378,8 @@ class CompanyObserver
         $status = [
             ['type' => 'pending', 'priority' => 1, 'default' => 1, 'label_color' => '#FFE700', 'company_id' => $company->id],
             ['type' => 'in process', 'priority' => 2, 'default' => 0, 'label_color' => '#009EFF', 'company_id' => $company->id],
-            ['type' => 'done', 'priority' => 3, 'default' => 0, 'label_color' => '#1FAE07', 'company_id' => $company->id]
+            ['type' => 'done', 'priority' => 3, 'default' => 0, 'label_color' => '#1FAE07', 'company_id' => $company->id],
+            ['type' => 'Lost', 'priority' => 4, 'default' => 0, 'label_color' => '#DB1313', 'company_id' => $company->id]
         ];
 
         LeadStatus::insert($status);
