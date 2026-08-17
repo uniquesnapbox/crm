@@ -832,36 +832,95 @@ class LeadContactController extends AccountBaseController
                 return Reply::error('Invalid assignee selected.');
             }
 
-            $updatedCount = 0;
-            $skippedCount = 0;
+            $currentUserId = user()->id ?? null;
+            $now = now();
 
-            DB::transaction(function () use ($leadIds, $assignedTo, &$updatedCount, &$skippedCount) {
-                Lead::whereIn('id', $leadIds->all())
-                    ->get()
-                    ->each(function (Lead $lead) use ($assignedTo, &$updatedCount, &$skippedCount) {
-                        if (!$this->canAccessLead($lead)) {
-                            $skippedCount++;
-                            return;
-                        }
+            $result = DB::transaction(function () use ($leadIds, $assignedTo, $currentUserId, $now) {
+                $leadRows = Lead::query()
+                    ->select('id', 'company_id', 'added_by', 'assigned_to')
+                    ->whereIn('id', $leadIds->all())
+                    ->get();
 
-                        if ((int) $lead->assigned_to === $assignedTo) {
-                            return;
-                        }
+                $accessibleLeads = $leadRows->filter(function (Lead $lead) {
+                    return $this->canAccessLead($lead);
+                })->values();
 
-                        $lead->assigned_to = $assignedTo;
-                        $lead->save();
-                        $updatedCount++;
-                    });
+                $eligibleLeads = $accessibleLeads->reject(function (Lead $lead) use ($assignedTo) {
+                    return (int) $lead->assigned_to === $assignedTo;
+                })->values();
+
+                $skippedCount = $leadRows->count() - $accessibleLeads->count();
+
+                if ($eligibleLeads->isEmpty()) {
+                    return null;
+                }
+
+                $historyRows = [];
+                $historyUserIds = $eligibleLeads
+                    ->pluck('assigned_to')
+                    ->filter()
+                    ->map(fn ($id) => (int) $id)
+                    ->push($assignedTo)
+                    ->filter()
+                    ->unique()
+                    ->values()
+                    ->all();
+
+                $userNameMap = User::withoutGlobalScopes()
+                    ->whereIn('id', $historyUserIds)
+                    ->pluck('name', 'id');
+
+                $newAssigneeName = $userNameMap->get($assignedTo) ?: '--';
+
+                foreach ($eligibleLeads as $lead) {
+                    $oldAssigneeId = $lead->assigned_to ? (int) $lead->assigned_to : null;
+                    $oldAssigneeName = $oldAssigneeId ? ($userNameMap->get($oldAssigneeId) ?: '--') : '--';
+
+                    $historyRows[] = [
+                        'company_id' => $lead->company_id ?: (company()->id ?? null),
+                        'lead_id' => $lead->id,
+                        'event_type' => 'lead_field_updated',
+                        'title' => 'Lead Updated',
+                        'description' => 'Assigned To changed from "' . $oldAssigneeName . '" to "' . $newAssigneeName . '".',
+                        'field_key' => 'assigned_to',
+                        'old_value' => $oldAssigneeName,
+                        'new_value' => $newAssigneeName,
+                        'meta' => json_encode([
+                            'field' => 'assigned_to',
+                            'old' => $oldAssigneeName,
+                            'new' => $newAssigneeName,
+                        ]),
+                        'created_by' => $currentUserId,
+                        'event_at' => $now,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ];
+                }
+
+                // Keep the write path to one update query and recreate the history rows
+                // that the Lead observer would normally write for each saved model.
+                Lead::whereIn('id', $eligibleLeads->pluck('id')->all())
+                    ->update([
+                        'assigned_to' => $assignedTo,
+                        'last_updated_by' => $currentUserId,
+                        'updated_at' => $now,
+                    ]);
+
+                if (!empty($historyRows) && Schema::hasTable('lead_histories')) {
+                    DB::table('lead_histories')->insert($historyRows);
+                }
+
+                return [
+                    'updated_count' => $eligibleLeads->count(),
+                    'skipped_count' => $skippedCount,
+                ];
             });
 
-            if ($updatedCount === 0) {
+            if ($result === null) {
                 return Reply::error('No selected leads could be assigned.');
             }
 
-            return Reply::successWithData('Selected leads assigned successfully.', [
-                'updated_count' => $updatedCount,
-                'skipped_count' => $skippedCount,
-            ]);
+            return Reply::successWithData('Selected leads assigned successfully.', $result);
         }
 
         return Reply::error(__('messages.selectAction'));
