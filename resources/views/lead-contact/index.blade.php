@@ -192,12 +192,27 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
                 if (actionValue == 'assign-to') {
                     $('.quick-action-field').addClass('d-none');
                     $('#change-agent-action').removeClass('d-none');
+                    const $assignedTo = $('#assigned_to');
+                    $assignedTo.prop('disabled', false);
+                    if ($assignedTo.length > 0 && typeof $assignedTo.selectpicker === 'function') {
+                        $assignedTo.selectpicker('enable');
+                    }
                 } else {
                     $('.quick-action-field').addClass('d-none');
+                    const $assignedTo = $('#assigned_to');
+                    $assignedTo.prop('disabled', true);
+                    if ($assignedTo.length > 0 && typeof $assignedTo.selectpicker === 'function') {
+                        $assignedTo.selectpicker('disable');
+                    }
                 }
             } else {
                 $('#quick-action-apply').attr('disabled', true);
                 $('.quick-action-field').addClass('d-none');
+                const $assignedTo = $('#assigned_to');
+                $assignedTo.prop('disabled', true);
+                if ($assignedTo.length > 0 && typeof $assignedTo.selectpicker === 'function') {
+                    $assignedTo.selectpicker('disable');
+                }
             }
         });
 
@@ -382,21 +397,43 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
             window.setTimeout(callback, 0);
         };
 
+        let leadContactBulkActionsVisible = false;
+
+        const leadContactSetAssignedToState = (enabled) => {
+            const $assignedTo = $('#assigned_to');
+
+            if ($assignedTo.length === 0) {
+                return;
+            }
+
+            $assignedTo.prop('disabled', !enabled);
+
+            if (typeof $assignedTo.selectpicker === 'function') {
+                $assignedTo.selectpicker(enabled ? 'enable' : 'disable');
+            }
+        };
+
         const leadContactShowBulkActions = () => {
             const form = document.getElementById('quick-action-form');
             if (form) {
                 form.style.display = '';
             }
 
-            const $fields = $('#quick-actions').find('input, textarea, button, select');
-            $fields.prop('disabled', false);
-            const $pickers = $('#quick-actions .select-picker');
-            if ($pickers.length > 0 && typeof $pickers.selectpicker === 'function') {
-                $pickers.selectpicker('enable');
+            if (leadContactBulkActionsVisible) {
+                return;
             }
-            if ($('#quick-action-type').val() == '') {
+
+            leadContactBulkActionsVisible = true;
+
+            const $actionType = $('#quick-action-type');
+            $actionType.prop('disabled', false);
+
+            if ($actionType.val() == '') {
                 $('#quick-action-apply').prop('disabled', true);
             }
+
+            // Keep the assignee picker disabled until the user explicitly chooses assign-to.
+            leadContactSetAssignedToState(false);
         };
 
         const leadContactHideBulkActions = () => {
@@ -405,12 +442,15 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
                 form.style.display = 'none';
             }
 
+            if (!leadContactBulkActionsVisible) {
+                return;
+            }
+
+            leadContactBulkActionsVisible = false;
+
             const $fields = $('#quick-actions').find('input, textarea, button, select');
             $fields.prop('disabled', true);
-            const $pickers = $('#quick-actions .select-picker');
-            if ($pickers.length > 0 && typeof $pickers.selectpicker === 'function') {
-                $pickers.selectpicker('disable');
-            }
+            leadContactSetAssignedToState(false);
         };
 
         const leadContactSyncBulkActionState = () => {
@@ -427,11 +467,16 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
                     $selectAll.prop("checked", selectedCount === selectableCount);
                 }
 
-                $("#quick-actions")
-                    .find("input, textarea, button, select")
-                    .removeAttr("disabled");
+                const actionValue = $("#quick-action-type").val();
+                if (actionValue == "assign-to") {
+                    $('#change-agent-action').removeClass('d-none');
+                    leadContactSetAssignedToState(true);
+                } else {
+                    $('#change-agent-action').addClass('d-none');
+                    leadContactSetAssignedToState(false);
+                }
 
-                if ($("#quick-action-type").val() == "") {
+                if (actionValue == "") {
                     $("#quick-action-apply").attr("disabled", true);
                 }
 
