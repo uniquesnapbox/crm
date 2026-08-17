@@ -192,7 +192,6 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
                 if (actionValue == 'assign-to') {
                     $('.quick-action-field').addClass('d-none');
                     $('#change-agent-action').removeClass('d-none');
-                    $('#assigned_to').selectpicker('refresh');
                 } else {
                     $('.quick-action-field').addClass('d-none');
                 }
@@ -290,7 +289,7 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
         });
 
         const applyQuickAction = () => {
-            var rowdIds = $("#lead-contact-table input:checkbox:checked").map(function() {
+            var rowdIds = $("#lead-contact-table input[name='datatable_ids[]']:checked").map(function() {
                 return $(this).val();
             }).get();
 
