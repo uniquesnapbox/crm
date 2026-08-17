@@ -379,5 +379,119 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
             @endif
         });
 
+        const leadContactScheduleBulkActionUpdate = (callback) => {
+            window.setTimeout(callback, 0);
+        };
+
+        const leadContactShowBulkActions = () => {
+            const form = document.getElementById('quick-action-form');
+            if (form) {
+                form.style.display = '';
+            }
+
+            const $fields = $('#quick-actions').find('input, textarea, button, select');
+            $fields.prop('disabled', false);
+            const $pickers = $('#quick-actions .select-picker');
+            if ($pickers.length > 0 && typeof $pickers.selectpicker === 'function') {
+                $pickers.selectpicker('enable');
+            }
+            if ($('#quick-action-type').val() == '') {
+                $('#quick-action-apply').prop('disabled', true);
+            }
+        };
+
+        const leadContactHideBulkActions = () => {
+            const form = document.getElementById('quick-action-form');
+            if (form) {
+                form.style.display = 'none';
+            }
+
+            const $fields = $('#quick-actions').find('input, textarea, button, select');
+            $fields.prop('disabled', true);
+            const $pickers = $('#quick-actions .select-picker');
+            if ($pickers.length > 0 && typeof $pickers.selectpicker === 'function') {
+                $pickers.selectpicker('disable');
+            }
+        };
+
+        const leadContactSyncBulkActionState = () => {
+            const $selectedRows = $(".select-table-row:checked");
+            const selectedCount = $selectedRows.length;
+            const $selectAll = $("#select-all-table");
+
+            if (selectedCount > 0) {
+                leadContactShowBulkActions();
+
+                if ($selectAll.length > 0) {
+                    const selectableCount = $(".select-table-row:not(:disabled)").length;
+                    $selectAll.prop("indeterminate", selectedCount > 0 && selectedCount < selectableCount);
+                    $selectAll.prop("checked", selectedCount === selectableCount);
+                }
+
+                $("#quick-actions")
+                    .find("input, textarea, button, select")
+                    .removeAttr("disabled");
+
+                if ($("#quick-action-type").val() == "") {
+                    $("#quick-action-apply").attr("disabled", true);
+                }
+
+            } else {
+                leadContactHideBulkActions();
+
+                if ($selectAll.length > 0) {
+                    $selectAll.prop("indeterminate", false);
+                    $selectAll.prop("checked", false);
+                }
+
+                window.resetActionButtons();
+            }
+        };
+
+        window.dataTableRowCheck = (id) => {
+            const checkbox = document.getElementById("datatable-row-" + id);
+            const row = document.getElementById("row-" + id);
+
+            if (checkbox && row) {
+                row.classList.toggle("table-active", checkbox.checked);
+            }
+
+            if (checkbox && checkbox.checked) {
+                leadContactShowBulkActions();
+            }
+
+            leadContactScheduleBulkActionUpdate(leadContactSyncBulkActionState);
+        };
+
+        window.selectAllTable = (source) => {
+            const shouldCheck = !!source.checked;
+            const checkboxes = document.getElementsByName("datatable_ids[]");
+
+            for (let i = 0, n = checkboxes.length; i < n; i++) {
+                if (checkboxes[i].disabled) {
+                    continue;
+                }
+
+                checkboxes[i].checked = shouldCheck;
+
+                const row = checkboxes[i].closest("tr");
+                if (row) {
+                    row.classList.toggle("table-active", shouldCheck);
+                }
+            }
+
+            if (shouldCheck) {
+                leadContactShowBulkActions();
+            } else {
+                leadContactHideBulkActions();
+            }
+
+        };
+
+        window.resetActionButtons = () => {
+            $("#quick-action-form")[0].reset();
+            leadContactHideBulkActions();
+        };
+
     </script>
 @endpush

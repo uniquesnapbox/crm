@@ -51,75 +51,115 @@ const init = function (parent = "") {
     });
 };
 
-//select row in datatable
-const dataTableRowCheck = (id) => {
-    if ($(".select-table-row:checked").length > 0) {
-        $("#quick-action-form").fadeIn();
-        //if at-least one row is selected
-        document.getElementById("select-all-table").indeterminate = true;
+const scheduleBulkActionUpdate = (callback) => {
+    window.setTimeout(callback, 0);
+};
+
+const showBulkActions = () => {
+    const form = document.getElementById("quick-action-form");
+    if (form) {
+        form.style.display = "";
+    }
+
+    const $fields = $("#quick-actions").find("input, textarea, button, select");
+    $fields.prop("disabled", false);
+    const $pickers = $("#quick-actions .select-picker");
+    if ($pickers.length > 0 && typeof $pickers.selectpicker === "function") {
+        $pickers.selectpicker("enable");
+    }
+    if ($("#quick-action-type").val() == "") {
+        $("#quick-action-apply").prop("disabled", true);
+    }
+};
+
+const hideBulkActions = () => {
+    const form = document.getElementById("quick-action-form");
+    if (form) {
+        form.style.display = "none";
+    }
+
+    const $fields = $("#quick-actions").find("input, textarea, button, select");
+    $fields.prop("disabled", true);
+    const $pickers = $("#quick-actions .select-picker");
+    if ($pickers.length > 0 && typeof $pickers.selectpicker === "function") {
+        $pickers.selectpicker("disable");
+    }
+};
+
+const syncBulkActionState = () => {
+    const $selectedRows = $(".select-table-row:checked");
+    const selectedCount = $selectedRows.length;
+    const $selectAll = $("#select-all-table");
+
+    if (selectedCount > 0) {
+        showBulkActions();
+        if ($selectAll.length > 0) {
+            const selectableCount = $(".select-table-row:not(:disabled)").length;
+            $selectAll.prop("indeterminate", selectedCount > 0 && selectedCount < selectableCount);
+            $selectAll.prop("checked", selectedCount === selectableCount);
+        }
         $("#quick-actions")
             .find("input, textarea, button, select")
             .removeAttr("disabled");
         if ($("#quick-action-type").val() == "") {
             $("#quick-action-apply").attr("disabled", true);
         }
-        $(".select-picker").selectpicker("refresh");
     } else {
-        $("#quick-action-form").fadeOut();
-        //if no row is selected
-        document.getElementById("select-all-table").indeterminate = false;
-        $("#select-all-table").attr("checked", false);
+        hideBulkActions();
+        if ($selectAll.length > 0) {
+            $selectAll.prop("indeterminate", false);
+            $selectAll.prop("checked", false);
+        }
         resetActionButtons();
     }
+};
 
-    if ($("#datatable-row-" + id).is(":checked")) {
-        $("#row-" + id).addClass("table-active");
-    } else {
-        $("#row-" + id).removeClass("table-active");
+//select row in datatable
+const dataTableRowCheck = (id) => {
+    const checkbox = document.getElementById("datatable-row-" + id);
+    const row = document.getElementById("row-" + id);
+
+    if (checkbox && row) {
+        row.classList.toggle("table-active", checkbox.checked);
     }
+
+    if (checkbox && checkbox.checked) {
+        showBulkActions();
+    }
+
+    scheduleBulkActionUpdate(syncBulkActionState);
 };
 
 //select all rows in datatable
 const selectAllTable = (source) => {
-    checkboxes = document.getElementsByName("datatable_ids[]");
-    for (var i = 0, n = checkboxes.length; i < n; i++) {
-        // if disabled property is given to checkbox, it won't select particular checkbox.
-        if (!$("#" + checkboxes[i].id).prop('disabled')){
-            checkboxes[i].checked = source.checked;
+    const shouldCheck = !!source.checked;
+    const checkboxes = document.getElementsByName("datatable_ids[]");
+
+    for (let i = 0, n = checkboxes.length; i < n; i++) {
+        if (checkboxes[i].disabled) {
+            continue;
         }
-        if ($("#" + checkboxes[i].id).is(":checked")) {
-            $("#" + checkboxes[i].id)
-                .closest("tr")
-                .addClass("table-active");
-            $("#quick-actions")
-                .find("input, textarea, button, select")
-                .removeAttr("disabled");
-            if ($("#quick-action-type").val() == "") {
-                $("#quick-action-apply").attr("disabled", true);
-            }
-            $(".select-picker").selectpicker("refresh");
-        } else {
-            $("#" + checkboxes[i].id)
-                .closest("tr")
-                .removeClass("table-active");
-            resetActionButtons();
+
+        checkboxes[i].checked = shouldCheck;
+
+        const row = checkboxes[i].closest("tr");
+        if (row) {
+            row.classList.toggle("table-active", shouldCheck);
         }
     }
 
-    if ($(".select-table-row:checked").length > 0) {
-        $("#quick-action-form").fadeIn();
+    if (shouldCheck) {
+        showBulkActions();
     } else {
-        $("#quick-action-form").fadeOut();
+        hideBulkActions();
     }
+
 };
 
 //reset table action form elements
 const resetActionButtons = () => {
     $("#quick-action-form")[0].reset();
-    $("#quick-actions")
-        .find("input, textarea, button, select")
-        .attr("disabled", "disabled");
-    $(".select-picker").selectpicker("refresh");
+    hideBulkActions();
 };
 
 var el = document.getElementById("close-task-detail");
@@ -451,4 +491,3 @@ $(document).ready(function () {
 $('#mobile_menu_collapse').on('click', '.dropdown-item', function() {
     $("#dropdownMenuLink").dropdown("toggle");
 });
-

@@ -499,27 +499,38 @@
     };
 
     $.ajaxModal = function (selector, url, onLoad) {
-        $(selector + " .modal-content").load(url);
+        var $modal = $(selector);
+        var loadingText = document.loading ? document.loading : 'Loading...';
 
-        $(selector).removeData("bs.modal").modal({
-            remote: url,
+        // Keep the visible modal shell responsive while the remote content is fetched.
+        $modal.find(".modal-body").html(loadingText);
+        $modal.removeData("bs.modal").modal({
             show: true,
             backdrop: 'static',
             keyboard: false
         });
 
-        // Trigger to do stuff with form loaded in modal
-        $(document).trigger("ajaxPageLoad");
+        $modal
+            .find(".modal-content")
+            .load(url, function (response, status) {
+                if (status === "error") {
+                    $modal.find(".modal-body").html(
+                        '<div class="alert alert-danger mb-0">Unable to load the form. Please try again.</div>'
+                    );
+                    return;
+                }
 
-        // Call onload method if it was passed in function call
-        if (typeof onLoad != "undefined") {
-            onLoad();
-        }
+                // Fire after the HTML and inline scripts have been injected.
+                $(document).trigger("ajaxPageLoad");
 
+                if (typeof onLoad != "undefined") {
+                    onLoad();
+                }
+            });
 
-        // Reset modal when it hides
-        $(selector).on("hidden.bs.modal", function () {
-            $(this).find(".modal-body").html((document.loading ? document.loading : 'Loading...'));
+        // Reset modal when it hides.
+        $modal.off("hidden.bs.modal.ajaxModal").on("hidden.bs.modal.ajaxModal", function () {
+            $(this).find(".modal-body").html(loadingText);
             $(this)
                 .find(".modal-footer")
                 .html(
