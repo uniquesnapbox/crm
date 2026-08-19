@@ -132,7 +132,7 @@ $assignLeadPermission = in_array('admin', user_roles()) || user()->permission('a
                             </label>
                             <div class="input-group">
                                 <div class="input-group-prepend">
-                                    <select class="form-control" id="mobile_country_code" style="width: 90px; min-width: 90px; max-width: 90px;">
+                                    <select class="form-control" id="mobile_country_code" name="mobile_country_code" style="width: 90px; min-width: 90px; max-width: 90px;">
                                         @foreach ($countries as $item)
                                             @php $code = preg_replace('/\D+/', '', (string) $item->phonecode); @endphp
                                             @if (!empty($code))
@@ -144,7 +144,7 @@ $assignLeadPermission = in_array('admin', user_roles()) || user()->permission('a
                                         @endforeach
                                     </select>
                                 </div>
-                                <input type="text" class="form-control" id="mobile_local" maxlength="10"
+                                <input type="text" class="form-control" id="mobile_local" name="mobile_local" maxlength="10"
                                     inputmode="numeric" pattern="[0-9]{10}" placeholder="9876543210" autocomplete="off">
                             </div>
                             <input type="hidden" name="mobile" id="mobile" value="">

@@ -16,6 +16,19 @@ class StoreRequest extends CoreRequest
                 'reminder_time' => $this->normalizeTimeInput($this->input('reminder_time')),
             ]);
         }
+
+        $mobile = $this->input('mobile');
+
+        if ($this->filled('mobile')) {
+            $mobile = $this->normalizeExistingMobile($mobile, $this->input('mobile_country_code'), $this->input('country'));
+        }
+        else {
+            $mobile = $this->buildInternationalMobile($this->input('mobile_local'), $this->input('mobile_country_code'), $this->input('country'));
+        }
+
+        $this->merge([
+            'mobile' => $mobile,
+        ]);
     }
 
     /**
@@ -101,6 +114,91 @@ class StoreRequest extends CoreRequest
         }
 
         return $time;
+    }
+
+    private function buildInternationalMobile($localMobile, $countryCode, $countryName = null): ?string
+    {
+        $digits = $this->normalizeMobileInput($localMobile);
+
+        if ($digits === null || $digits === '') {
+            return null;
+        }
+
+        $countryCode = $this->normalizeCountryCode($countryCode, $countryName);
+        if ($countryCode === null) {
+            return null;
+        }
+
+        if (str_starts_with($digits, $countryCode)) {
+            $digits = substr($digits, strlen($countryCode));
+        }
+
+        if ($countryCode === '91') {
+            $digits = substr($digits, 0, 10);
+        }
+        else {
+            $digits = substr($digits, 0, 12);
+        }
+
+        if ($digits === '') {
+            return null;
+        }
+
+        return '+' . $countryCode . $digits;
+    }
+
+    private function normalizeMobileInput($value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $value = preg_replace('/\D+/', '', (string) $value);
+
+        return $value === '' ? null : $value;
+    }
+
+    private function normalizeExistingMobile($mobile, $countryCode, $countryName = null): ?string
+    {
+        if ($mobile === null) {
+            return null;
+        }
+
+        $mobile = trim((string) $mobile);
+
+        if ($mobile === '') {
+            return null;
+        }
+
+        if (str_starts_with($mobile, '+')) {
+            $digits = preg_replace('/\D+/', '', substr($mobile, 1));
+
+            return $digits === '' ? null : '+' . $digits;
+        }
+
+        return $this->buildInternationalMobile($mobile, $countryCode, $countryName);
+    }
+
+    private function normalizeCountryCode($countryCode, $countryName = null): ?string
+    {
+        $code = preg_replace('/\D+/', '', (string) $countryCode);
+
+        if ($code !== '') {
+            return $code;
+        }
+
+        if (!$countryName) {
+            return '91';
+        }
+
+        $countries = collect(countries());
+        $country = $countries->first(function ($item) use ($countryName) {
+            return strtolower((string) $item->nicename) === strtolower((string) $countryName);
+        });
+
+        $code = preg_replace('/\D+/', '', (string) ($country->phonecode ?? ''));
+
+        return $code !== '' ? $code : '91';
     }
 
 }

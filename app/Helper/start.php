@@ -130,15 +130,22 @@ if (!function_exists('global_setting')) {
     // @codingStandardsIgnoreLine
     function global_setting()
     {
+        try {
+            if (!cache()->has('global_setting')) {
+                $setting = \App\Models\GlobalSetting::first();
+                cache(['global_setting' => $setting]);
 
-        if (!cache()->has('global_setting')) {
-            $setting = \App\Models\GlobalSetting::first();
-            cache(['global_setting' => $setting]);
+                return $setting;
+            }
 
-            return $setting;
+            return cache('global_setting');
+        } catch (\Throwable $e) {
+            logger()->warning('global_setting cache fallback used.', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return \App\Models\GlobalSetting::first();
         }
-
-        return cache('global_setting');
     }
 
 }
@@ -162,11 +169,19 @@ if (!function_exists('language_setting')) {
     // @codingStandardsIgnoreLine
     function language_setting()
     {
-        if (!cache()->has('language_setting')) {
-            cache(['language_setting' => \App\Models\LanguageSetting::where('status', 'enabled')->get()]);
-        }
+        try {
+            if (!cache()->has('language_setting')) {
+                cache(['language_setting' => \App\Models\LanguageSetting::where('status', 'enabled')->get()]);
+            }
 
-        return cache('language_setting');
+            return cache('language_setting');
+        } catch (\Throwable $e) {
+            logger()->warning('language_setting cache fallback used.', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return \App\Models\LanguageSetting::where('status', 'enabled')->get();
+        }
     }
 
 }
@@ -176,11 +191,22 @@ if (!function_exists('language_setting_locale')) {
     // @codingStandardsIgnoreLine
     function language_setting_locale($locale)
     {
-        if (!cache()->has('language_setting_' . $locale)) {
-            cache(['language_setting_' . $locale => \App\Models\LanguageSetting::where('language_code', $locale)->first()]);
-        }
+        $cacheKey = 'language_setting_' . $locale;
 
-        return cache('language_setting_' . $locale);
+        try {
+            if (!cache()->has($cacheKey)) {
+                cache([$cacheKey => \App\Models\LanguageSetting::where('language_code', $locale)->first()]);
+            }
+
+            return cache($cacheKey);
+        } catch (\Throwable $e) {
+            logger()->warning('language_setting_locale cache fallback used.', [
+                'locale' => $locale,
+                'error' => $e->getMessage(),
+            ]);
+
+            return \App\Models\LanguageSetting::where('language_code', $locale)->first();
+        }
     }
 
 }
@@ -279,37 +305,64 @@ if (!function_exists('user_modules')) {
             return [];
         }
 
-        if (cache()->has('user_modules_' . $user->id)) {
-            return cache('user_modules_' . $user->id);
+        $cacheKey = 'user_modules_' . $user->id;
+
+        try {
+            if (cache()->has($cacheKey)) {
+                return cache($cacheKey);
+            }
+
+            $module = new \App\Models\ModuleSetting();
+
+            if (in_array('admin', user_roles())) {
+                $module = $module->where('type', 'admin');
+
+            }
+            elseif (in_array('client', user_roles())) {
+                $module = $module->where('type', 'client');
+
+            }
+            elseif (in_array('employee', user_roles())) {
+                $module = $module->where('type', 'employee');
+            }
+
+            $module = $module->where('status', 'active');
+            $module->select('module_name');
+
+            $module = $module->get();
+            $moduleArray = [];
+
+            foreach ($module->toArray() as $item) {
+                $moduleArray[] = array_values($item)[0];
+            }
+
+            cache()->put($cacheKey, $moduleArray);
+
+            return $moduleArray;
+        } catch (\Throwable $e) {
+            logger()->warning('user_modules cache fallback used.', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            $module = new \App\Models\ModuleSetting();
+
+            if (in_array('admin', user_roles())) {
+                $module = $module->where('type', 'admin');
+            }
+            elseif (in_array('client', user_roles())) {
+                $module = $module->where('type', 'client');
+            }
+            elseif (in_array('employee', user_roles())) {
+                $module = $module->where('type', 'employee');
+            }
+
+            return $module->where('status', 'active')
+                ->select('module_name')
+                ->get()
+                ->pluck('module_name')
+                ->toArray();
         }
-
-        $module = new \App\Models\ModuleSetting();
-
-        if (in_array('admin', user_roles())) {
-            $module = $module->where('type', 'admin');
-
-        }
-        elseif (in_array('client', user_roles())) {
-            $module = $module->where('type', 'client');
-
-        }
-        elseif (in_array('employee', user_roles())) {
-            $module = $module->where('type', 'employee');
-        }
-
-        $module = $module->where('status', 'active');
-        $module->select('module_name');
-
-        $module = $module->get();
-        $moduleArray = [];
-
-        foreach ($module->toArray() as $item) {
-            $moduleArray[] = array_values($item)[0];
-        }
-
-        cache()->put('user_modules_' . $user->id, $moduleArray);
-
-        return $moduleArray;
     }
 
 }
@@ -319,13 +372,22 @@ if (!function_exists('worksuite_plugins')) {
     // @codingStandardsIgnoreLine
     function worksuite_plugins()
     {
+        try {
+            if (!cache()->has('worksuite_plugins')) {
+                $plugins = \Nwidart\Modules\Facades\Module::allEnabled();
+                cache(['worksuite_plugins' => array_keys($plugins)]);
+            }
 
-        if (!cache()->has('worksuite_plugins')) {
+            return cache('worksuite_plugins');
+        } catch (\Throwable $e) {
+            logger()->warning('worksuite_plugins cache fallback used.', [
+                'error' => $e->getMessage(),
+            ]);
+
             $plugins = \Nwidart\Modules\Facades\Module::allEnabled();
-            cache(['worksuite_plugins' => array_keys($plugins)]);
-        }
 
-        return cache('worksuite_plugins');
+            return array_keys($plugins);
+        }
     }
 
 }
@@ -448,11 +510,19 @@ if (!function_exists('social_auth_setting')) {
     // @codingStandardsIgnoreLine
     function social_auth_setting()
     {
-        if (!cache()->has('social_auth_setting')) {
-            cache(['social_auth_setting' => SocialAuthSetting::first()]);
-        }
+        try {
+            if (!cache()->has('social_auth_setting')) {
+                cache(['social_auth_setting' => SocialAuthSetting::first()]);
+            }
 
-        return cache('social_auth_setting');
+            return cache('social_auth_setting');
+        } catch (\Throwable $e) {
+            logger()->warning('social_auth_setting cache fallback used.', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return SocialAuthSetting::first();
+        }
     }
 
 }
@@ -517,11 +587,19 @@ if (!function_exists('countries')) {
     // @codingStandardsIgnoreLine
     function countries()
     {
-        if (!cache()->has('countries')) {
-            cache(['countries' => \App\Models\Country::all()]);
-        }
+        try {
+            if (!cache()->has('countries')) {
+                cache(['countries' => \App\Models\Country::all()]);
+            }
 
-        return cache('countries');
+            return cache('countries');
+        } catch (\Throwable $e) {
+            logger()->warning('countries cache fallback used.', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return \App\Models\Country::all();
+        }
     }
 
 }

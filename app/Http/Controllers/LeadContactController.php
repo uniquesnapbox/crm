@@ -460,35 +460,85 @@ class LeadContactController extends AccountBaseController
             || user()->id == $leadContact->assigned_to)
         );
 
-        // salutation removed
-        $leadContact->client_name = $request->client_name;
-        $leadContact->client_email = $request->client_email;
-        if ($request->has('note')) {
-            $leadContact->note = trim_editor($request->note);
+        // Preserve existing values unless the client explicitly sends a new one.
+        $leadContact->client_name = $request->input('client_name', $leadContact->client_name);
+
+        if ($request->exists('client_email')) {
+            $leadContact->client_email = $request->input('client_email');
         }
-        $leadContact->source_id = $request->source_id;
-        $leadContact->status_id = $request->status_id;
-        if ($request->has('category_id')) {
-            $leadContact->category_id = $request->category_id;
+
+        if ($request->exists('note')) {
+            $leadContact->note = trim_editor((string) $request->input('note'));
         }
-        if ($request->has('company_name')) {
-            $leadContact->company_name = $request->company_name;
+
+        if ($request->exists('source_id')) {
+            $leadContact->source_id = $this->normalizeNullableInteger($request->input('source_id'));
         }
-        $leadContact->website = $request->website;
-        $leadContact->address = $request->address;
-        if ($request->has('cell')) {
-            $leadContact->cell = $request->cell;
+
+        if ($request->exists('status_id')) {
+            $leadContact->status_id = $this->normalizeNullableInteger($request->input('status_id'));
         }
-        $leadContact->office = $request->office;
+
+        if ($request->exists('category_id')) {
+            $leadContact->category_id = $this->normalizeNullableInteger($request->input('category_id'));
+        }
+
+        if ($request->exists('company_name')) {
+            $leadContact->company_name = $request->input('company_name');
+        }
+
+        if ($request->exists('website')) {
+            $leadContact->website = $request->input('website');
+        }
+
+        if ($request->exists('address')) {
+            $leadContact->address = $request->input('address');
+        }
+
+        if ($request->exists('cell')) {
+            $leadContact->cell = $request->input('cell');
+        }
+
+        if ($request->exists('office')) {
+            $leadContact->office = $request->input('office');
+        }
+
         // city, state, postal_code removed
-        $leadContact->country = $request->country ?: 'India';
-        $leadContact->mobile = $this->normalizeMobileByCountry($request->mobile, $request->country);
-        $leadContact->interest_level = $request->interest_level;
-        $leadContact->deal_size = $request->deal_size;
-        $leadContact->contact_status = $request->contact_status;
-        $leadContact->contact_status_reason = $request->contact_status_reason;
-        $leadContact->products_services = $request->products_services;
-        $leadContact->added_by = $request->added_by ?? $leadContact->added_by; // update added_by if provided
+        if ($request->exists('country')) {
+            $leadContact->country = $request->input('country') ?: 'India';
+        }
+
+        if ($request->exists('mobile')) {
+            $leadContact->mobile = $this->normalizeMobileByCountry(
+                $request->input('mobile'),
+                $request->input('country', $leadContact->country)
+            );
+        }
+
+        if ($request->exists('interest_level')) {
+            $leadContact->interest_level = $request->input('interest_level');
+        }
+
+        if ($request->exists('deal_size')) {
+            $leadContact->deal_size = $request->input('deal_size');
+        }
+
+        if ($request->exists('contact_status')) {
+            $leadContact->contact_status = $request->input('contact_status');
+        }
+
+        if ($request->exists('contact_status_reason')) {
+            $leadContact->contact_status_reason = $request->input('contact_status_reason');
+        }
+
+        if ($request->exists('products_services')) {
+            $leadContact->products_services = $request->input('products_services');
+        }
+
+        if ($request->exists('added_by')) {
+            $leadContact->added_by = $this->normalizeNullableInteger($request->input('added_by'));
+        }
+
         $leadContact->assigned_to = $this->resolvedAssignedTo($request, $leadContact);
         $leadContact->save();
 
@@ -1388,7 +1438,28 @@ class LeadContactController extends AccountBaseController
             return $lead?->assigned_to;
         }
 
-        return $request->filled('assigned_to') ? (int) $request->assigned_to : null;
+        if (!$request->exists('assigned_to')) {
+            return $lead?->assigned_to;
+        }
+
+        return $this->normalizeNullableInteger($request->input('assigned_to'));
+    }
+
+    private function normalizeNullableInteger(mixed $value): ?int
+    {
+        if ($value === '' || is_null($value)) {
+            return null;
+        }
+
+        if (is_int($value)) {
+            return $value;
+        }
+
+        if (is_numeric($value)) {
+            return (int) $value;
+        }
+
+        return null;
     }
 
     private function normalizeMobileByCountry($input, $countryName = null): string
@@ -1532,6 +1603,72 @@ class LeadContactController extends AccountBaseController
         $batch = $this->importJobProcess($request, LeadImport::class, ImportLeadJob::class);
 
         return Reply::successWithData(__('messages.importProcessStart'), ['batch' => $batch]);
+    }
+
+    /**
+     * Store follow-up note from mobile app (API endpoint).
+     * Accepts ISO8601 datetime format instead of company-specific format.
+     */
+    public function storeFollowUpApi(Request $request, $id)
+    {
+        $this->addFollowUpPermission = user()->permission('add_lead_follow_up');
+        abort_403(!in_array($this->addFollowUpPermission, ['all', 'added']));
+
+        $lead = Lead::findOrFail($id);
+        abort_403(!$this->canAccessLead($lead));
+
+        $request->validate([
+            'note' => 'required|string',
+            'scheduled_at' => 'nullable|date',
+            'follow_up_date' => 'nullable|date',
+        ]);
+
+        $followUp = new LeadFollowUp();
+        $followUp->lead_id = $lead->id;
+        $followUp->remark = trim($request->note);
+
+        // Parse scheduled datetime - use either field sent by mobile app
+        $scheduledDateTime = $request->scheduled_at ?? $request->follow_up_date;
+        if ($scheduledDateTime) {
+            $followUp->next_follow_up_date = Carbon::parse($scheduledDateTime, 'UTC')
+                ->setTimezone(company()->timezone);
+        } else {
+            $followUp->next_follow_up_date = null;
+        }
+
+        $followUp->send_reminder = 'no';
+        $followUp->remind_time = null;
+        $followUp->remind_type = null;
+        $followUp->status = 'pending';
+        $followUp->latitude = $request->latitude;
+        $followUp->longitude = $request->longitude;
+        $followUp->added_by = user()->id;
+        $followUp->last_updated_by = user()->id;
+        $followUp->save();
+
+        $this->syncLeadFollowUpFlag($lead->id);
+
+        $this->pushLeadHistory($lead->id, 'followup_created', [
+            'title' => 'Follow-up Added',
+            'description' => trim(strip_tags((string) $followUp->remark)) ?: 'New follow-up created.',
+            'meta' => [
+                'followup_id' => $followUp->id,
+                'followup_status' => $followUp->status ?: 'pending',
+            ],
+        ]);
+
+        // Return follow-up in mobile-friendly format
+        return response()->json([
+            'success' => true,
+            'message' => 'Follow-up note saved successfully.',
+            'data' => [
+                'id' => $followUp->id,
+                'lead_id' => $followUp->lead_id,
+                'note' => $followUp->remark,
+                'created_at' => $followUp->created_at?->toIso8601String(),
+                'created_by' => optional($followUp->addedBy)->name ?: user()->name,
+            ],
+        ], 201);
     }
 
 }

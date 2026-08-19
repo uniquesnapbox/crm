@@ -135,12 +135,24 @@ class LeadFollowUpWhatsAppReminderService
         $remark = trim(strip_tags((string) $followUp->remark));
         $contact = trim((string) ($lead?->mobile ?: $lead?->cell ?: $lead?->office ?: ''));
 
+        if ($remark === '') {
+            $remark = 'No remarks added';
+        }
+
+        if ($contact === '') {
+            $contact = 'N/A';
+        }
+
         return trim(strtr($template, [
             '{{user_name}}' => (string) $recipient->name,
             '{{lead_name}}' => $leadName,
+            '{{client_name}}' => $leadName,
             '{{follow_up_time}}' => $followUpAt,
+            '{{call_time}}' => $followUpAt,
             '{{contact}}' => $contact,
+            '{{lead_mobile}}' => $contact,
             '{{note}}' => mb_strimwidth($remark, 0, 120, '...'),
+            '{{remarks}}' => mb_strimwidth($remark, 0, 120, '...'),
             '{{company_name}}' => (string) $company->company_name,
         ]));
     }

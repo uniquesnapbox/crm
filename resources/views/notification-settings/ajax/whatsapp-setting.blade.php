@@ -149,9 +149,9 @@
                                 <x-forms.textarea :fieldLabel="'Template'" fieldName="lead_followup_template"
                                     fieldId="lead_followup_template" fieldRequired="true"
                                     :fieldValue="$whatsappSettings->lead_followup_template ?: \App\Models\WhatsappNotificationSetting::DEFAULT_LEAD_FOLLOWUP_TEMPLATE"
-                                    fieldPlaceholder="Your follow-up with @{{lead_name}} starts in 10 minutes." />
+                                    fieldPlaceholder="Hello @{{user_name}}, follow-up reminder for @{{lead_name}}. Client Number: @{{contact}}, Remarks: @{{note}}, Call Time: @{{follow_up_time}}" />
                                 <div class="wa-placeholder">
-                                    Placeholders: <code>@{{user_name}}</code>, <code>@{{lead_name}}</code>, <code>@{{follow_up_time}}</code>, <code>@{{contact}}</code>, <code>@{{note}}</code>, <code>@{{company_name}}</code>
+                                    Placeholders: <code>@{{user_name}}</code>, <code>@{{lead_name}}</code>, <code>@{{client_name}}</code>, <code>@{{follow_up_time}}</code>, <code>@{{call_time}}</code>, <code>@{{contact}}</code>, <code>@{{lead_mobile}}</code>, <code>@{{note}}</code>, <code>@{{remarks}}</code>, <code>@{{company_name}}</code>
                                 </div>
                             </div>
                         </div>

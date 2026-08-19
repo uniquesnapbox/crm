@@ -57,6 +57,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('lead-contacts', [LeadContactController::class, 'store'])->name('api.lead-contacts.store');
     Route::patch('lead-contacts/{id}', [LeadContactController::class, 'update'])->name('api.lead-contacts.update');
     Route::patch('lead-contacts/{id}/quick-update', [LeadContactController::class, 'quickUpdate'])->name('api.lead-contacts.quick-update');
+    Route::post('lead-contacts/{id}/follow-ups', [LeadContactController::class, 'storeFollowUpApi'])->name('api.lead-contacts.follow-ups.store');
     Route::get('employees', [MobileCrmApiController::class, 'employees'])->name('api.employees.index');
     Route::get('clients', [MobileCrmApiController::class, 'clients'])->name('api.clients.index');
     Route::get('clients/{client}', [MobileCrmApiController::class, 'client'])->name('api.clients.show');

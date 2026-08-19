@@ -325,6 +325,10 @@ class Task extends BaseModel
             return '';
         }
 
+        if (is_null($this->company)) {
+            return $this->start_date->format('Y-m-d');
+        }
+
         return $this->start_date->format($this->company->date_format);
     }
 
