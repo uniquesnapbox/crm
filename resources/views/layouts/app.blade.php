@@ -430,38 +430,50 @@
 
     function quillImageLoad(ID) {
         const quillContainer = document.querySelector(ID);
-        quillArray[ID] = new Quill(ID, {
-            modules: {
-                toolbar: [
-                    // [{ align: '' }, { align: 'center' }, { align: 'right' }, { align: 'justify' }],
-                    [{
-                        header: [1, 2, 3, 4, 5, false]
-                    }],
-                    [{
-                        'list': 'ordered'
-                    }, {
-                        'list': 'bullet'
-                    }],
-                    ['bold', 'italic', 'underline', 'strike'],
-                    ['image', 'link', 'video'],
-                    [{
-                        'direction': 'rtl'
-                    }],
-                    ['clean']
-                ],
-                clipboard: {
-                    matchVisual: false
+        const modules = {
+            toolbar: [
+                // [{ align: '' }, { align: 'center' }, { align: 'right' }, { align: 'justify' }],
+                [{
+                    header: [1, 2, 3, 4, 5, false]
+                }],
+                [{
+                    'list': 'ordered'
+                }, {
+                    'list': 'bullet'
+                }],
+                ['bold', 'italic', 'underline', 'strike'],
+                ['image', 'link', 'video'],
+                [{
+                    'direction': 'rtl'
+                }],
+                ['clean']
+            ],
+            clipboard: {
+                matchVisual: false
+            }
+        };
+
+        try {
+            quillArray[ID] = new Quill(ID, {
+                modules: modules,
+                theme: 'snow',
+                bounds: quillContainer
+            });
+        } catch (error) {
+            console.warn('Quill image editor fallback activated.', error);
+            quillArray[ID] = new Quill(ID, {
+                modules: {
+                    toolbar: modules.toolbar,
+                    clipboard: modules.clipboard
                 },
-                "emoji-toolbar": true,
-                "emoji-textarea": true,
-                "emoji-shortname": true,
-            },
-            theme: 'snow',
-            bounds: quillContainer
-        });
-        $.each(quillArray, function (key, quill) {
-            quill.getModule('toolbar').addHandler('image', selectLocalImage);
-        });
+                theme: 'snow',
+                bounds: quillContainer
+            });
+        }
+
+        if (quillArray[ID] && quillArray[ID].getModule('toolbar')) {
+            quillArray[ID].getModule('toolbar').addHandler('image', selectLocalImage);
+        }
 
 
     }
@@ -555,10 +567,7 @@
                 },
                 clipboard: {
                     matchVisual: false
-                },
-                "emoji-toolbar": true,
-                "emoji-textarea": true,
-                "emoji-shortname": true,
+                }
             },
             theme: 'snow',
             bounds: quillContainer

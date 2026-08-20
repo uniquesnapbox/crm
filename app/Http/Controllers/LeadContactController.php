@@ -14,6 +14,7 @@ use App\Http\Requests\Lead\UpdateRequest;
 use App\Imports\LeadImport;
 use App\Jobs\ImportLeadJob;
 use App\Models\ClientNote;
+use App\Models\ClientCategory;
 use App\Models\LeadCategory;
 use App\Models\Lead;
 use App\Models\LeadCustomForm;
@@ -1193,6 +1194,7 @@ class LeadContactController extends AccountBaseController
 
         DB::transaction(function () use ($lead, $request, &$clientUser) {
             $clientUser = null;
+            $clientCategoryId = $this->resolveClientCategoryId($lead);
 
             if (!empty($lead->client_email)) {
                 $clientUser = User::withoutGlobalScope(\App\Scopes\ActiveScope::class)
@@ -1247,7 +1249,7 @@ class LeadContactController extends AccountBaseController
                     'office' => $lead->office,
                     'website' => $lead->website,
                     'note' => $lead->note,
-                    'category_id' => $lead->category_id,
+                    'category_id' => $clientCategoryId,
                     'added_by' => user()->id,
                     'user_id' => $clientUser->id,
                 ]);
@@ -1370,6 +1372,26 @@ class LeadContactController extends AccountBaseController
                 'lead_deal_size' => $lead->deal_size,
                 'updated_at' => now(),
             ]);
+    }
+
+    private function resolveClientCategoryId(Lead $lead): ?int
+    {
+        if (!$lead->category_id || !Schema::hasTable('client_categories')) {
+            return null;
+        }
+
+        $leadCategory = $lead->relationLoaded('category')
+            ? $lead->category
+            : LeadCategory::query()->select('id', 'category_name')->find($lead->category_id);
+
+        if (!$leadCategory?->category_name) {
+            return null;
+        }
+
+        return ClientCategory::query()
+            ->where('company_id', company()->id)
+            ->whereRaw('LOWER(category_name) = ?', [mb_strtolower(trim($leadCategory->category_name))])
+            ->value('id');
     }
 
     private function pushLeadHistory(int $leadId, string $eventType, array $payload = []): void
@@ -1557,7 +1579,9 @@ class LeadContactController extends AccountBaseController
             return null;
         }
 
-        $time = trim($time);
+        $time = trim((string) $time);
+        $time = preg_replace('/\./', ':', $time);
+        $time = preg_replace('/\s+/', ' ', $time);
         $companyTimeFormat = company()->time_format;
 
         if ($companyTimeFormat === 'h:i a') {

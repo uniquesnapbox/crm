@@ -58,11 +58,19 @@ $assignLeadPermission = in_array('admin', user_roles()) || user()->permission('a
                         <x-forms.select fieldId="status_id" fieldLabel="Lead Status" fieldName="status_id" search="true">
                             <option value="">--</option>
                             @foreach ($status as $item)
+                                @php
+                                    $statusType = trim((string) $item->type);
+                                    $isCallNotConnected = strcasecmp($statusType, 'call not connected') === 0 || strcasecmp($statusType, 'call not conected') === 0;
+                                    $displayStatusType = $isCallNotConnected ? 'CALL NOT CONNECTED' : $statusType;
+                                    $displayStatusHtml = $isCallNotConnected
+                                        ? '<span style="font-weight:900;text-transform:uppercase;letter-spacing:0.03em;">CALL NOT CONNECTED</span>'
+                                        : e($displayStatusType);
+                                @endphp
                                 <option
                                     @selected($columnId == $item->id)
                                     value="{{ $item->id }}"
-                                    data-content="<span><i class='fa fa-circle mr-2' style='color: {{ $item->label_color }}'></i>{{ $item->type }}</span>">
-                                    {{ $item->type }}
+                                    data-content="<span><i class='fa fa-circle mr-2' style='color: {{ $item->label_color }}'></i>{!! $displayStatusHtml !!}</span>">
+                                    {!! $displayStatusHtml !!}
                                 </option>
                             @endforeach
                         </x-forms.select>
@@ -241,7 +249,7 @@ $assignLeadPermission = in_array('admin', user_roles()) || user()->permission('a
                             <option value="">--</option>
                             <option value="pending">Pending</option>
                             <option value="connected">Connected</option>
-                            <option value="not_connected">Not Connected</option>
+                            <option value="not_connected" selected>Not Connected</option>
                         </x-forms.select>
                     </div>
 

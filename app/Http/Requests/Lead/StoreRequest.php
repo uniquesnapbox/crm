@@ -17,6 +17,18 @@ class StoreRequest extends CoreRequest
             ]);
         }
 
+        if (!$this->filled('contact_status')) {
+            $this->merge([
+                'contact_status' => 'not_connected',
+            ]);
+        }
+
+        if ($this->input('contact_status') === 'not_connected' && ! $this->filled('contact_status_reason')) {
+            $this->merge([
+                'contact_status_reason' => 'Call not connected',
+            ]);
+        }
+
         $mobile = $this->input('mobile');
 
         if ($this->filled('mobile')) {
@@ -59,7 +71,7 @@ class StoreRequest extends CoreRequest
         $rules['interest_level'] = 'nullable|in:low,medium,high,very_high';
         $rules['deal_size'] = 'nullable|numeric|min:0';
         $rules['contact_status'] = 'nullable|in:pending,connected,not_connected';
-        $rules['contact_status_reason'] = 'nullable|required_if:contact_status,not_connected|max:5000';
+        $rules['contact_status_reason'] = 'nullable|string|max:5000';
         $rules['products_services'] = 'nullable|string|max:5000';
         $rules['country'] = 'nullable|string|max:191';
         $rules['website'] = 'nullable|max:191';

@@ -237,8 +237,8 @@
     }
 
     .lead-profile-shell .status-not-connected {
-        background: #fde1e4;
-        color: #b02a3c;
+        background: #fff4d6;
+        color: #b7791f;
     }
 
     .lead-profile-shell .timeline-item {
@@ -678,9 +678,17 @@
                                         data-field="status_id" data-url="{{ $quickUpdateUrl }}" data-prev-value="{{ $leadContact->status_id ?? '' }}">
                                         <option value="">--</option>
                                         @foreach ($statuses as $statusItem)
+                                            @php
+                                                $statusType = trim((string) $statusItem->type);
+                                                $isCallNotConnected = strcasecmp($statusType, 'call not connected') === 0 || strcasecmp($statusType, 'call not conected') === 0;
+                                                $displayStatusType = $isCallNotConnected ? 'CALL NOT CONNECTED' : $statusType;
+                                                $displayStatusHtml = $isCallNotConnected
+                                                    ? '<span style="font-weight:900;text-transform:uppercase;letter-spacing:0.03em;">CALL NOT CONNECTED</span>'
+                                                    : e($displayStatusType);
+                                            @endphp
                                             <option value="{{ $statusItem->id }}" @selected($leadContact->status_id == $statusItem->id)
-                                                data-content="<span><i class='fa fa-circle mr-2' style='color: {{ $statusItem->label_color }}'></i>{{ $statusItem->type }}</span>">
-                                                {{ $statusItem->type }}
+                                                data-content="<span><i class='fa fa-circle mr-2' style='color: {{ $statusItem->label_color }}'></i>{!! $displayStatusHtml !!}</span>">
+                                                {!! $displayStatusHtml !!}
                                             </option>
                                         @endforeach
                                     </select>

@@ -97,8 +97,11 @@
 
         quillImageLoad('#details');
 
-        $('#save-lead-note-form').click(function() {
-            var comment = document.getElementById('details').children[0].innerHTML;
+        $('#save-lead-note-form').on('click', function(e) {
+            e.preventDefault();
+
+            const editor = document.querySelector('#details .ql-editor');
+            const comment = editor ? editor.innerHTML : (document.getElementById('details')?.innerHTML || '');
             document.getElementById('details-text').value = comment;
 
             const url = "{{ route('lead-notes.store') }}";

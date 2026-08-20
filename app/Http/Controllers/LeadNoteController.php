@@ -86,7 +86,7 @@ class LeadNoteController extends AccountBaseController
         $note = new LeadNote();
         $note->title = $request->title;
         $note->lead_id = $request->lead_id;
-        $note->details = $request->details;
+        $note->details = trim_editor((string) $request->details);
         $note->type = $request->type;
         $note->ask_password = $request->ask_password ? $request->ask_password : '';
         $note->added_by = user()->id;
@@ -143,7 +143,7 @@ class LeadNoteController extends AccountBaseController
     {
         $note = LeadNote::findOrFail($id);
         $note->title = $request->title;
-        $note->details = $request->details;
+        $note->details = trim_editor((string) $request->details);
         $note->type = $request->type;
         $note->ask_password = $request->ask_password ?: '';
         $note->last_updated_by = user()->id;

@@ -331,12 +331,13 @@ class LeadContactDataTable extends BaseDataTable
             $contactStatus = trim((string) ($row->contact_status ?? ''));
 
             if ($leadStatus !== '') {
-                $statusText = e($leadStatus);
+                $normalizedLeadStatus = strtolower($leadStatus);
+                $statusText = e(in_array($normalizedLeadStatus, ['call not connected', 'call not conected'], true) ? strtoupper($leadStatus) : $leadStatus);
                 $labelColor = $row->lead_status_color ?: '#4f6fad';
             } else {
                 $mapped = match ($contactStatus) {
                     'connected' => ['Connected', '#16a34a'],
-                    'not_connected' => ['Not Connected', '#dc2626'],
+                    'not_connected' => ['Not Connected', '#f59e0b'],
                     'pending' => ['Pending', '#ca8a04'],
                     default => ['Not Set', '#8f9bb3'],
                 };
@@ -345,7 +346,7 @@ class LeadContactDataTable extends BaseDataTable
                 $labelColor = $mapped[1];
             }
 
-            return '<span class="badge" style="background:' . e($labelColor) . '; color:#fff; font-weight:600; border-radius:999px; padding:3px 10px;">' . $statusText . '</span>';
+            return '<span class="badge" style="background:' . e($labelColor) . '; color:#fff; font-weight:700; border-radius:999px; padding:3px 10px;">' . $statusText . '</span>';
         }
 
         $url = route('lead-contact.quick_update', $row->id);

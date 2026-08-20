@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\LeadHistory;
 use App\Models\LeadNote;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
@@ -52,18 +53,26 @@ class LeadNoteObserver
             return;
         }
 
-        LeadHistory::create([
-            'company_id' => company()->id ?? null,
-            'lead_id' => $leadNote->lead_id,
-            'event_type' => $eventType,
-            'title' => $title,
-            'description' => $description,
-            'created_by' => user()->id ?? $leadNote->last_updated_by ?? $leadNote->added_by,
-            'event_at' => now(),
-            'meta' => [
-                'note_id' => $leadNote->id,
-            ],
-        ]);
+        try {
+            LeadHistory::create([
+                'company_id' => company()?->id,
+                'lead_id' => $leadNote->lead_id,
+                'event_type' => $eventType,
+                'title' => $title,
+                'description' => $description,
+                'created_by' => user()?->id ?? $leadNote->last_updated_by ?? $leadNote->added_by,
+                'event_at' => now(),
+                'meta' => [
+                    'note_id' => $leadNote->id,
+                ],
+            ]);
+        } catch (\Throwable $exception) {
+            Log::warning('Lead note history could not be saved.', [
+                'lead_note_id' => $leadNote->id,
+                'lead_id' => $leadNote->lead_id,
+                'error' => $exception->getMessage(),
+            ]);
+        }
     }
 
     private function noteSummary(LeadNote $leadNote): string

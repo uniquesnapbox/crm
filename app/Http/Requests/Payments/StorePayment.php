@@ -52,12 +52,6 @@ class StorePayment extends CoreRequest
             $rules['transaction_id'] = 'unique:payments,transaction_id';
         }
 
-        if (request('default_client') != '') {
-            $rules['invoice_id'] = 'required_without:project_id';
-            $rules['project_id'] = 'required_without:invoice_id';
-        }
-
-
         return $rules;
     }
 

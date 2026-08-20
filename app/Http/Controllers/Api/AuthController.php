@@ -31,7 +31,7 @@ class AuthController extends Controller
         ]);
 
         $user = User::withoutGlobalScopes()
-            ->with(['roles:id,name', 'employeeDetail:user_id,id'])
+            ->select(['id', 'name', 'email', 'password', 'status', 'image'])
             ->where('email', $validated['email'])
             ->first();
 
@@ -44,6 +44,8 @@ class AuthController extends Controller
         }
 
         RateLimiter::clear($throttleKey);
+
+        $user->load(['roles:id,name', 'employeeDetail:user_id,id']);
 
         $token = $user->createToken($validated['device_name'] ?? 'flutter_crm_app')->plainTextToken;
 

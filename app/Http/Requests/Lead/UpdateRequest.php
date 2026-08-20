@@ -16,6 +16,12 @@ class UpdateRequest extends CoreRequest
                 'reminder_time' => $this->normalizeTimeInput($this->input('reminder_time')),
             ]);
         }
+
+        if ($this->input('contact_status') === 'not_connected' && ! $this->filled('contact_status_reason')) {
+            $this->merge([
+                'contact_status_reason' => 'Call not connected',
+            ]);
+        }
     }
 
     /**
@@ -44,7 +50,7 @@ class UpdateRequest extends CoreRequest
             'interest_level' => 'nullable|in:low,medium,high,very_high',
             'deal_size' => 'nullable|numeric|min:0',
             'contact_status' => 'nullable|in:pending,connected,not_connected',
-            'contact_status_reason' => 'nullable|required_if:contact_status,not_connected|max:5000',
+            'contact_status_reason' => 'nullable|string|max:5000',
             'products_services' => 'nullable|string|max:5000',
             'country' => 'nullable|string|max:191',
             'website' => 'nullable|max:191',

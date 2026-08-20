@@ -48,6 +48,7 @@ use App\Models\TicketCustomForm;
 use Froiden\RestAPI\ApiResponse;
 use App\Traits\EmployeeDashboard;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use App\Models\ProjectTimeLogBreak;
 use Illuminate\Support\Facades\App;
 use Nwidart\Modules\Facades\Module;
@@ -711,10 +712,20 @@ class HomeController extends Controller
         $leadContact->client_name = (request()->has('name') ? $request->name : '');
         $leadContact->client_email = (request()->has('email') ? $request->email : '');
         $leadContact->mobile = (request()->has('mobile') ? $request->mobile : '');
-        $leadContact->city = (request()->has('city') ? $request->city : '');
-        $leadContact->state = (request()->has('state') ? $request->state : '');
         $leadContact->country = (request()->has('country') ? $request->country : '');
-        $leadContact->postal_code = (request()->has('postal_code') ? $request->postal_code : '');
+
+        if (Schema::hasColumn('leads', 'city')) {
+            $leadContact->city = request()->has('city') ? $request->city : '';
+        }
+
+        if (Schema::hasColumn('leads', 'state')) {
+            $leadContact->state = request()->has('state') ? $request->state : '';
+        }
+
+        if (Schema::hasColumn('leads', 'postal_code')) {
+            $leadContact->postal_code = request()->has('postal_code') ? $request->postal_code : '';
+        }
+
         $leadContact->save();
 
         $note = new LeadNote();
