@@ -99,11 +99,24 @@ class LeadFollowUpWhatsAppSummaryService
                 continue;
             }
 
-            $sent = $this->gatewayService->sendMessage(
-                $mobile,
-                $message,
-                $setting->resolved_lead_created_sender_number
-            );
+            $sent = false;
+            $sessionCandidates = $this->resolveSessionCandidates($setting);
+
+            foreach ($sessionCandidates as $sessionKey) {
+                $sent = $this->gatewayService->sendMessage($mobile, $message, $sessionKey);
+
+                if ($sent) {
+                    break;
+                }
+
+                $error = strtolower((string) $this->gatewayService->getLastError());
+                if (!str_contains($error, 'session not ready')
+                    && !str_contains($error, 'not ready')
+                    && !str_contains($error, 'disconnected')
+                    && !str_contains($error, 'unknown')) {
+                    break;
+                }
+            }
 
             if (!$sent) {
                 Log::warning('Daily lead follow-up summary WhatsApp failed.', [
@@ -253,12 +266,12 @@ class LeadFollowUpWhatsAppSummaryService
 
     private function resolveFollowUpRecipientId(LeadFollowUp $followUp): ?int
     {
-        if (!is_null($followUp->lead?->added_by)) {
-            return (int) $followUp->lead->added_by;
-        }
-
         if (!is_null($followUp->lead?->assigned_to)) {
             return (int) $followUp->lead->assigned_to;
+        }
+
+        if (!is_null($followUp->lead?->added_by)) {
+            return (int) $followUp->lead->added_by;
         }
 
         if (!is_null($followUp->assigned_to)) {
@@ -290,6 +303,18 @@ class LeadFollowUpWhatsAppSummaryService
         }
 
         return false;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function resolveSessionCandidates(WhatsappNotificationSetting $setting): array
+    {
+        $preferred = preg_replace('/\D+/', '', (string) $setting->lead_created_sender_number);
+        $fallback = trim((string) config('services.whatsapp_service.session', 'default'));
+        $fallback = $fallback !== '' ? $fallback : 'default';
+
+        return array_values(array_unique(array_filter([$preferred, $fallback], fn ($value) => $value !== '')));
     }
 
     private function normalizeUserMobile(User $user): string

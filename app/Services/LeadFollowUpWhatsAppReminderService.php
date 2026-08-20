@@ -89,11 +89,26 @@ class LeadFollowUpWhatsAppReminderService
                 continue;
             }
 
-            $sent = $this->gatewayService->sendMessage(
-                $mobile,
-                $message,
-                $setting->resolved_lead_created_sender_number
-            );
+            $sent = false;
+            $sessionCandidates = $this->resolveSessionCandidates($setting);
+            $lastSession = null;
+
+            foreach ($sessionCandidates as $sessionKey) {
+                $lastSession = $sessionKey;
+                $sent = $this->gatewayService->sendMessage($mobile, $message, $sessionKey);
+
+                if ($sent) {
+                    break;
+                }
+
+                $error = strtolower((string) $this->gatewayService->getLastError());
+                if (!str_contains($error, 'session not ready')
+                    && !str_contains($error, 'not ready')
+                    && !str_contains($error, 'disconnected')
+                    && !str_contains($error, 'unknown')) {
+                    break;
+                }
+            }
 
             if ($sent) {
                 $followUp->forceFill([
@@ -110,6 +125,7 @@ class LeadFollowUpWhatsAppReminderService
                 'follow_up_id' => $followUp->id,
                 'user_id' => $recipient->id,
                 'mobile' => $mobile,
+                'session' => $lastSession,
                 'error' => $this->gatewayService->getLastError(),
             ]);
         }
@@ -162,17 +178,23 @@ class LeadFollowUpWhatsAppReminderService
      */
     private function resolveFollowUpRecipient(LeadFollowUp $followUp, $activeEmployees): ?User
     {
-        if (is_null($followUp->added_by)) {
-            return null;
+        $lead = $followUp->lead;
+
+        $recipientIds = array_filter([
+            $lead?->assigned_to,
+            $lead?->added_by,
+            $followUp->added_by,
+        ], fn ($value) => !is_null($value));
+
+        foreach ($recipientIds as $recipientId) {
+            $recipient = $activeEmployees->get((int) $recipientId);
+
+            if ($recipient instanceof User) {
+                return $recipient;
+            }
         }
 
-        $recipient = $activeEmployees->get((int) $followUp->added_by);
-
-        if (!$recipient instanceof User) {
-            return null;
-        }
-
-        return $recipient;
+        return null;
     }
 
     private function normalizeUserMobile(User $user): string
@@ -200,6 +222,18 @@ class LeadFollowUpWhatsAppReminderService
         }
 
         return $mobile;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function resolveSessionCandidates(WhatsappNotificationSetting $setting): array
+    {
+        $preferred = preg_replace('/\D+/', '', (string) $setting->lead_created_sender_number);
+        $fallback = trim((string) config('services.whatsapp_service.session', 'default'));
+        $fallback = $fallback !== '' ? $fallback : 'default';
+
+        return array_values(array_unique(array_filter([$preferred, $fallback], fn ($value) => $value !== '')));
     }
 
     private function companyTimezone(Company $company): string
