@@ -676,7 +676,32 @@ class WhatsAppManager extends EventEmitter {
       }
     }
 
-    return this.getStoredMessagesByPhone(client, to, key, limit);
+    const storedMessages = await this.getStoredMessagesByPhone(client, to, key, limit);
+    const storedChatId = storedMessages.find((message) => message.chatId)?.chatId;
+
+    if (storedChatId) {
+      try {
+        const storedChat = await client.getChatById(storedChatId);
+        const fetchedMessages = await storedChat.fetchMessages({
+          limit: Math.max(1, Math.min(200, Number(limit) || 100))
+        });
+        const serialized = await Promise.all(
+          fetchedMessages.map((message) => this.serializeMessage(message, key, false))
+        );
+
+        if (serialized.length) {
+          return serialized;
+        }
+      } catch (error) {
+        logger.debug("Unable to expand WhatsApp history from matched LID chat", {
+          sessionKey: key,
+          chatId: storedChatId,
+          error: error.message
+        });
+      }
+    }
+
+    return storedMessages;
   }
 
   async getStoredMessagesByPhone(client, rawNumber, sessionKey, limit) {
