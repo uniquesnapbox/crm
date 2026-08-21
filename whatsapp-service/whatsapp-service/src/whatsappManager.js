@@ -896,7 +896,10 @@ class WhatsAppManager extends EventEmitter {
     const to = read(() => message.to, () => raw.to, () => fromMe ? remote : null) || "";
     const contentType = String(read(() => message.type, () => raw.type) || "text");
     let body = String(read(() => message.body, () => raw.caption, () => raw.body) || "");
-    if (["image", "video", "sticker"].includes(contentType) && body.length > 10000) {
+    const looksLikeInlineMedia = body.startsWith("/9j/")
+      || body.startsWith("iVBOR")
+      || body.startsWith("UklGR");
+    if (["image", "video", "sticker"].includes(contentType) && (body.length > 10000 || looksLikeInlineMedia)) {
       body = "";
     }
 
