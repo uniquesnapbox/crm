@@ -20,7 +20,6 @@
     .lead-chat-icon { border: 0; background: transparent; color: #5e6d82; font-size: 18px; width: 32px; height: 34px; padding: 0; }
     .lead-chat-icon:hover { color: #1d6fe8; }
     .lead-chat-photo-name { display: none; margin: 6px 5px 2px; color: #49617f; font-size: 11px; }
-    .lead-chat-note { color: #6c7b96; font-size: 12px; margin: 8px 5px 0; }
     .lead-chat-fallback { padding: 12px 14px; border-radius: 10px; background: #fff8e6; color: #7d5b00; font-size: 13px; }
     @media (max-width: 767px) {
         .lead-chat-card { min-height: calc(100vh - 150px); }
@@ -85,7 +84,6 @@
                             <button type="submit" class="btn btn-primary rounded-pill px-3 js-lead-chat-send" @disabled(!$chatGatewayConfigured)><i class="fa fa-paper-plane"></i></button>
                         </div>
                         <div class="lead-chat-photo-name js-lead-chat-photo-name"></div>
-                        <div class="lead-chat-note">Send a message, photo, or photo with caption. New customer replies will appear automatically.</div>
                     </form>
                 @endif
             </div>
