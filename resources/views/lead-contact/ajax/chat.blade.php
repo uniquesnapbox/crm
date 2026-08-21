@@ -96,6 +96,8 @@
 <script>
     (function() {
         const $thread = $('#lead-chat-thread');
+        let lastMessageSignature = null;
+        let refreshInProgress = false;
 
         const escapeHtml = function(value) { return $('<div>').text(value || '').html(); };
         const formatTime = function(value) {
@@ -104,7 +106,12 @@
             return Number.isNaN(date.getTime()) ? '--' : date.toLocaleString();
         };
 
-        const renderMessages = function(messages) {
+        const renderMessages = function(messages, forceScroll) {
+            const thread = $thread[0];
+            const wasNearBottom = thread
+                ? thread.scrollHeight - thread.scrollTop - thread.clientHeight < 80
+                : true;
+
             if (!messages.length) {
                 $thread.html('<div class="lead-chat-empty">No messages yet. Type a message or attach a photo to start the conversation.</div>');
                 return;
@@ -119,19 +126,52 @@
                 return '<div class="lead-chat-bubble-row ' + direction + '"><div class="lead-chat-bubble">' + photo + caption +
                     '<span class="lead-chat-bubble-meta">' + escapeHtml(sender) + ' &middot; ' + escapeHtml(formatTime(item.message_at)) + '</span></div></div>';
             }).join(''));
-            $thread.scrollTop($thread[0].scrollHeight);
+            if (forceScroll || wasNearBottom) {
+                $thread.scrollTop($thread[0].scrollHeight);
+            }
         };
 
-        const refreshMessages = function() {
-            if (!$thread.length) return;
-            $.get($thread.data('messages-url')).done(function(response) {
-                if (response.success && Array.isArray(response.messages)) renderMessages(response.messages);
+        const refreshMessages = function(forceScroll) {
+            if (!$thread.length || !document.documentElement.contains($thread[0])) {
+                window.clearInterval(window.leadChatRefreshTimer);
+                return;
+            }
+            if (refreshInProgress || document.hidden) return;
+            refreshInProgress = true;
+            $.ajax({
+                url: $thread.data('messages-url'),
+                type: 'GET',
+                cache: false
+            }).done(function(response) {
+                if (!response.success || !Array.isArray(response.messages)) return;
+
+                const signature = response.messages.map(function(item) {
+                    return [item.id, item.status, item.message_at, item.message, item.media_url].join('|');
+                }).join('::');
+
+                if (signature !== lastMessageSignature) {
+                    lastMessageSignature = signature;
+                    renderMessages(response.messages, !!forceScroll);
+                }
+            }).always(function() {
+                refreshInProgress = false;
             });
         };
 
         if ($thread.length) {
             $thread.scrollTop($thread[0].scrollHeight);
-            window.setInterval(refreshMessages, 10000);
+            refreshMessages(true);
+            window.clearInterval(window.leadChatRefreshTimer);
+            window.leadChatRefreshTimer = window.setInterval(function() {
+                refreshMessages(false);
+            }, 2000);
+
+            $(document).off('visibilitychange.leadChat').on('visibilitychange.leadChat', function() {
+                if (!document.hidden) refreshMessages(true);
+            });
+            $(window).off('focus.leadChat').on('focus.leadChat', function() {
+                refreshMessages(false);
+            });
         }
 
         $('body').off('click.leadChatAttach').on('click.leadChatAttach', '.js-lead-chat-attach', function() {
@@ -173,7 +213,7 @@
                 if (response.status === 'success') {
                     form.reset();
                     $(form).find('.js-lead-chat-photo-name').hide().text('');
-                    refreshMessages();
+                    refreshMessages(true);
                     if (typeof toastr !== 'undefined') toastr.success(response.message || 'Message sent successfully.');
                 } else if (typeof toastr !== 'undefined') {
                     toastr.error(response.message || 'Unable to send message.');
