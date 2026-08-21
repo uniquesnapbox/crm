@@ -10,6 +10,7 @@ class WhatsAppManager extends EventEmitter {
     this.config = config;
     this.clients = new Map();
     this.initializingClients = new Map();
+    this.recoveringClients = new Map();
     this.status = new Map();
     this.qrCode = new Map();
     this.qrGeneratedAt = new Map();
@@ -633,12 +634,7 @@ class WhatsAppManager extends EventEmitter {
       const client = await this.ensureClient(key);
       return await sendWithClient(client);
     } catch (error) {
-      const transientSendError =
-        /detached Frame/i.test(error.message || "") ||
-        /Execution context was destroyed/i.test(error.message || "") ||
-        /Target closed/i.test(error.message || "");
-
-      if (!transientSendError) {
+      if (!this.isTransientBrowserError(error)) {
         throw error;
       }
 
@@ -647,14 +643,30 @@ class WhatsAppManager extends EventEmitter {
         error: error.message
       });
 
-      await this.destroyClient(key, { emitDestroyedStatus: false });
-      const refreshedClient = await this.ensureClient(key);
-      await this.waitForStatus(key, "ready", 60000);
+      const refreshedClient = await this.recoverClient(key, "send_transient_error");
       return await sendWithClient(refreshedClient);
     }
   }
 
   async getMessageHistory({ to, channelKey, limit = 100 }) {
+    const key = channelKey || this.config.defaultSession;
+    try {
+      return await this.readMessageHistory({ to, channelKey: key, limit });
+    } catch (error) {
+      if (!this.isTransientBrowserError(error)) {
+        throw error;
+      }
+
+      logger.warn("WhatsApp history hit a transient browser error; reconnecting", {
+        sessionKey: key,
+        error: error.message
+      });
+      await this.recoverClient(key, "history_transient_error");
+      return this.readMessageHistory({ to, channelKey: key, limit });
+    }
+  }
+
+  async readMessageHistory({ to, channelKey, limit = 100 }) {
     const key = channelKey || this.config.defaultSession;
     const client = await this.ensureClient(key);
 
@@ -705,6 +717,34 @@ class WhatsAppManager extends EventEmitter {
     }
 
     return storedMessages;
+  }
+
+  isTransientBrowserError(error) {
+    const message = String(error?.message || error || "");
+    return /detached Frame|Execution context was destroyed|Target closed|Session closed/i.test(message);
+  }
+
+  async recoverClient(sessionKey, reason) {
+    const key = sessionKey || this.config.defaultSession;
+    if (this.recoveringClients.has(key)) {
+      return this.recoveringClients.get(key);
+    }
+
+    const recovery = (async () => {
+      this.status.set(key, "initializing");
+      await this.destroyClient(key, { emitDestroyedStatus: false });
+      const client = await this.ensureClient(key);
+      await this.waitForStatus(key, "ready", 60000);
+      logger.info("WhatsApp browser session recovered", { sessionKey: key, reason });
+      return client;
+    })();
+
+    this.recoveringClients.set(key, recovery);
+    try {
+      return await recovery;
+    } finally {
+      this.recoveringClients.delete(key);
+    }
   }
 
   async getStoredMessagesByPhone(client, rawNumber, sessionKey, limit) {

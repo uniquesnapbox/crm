@@ -252,24 +252,35 @@ class LeadContactController extends AccountBaseController
         $contentType = $photo ? 'image' : 'text';
 
         $providerMessageId = trim((string) data_get($providerResponse, 'id'));
-        $sentMessage = LeadWhatsAppMessage::withoutGlobalScopes()->updateOrCreate(
-            $providerMessageId !== ''
-                ? ['provider_message_id' => Str::limit($providerMessageId, 191, '')]
-                : [
-                    'lead_id' => $leadContact->id,
-                    'direction' => 'outbound',
-                    'message' => $message,
-                    'message_at' => now(),
-                ],
-            [
+        $sentAt = now();
+        $sentMessage = $providerMessageId !== ''
+            ? LeadWhatsAppMessage::withoutGlobalScopes()
+                ->where('provider_message_id', Str::limit($providerMessageId, 191, ''))
+                ->first()
+            : null;
+
+        $sentMessage ??= LeadWhatsAppMessage::withoutGlobalScopes()
+            ->where('lead_id', $leadContact->id)
+            ->where('direction', 'outbound')
+            ->where('content_type', $contentType)
+            ->where('message', $message)
+            ->whereBetween('message_at', [$sentAt->copy()->subSeconds(5), $sentAt->copy()->addSecond()])
+            ->oldest('id')
+            ->first();
+
+        $sentMessage ??= new LeadWhatsAppMessage();
+        $sentMessage->fill([
             'company_id' => $leadContact->company_id,
             'lead_id' => $leadContact->id,
             'direction' => 'outbound',
             'phone' => $sanitizedPhone,
+            'provider_message_id' => $providerMessageId !== ''
+                ? Str::limit($providerMessageId, 191, '')
+                : $sentMessage->provider_message_id,
             'content_type' => $contentType,
             'message' => $message,
             'status' => 'sent',
-            'metadata' => [
+            'metadata' => array_merge((array) $sentMessage->metadata, [
                 'session_key' => $sessionKey,
                 'created_by' => user()->id,
                 ...($photo ? [
@@ -278,9 +289,10 @@ class LeadContactController extends AccountBaseController
                     'media_name' => $photo->getClientOriginalName(),
                     'media_size' => $photo->getSize(),
                 ] : []),
-            ],
-            'message_at' => now(),
+            ]),
+            'message_at' => $sentMessage->message_at ?: $sentAt,
         ]);
+        $sentMessage->save();
 
         $this->pushLeadHistory($leadContact->id, 'whatsapp_message_sent', [
             'title' => $photo ? 'WhatsApp Photo Sent' : 'WhatsApp Message Sent',
@@ -327,7 +339,7 @@ class LeadContactController extends AccountBaseController
         if ($history['success'] ?? false) {
             $this->storeSyncedChatMessages($leadContact, $phone, $sessionKey, (array) data_get($history, 'data.messages', []));
         } else {
-            Cache::forget($cacheKey);
+            Cache::put($cacheKey, true, now()->addSeconds(5));
         }
 
         $this->backfillLeadGreetingMessage($leadContact, $phone, $setting);
@@ -350,6 +362,9 @@ class LeadContactController extends AccountBaseController
             $direction = $fromMe ? 'outbound' : 'inbound';
             $messageText = trim((string) data_get($item, 'body'));
             $messageAt = Carbon::createFromTimestampUTC($timestamp);
+            if ($leadContact->created_at && $messageAt->lt($leadContact->created_at->copy()->subMinutes(5))) {
+                continue;
+            }
             $itemPhone = preg_replace('/\D+/', '', (string) data_get($item, $fromMe ? 'to' : 'from')) ?: $phone;
             $normalizedProviderId = Str::limit($providerMessageId, 191, '');
             $chatMessage = LeadWhatsAppMessage::withoutGlobalScopes()
