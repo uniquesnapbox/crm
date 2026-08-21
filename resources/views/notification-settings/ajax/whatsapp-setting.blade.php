@@ -280,6 +280,8 @@
 <script>
     let whatsappQrPoller = null;
     let whatsappQrPollTick = 0;
+    let whatsappQrRefreshInFlight = false;
+    let whatsappQrLastRefreshAt = 0;
 
     function loadWhatsAppConnectionStatus(forceRefresh = false) {
         const $serviceStatus = $('#whatsapp-service-status');
@@ -288,6 +290,15 @@
         const $error = $('#whatsapp-connection-error');
         const $image = $('#whatsapp-qr-image');
         const $placeholder = $('#whatsapp-qr-placeholder');
+
+        if (forceRefresh) {
+            if (whatsappQrRefreshInFlight) {
+                return;
+            }
+
+            whatsappQrRefreshInFlight = true;
+            whatsappQrLastRefreshAt = Date.now();
+        }
 
         $serviceStatus.removeClass('badge-success badge-danger badge-warning').addClass('badge-secondary').text('Checking service...');
         $sessionStatus.removeClass('badge-success badge-danger badge-warning').addClass('badge-secondary').text('Checking session...');
@@ -307,6 +318,10 @@
                 const sessionStatus = qrData.status || 'unknown';
                 const isReady = Boolean(health.data && health.data.ready);
                 const generatedAt = qrData.generatedAt ? new Date(qrData.generatedAt) : null;
+
+                if (forceRefresh) {
+                    whatsappQrRefreshInFlight = false;
+                }
 
                 $serviceStatus.removeClass('badge-secondary').addClass(health.success ? (isReady ? 'badge-success' : 'badge-warning') : 'badge-danger');
                 $serviceStatus.text(health.success ? (isReady ? 'Service Ready' : 'Service Online') : 'Service Error');
@@ -339,8 +354,22 @@
                 if (errors) {
                     $error.removeClass('d-none').text(errors);
                 }
+
+                const qrAge = generatedAt && !Number.isNaN(generatedAt.getTime())
+                    ? Date.now() - generatedAt.getTime()
+                    : 0;
+                const refreshCooldownElapsed = Date.now() - whatsappQrLastRefreshAt > 45000;
+
+                if (!forceRefresh && sessionStatus === 'qr_required' && qrAge > 45000 &&
+                    refreshCooldownElapsed && !whatsappQrRefreshInFlight) {
+                    loadWhatsAppConnectionStatus(true);
+                }
             },
             error: function () {
+                if (forceRefresh) {
+                    whatsappQrRefreshInFlight = false;
+                }
+
                 $serviceStatus.removeClass('badge-secondary').addClass('badge-danger').text('Service Error');
                 $sessionStatus.removeClass('badge-secondary').addClass('badge-danger').text('Session Error');
                 $('#whatsapp-connection-error').removeClass('d-none').text('Unable to fetch WhatsApp connection details from CRM.');
