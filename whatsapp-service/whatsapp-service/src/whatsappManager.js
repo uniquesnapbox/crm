@@ -228,6 +228,22 @@ class WhatsAppManager extends EventEmitter {
       }
     });
 
+    // `message` only covers incoming traffic. Capture messages sent from another
+    // linked WhatsApp device as well so CRM stays in sync with the real chat.
+    client.on("message_create", async (message) => {
+      try {
+        const payload = await this.serializeMessage(message, key, true);
+        if (payload.fromMe) {
+          this.emit("whatsapp-message", payload);
+        }
+      } catch (error) {
+        logger.warn("Unable to process outgoing WhatsApp message", {
+          sessionKey: key,
+          error: error.message
+        });
+      }
+    });
+
     return client;
   }
 
@@ -647,14 +663,82 @@ class WhatsAppManager extends EventEmitter {
     }
 
     const chat = await this.findChatByPhone(client, to);
-    if (!chat) {
-      return [];
-    }
-    const messages = await chat.fetchMessages({
-      limit: Math.max(1, Math.min(200, Number(limit) || 100))
-    });
+    if (chat) {
+      const messages = await chat.fetchMessages({
+        limit: Math.max(1, Math.min(200, Number(limit) || 100))
+      });
+      const serialized = await Promise.all(
+        messages.map((message) => this.serializeMessage(message, key, false))
+      );
 
-    return Promise.all(messages.map((message) => this.serializeMessage(message, key, false)));
+      if (serialized.length) {
+        return serialized;
+      }
+    }
+
+    return this.getStoredMessagesByPhone(client, to, key, limit);
+  }
+
+  async getStoredMessagesByPhone(client, rawNumber, sessionKey, limit) {
+    const digits = String(rawNumber || "").replace(/\D/g, "");
+    const suffix = digits.slice(-10);
+
+    return client.pupPage.evaluate(({ phoneSuffix, session, maxMessages }) => {
+      const collections = window.require("WAWebCollections");
+      const apiContact = window.require("WAWebApiContact");
+      const normalize = (value) => String(value || "").replace(/\D/g, "");
+      const serializedId = (value) => value?._serialized || String(value || "");
+      const models = collections.Msg?.getModelsArray?.()
+        || window.Store?.Msg?.getModelsArray?.()
+        || [];
+      const results = [];
+
+      const phoneValues = (wid) => {
+        const values = [serializedId(wid), wid?.user, wid?.phoneNumber?.user];
+        try {
+          const mapped = apiContact.getPhoneNumber(wid);
+          values.push(serializedId(mapped), mapped?.user);
+        } catch (_) {
+          // A phone-number WID does not need LID conversion.
+        }
+        return values;
+      };
+
+      for (const model of models) {
+        const id = model?.id || model?.__x_id || {};
+        const fromMe = Boolean(id?.fromMe ?? model?.fromMe ?? model?.__x_fromMe);
+        const remote = id?.remote || model?.from || model?.to || model?.__x_from || model?.__x_to;
+        const matches = phoneValues(remote).some((value) => {
+          const normalized = normalize(value);
+          return normalized && normalized.slice(-10) === phoneSuffix;
+        });
+
+        if (!matches) {
+          continue;
+        }
+
+        const remoteId = serializedId(remote);
+        const messageId = serializedId(id)
+          || [fromMe ? "true" : "false", remoteId, id?.id || model?.t || Date.now()].join("_");
+        results.push({
+          sessionKey: session,
+          messageId,
+          from: serializedId(model?.from || model?.__x_from || (!fromMe ? remote : "")),
+          to: serializedId(model?.to || model?.__x_to || (fromMe ? remote : "")),
+          body: String(model?.body || model?.__x_body || ""),
+          contentType: String(model?.type || model?.__x_type || "text"),
+          timestamp: Number(model?.t || model?.timestamp || model?.__x_t || Math.floor(Date.now() / 1000)),
+          fromMe,
+          chatId: remoteId,
+          hasMedia: Boolean(model?.isMedia || model?.__x_isMedia),
+          media: null
+        });
+      }
+
+      return results
+        .sort((a, b) => a.timestamp - b.timestamp)
+        .slice(-Math.max(1, Math.min(200, Number(maxMessages) || 100)));
+    }, { phoneSuffix: suffix, session: sessionKey, maxMessages: limit });
   }
 
   async findChatByPhone(client, rawNumber) {
@@ -761,25 +845,56 @@ class WhatsAppManager extends EventEmitter {
   }
 
   async serializeMessage(message, sessionKey, includeMedia) {
+    const raw = message?._data || {};
+    const read = (...readers) => {
+      for (const reader of readers) {
+        try {
+          const value = reader();
+          if (value !== undefined && value !== null) {
+            return value;
+          }
+        } catch (_) {
+          // WhatsApp occasionally throws from lazy model getters; use raw data.
+        }
+      }
+      return null;
+    };
+    const id = read(() => message.id, () => raw.id) || {};
+    const fromMe = Boolean(read(() => message.fromMe, () => id.fromMe, () => raw.fromMe));
+    const remote = read(() => id.remote?._serialized, () => id.remote, () => raw.from, () => raw.to);
+    const messageId = read(() => id._serialized, () => raw.id?._serialized)
+      || [fromMe ? "true" : "false", String(remote || ""), String(id.id || raw.t || Date.now())].join("_");
+    const from = read(() => message.from, () => raw.from, () => !fromMe ? remote : null) || "";
+    const to = read(() => message.to, () => raw.to, () => fromMe ? remote : null) || "";
     const payload = {
       sessionKey,
-      messageId: message?.id?._serialized || String(message?.id || ""),
-      from: String(message?.from || ""),
-      to: String(message?.to || ""),
-      body: String(message?.body || ""),
-      contentType: String(message?.type || "text"),
-      timestamp: Number(message?.timestamp || Math.floor(Date.now() / 1000)),
-      fromMe: Boolean(message?.fromMe),
-      chatId: String(message?.fromMe ? message?.to : message?.from || ""),
-      hasMedia: Boolean(message?.hasMedia),
+      messageId: String(messageId),
+      from: String(from),
+      to: String(to),
+      body: String(read(() => message.body, () => raw.body) || ""),
+      contentType: String(read(() => message.type, () => raw.type) || "text"),
+      timestamp: Number(read(() => message.timestamp, () => raw.t) || Math.floor(Date.now() / 1000)),
+      fromMe,
+      chatId: String(remote || (fromMe ? to : from)),
+      hasMedia: Boolean(read(() => message.hasMedia, () => raw.isMedia)),
       media: null
     };
 
-    if (!includeMedia || !message?.hasMedia) {
+    if (!includeMedia || !payload.hasMedia) {
       return payload;
     }
 
-    const media = await message.downloadMedia();
+    let media = null;
+    try {
+      media = await message.downloadMedia();
+    } catch (error) {
+      logger.warn("Unable to download incoming WhatsApp media", {
+        sessionKey,
+        messageId: payload.messageId,
+        error: error.message
+      });
+      return payload;
+    }
     const mimeType = String(media?.mimetype || "").toLowerCase();
     const size = media?.data ? Buffer.byteLength(media.data, "base64") : 0;
 

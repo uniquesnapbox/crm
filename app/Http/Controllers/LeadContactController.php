@@ -251,12 +251,21 @@ class LeadContactController extends AccountBaseController
         $providerResponse = $gatewayService->getLastResponseData();
         $contentType = $photo ? 'image' : 'text';
 
-        $sentMessage = LeadWhatsAppMessage::create([
+        $providerMessageId = trim((string) data_get($providerResponse, 'id'));
+        $sentMessage = LeadWhatsAppMessage::withoutGlobalScopes()->updateOrCreate(
+            $providerMessageId !== ''
+                ? ['provider_message_id' => Str::limit($providerMessageId, 191, '')]
+                : [
+                    'lead_id' => $leadContact->id,
+                    'direction' => 'outbound',
+                    'message' => $message,
+                    'message_at' => now(),
+                ],
+            [
             'company_id' => $leadContact->company_id,
             'lead_id' => $leadContact->id,
             'direction' => 'outbound',
             'phone' => $sanitizedPhone,
-            'provider_message_id' => data_get($providerResponse, 'id'),
             'content_type' => $contentType,
             'message' => $message,
             'status' => 'sent',

@@ -29,7 +29,8 @@ class WhatsappWebhookController extends Controller
         $payload = $request->validate([
             'sessionKey' => ['nullable', 'string', 'max:100'],
             'messageId' => ['nullable', 'string', 'max:191'],
-            'from' => ['required', 'string', 'max:100'],
+            'from' => ['nullable', 'string', 'max:100'],
+            'to' => ['nullable', 'string', 'max:100'],
             'body' => ['nullable', 'string', 'max:10000'],
             'contentType' => ['nullable', 'string', 'max:40'],
             'timestamp' => ['nullable', 'numeric'],
@@ -42,11 +43,9 @@ class WhatsappWebhookController extends Controller
             'media.fileName' => ['nullable', 'string', 'max:191'],
         ]);
 
-        if ((bool) ($payload['fromMe'] ?? false)) {
-            return response()->json(['success' => true, 'ignored' => 'outgoing']);
-        }
-
-        $phone = $this->normalizePhone($payload['from']);
+        $fromMe = (bool) ($payload['fromMe'] ?? false);
+        $peerAddress = $fromMe ? (string) ($payload['to'] ?? '') : $payload['from'];
+        $phone = $this->normalizePhone($peerAddress);
         $message = trim((string) ($payload['body'] ?? ''));
         $mediaPayload = $payload['media'] ?? null;
 
@@ -80,15 +79,23 @@ class WhatsappWebhookController extends Controller
 
         $messageAt = $this->messageTime($payload['timestamp'] ?? null);
 
-        LeadWhatsAppMessage::withoutGlobalScopes()->create([
+        $attributes = $providerMessageId !== ''
+            ? ['provider_message_id' => $providerMessageId]
+            : [
+                'lead_id' => $lead->id,
+                'direction' => $fromMe ? 'outbound' : 'inbound',
+                'message' => $message,
+                'message_at' => $messageAt,
+            ];
+
+        LeadWhatsAppMessage::withoutGlobalScopes()->updateOrCreate($attributes, [
             'company_id' => $lead->company_id,
             'lead_id' => $lead->id,
-            'direction' => 'inbound',
+            'direction' => $fromMe ? 'outbound' : 'inbound',
             'phone' => $phone,
-            'provider_message_id' => $providerMessageId !== '' ? $providerMessageId : null,
             'content_type' => $media ? 'image' : (string) ($payload['contentType'] ?? 'text'),
             'message' => $message,
-            'status' => 'received',
+            'status' => $fromMe ? 'sent' : 'received',
             'metadata' => [
                 'session_key' => $payload['sessionKey'] ?? null,
                 'chat_id' => $payload['chatId'] ?? null,
