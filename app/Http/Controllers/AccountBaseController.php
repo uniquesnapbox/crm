@@ -91,17 +91,27 @@ class AccountBaseController extends Controller
 
     public function common()
     {
+        $user = user();
+
+        // Guard against null user during account bootstrapping.
+        if (!$user) {
+            return;
+        }
+
         $this->fields = [];
         $this->languageSettings = language_setting();
         $this->pushSetting = push_setting();
         $this->smtpSetting = smtp_setting();
         $this->pusherSettings = pusher_settings();
 
-        App::setLocale(user()->locale);
-        Carbon::setLocale(user()->locale);
-        setlocale(LC_TIME, user()->locale . '_' . mb_strtoupper($this->company->locale));
+        $locale = $user->locale ?: config('app.locale');
+        $companyLocale = $this->company->locale ?? $locale;
 
-        $this->user = user();
+        App::setLocale($locale);
+        Carbon::setLocale($locale);
+        setlocale(LC_TIME, $locale . '_' . mb_strtoupper($companyLocale));
+
+        $this->user = $user;
         $this->unreadNotificationCount = $this->user->unreadNotifications()->count();
         $this->stickyNotes = $this->user->sticky;
 
@@ -159,4 +169,3 @@ class AccountBaseController extends Controller
     }
 
 }
-
