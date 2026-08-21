@@ -34,6 +34,7 @@ use App\Traits\ImportExcel;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -144,7 +145,9 @@ class LeadContactController extends AccountBaseController
         $this->chatNumber = $contactNumber;
         $this->chatPhone = $sanitizedPhone;
         $this->chatWhatsAppUrl = $sanitizedPhone ? 'https://wa.me/' . $sanitizedPhone : null;
-        $this->chatGatewayConfigured = app(WhatsAppGatewayService::class)->isConfigured();
+        $gatewayService = app(WhatsAppGatewayService::class);
+        $this->chatGatewayConfigured = $gatewayService->isConfigured();
+        $this->syncLeadChatHistory($this->leadContact, $gatewayService);
         $this->chatMessages = LeadWhatsAppMessage::query()
             ->where('lead_id', $this->leadContact->id)
             ->orderByDesc('message_at')
@@ -170,6 +173,8 @@ class LeadContactController extends AccountBaseController
     {
         $leadContact = Lead::findOrFail($id);
         abort_403(!$this->canAccessLead($leadContact));
+
+        $this->syncLeadChatHistory($leadContact, app(WhatsAppGatewayService::class));
 
         $messages = LeadWhatsAppMessage::query()
             ->where('lead_id', $leadContact->id)
@@ -203,8 +208,8 @@ class LeadContactController extends AccountBaseController
     public function sendChatMessage(Request $request, $id, WhatsAppGatewayService $gatewayService)
     {
         $request->validate([
-            'message' => ['nullable', 'string', 'max:1000'],
-            'photo' => ['required', 'file', 'image', 'mimes:jpg,jpeg,png,gif,webp', 'max:5120'],
+            'message' => ['nullable', 'required_without:photo', 'string', 'max:1000'],
+            'photo' => ['nullable', 'required_without:message', 'file', 'image', 'mimes:jpg,jpeg,png,gif,webp', 'max:5120'],
         ]);
 
         $leadContact = Lead::findOrFail($id);
@@ -221,51 +226,64 @@ class LeadContactController extends AccountBaseController
         $sessionKey = $setting?->resolved_lead_created_sender_number ?: null;
         $message = trim((string) $request->input('message'));
         $photo = $request->file('photo');
-        $photoContents = file_get_contents($photo->getRealPath());
-        $photoPath = 'lead-chat/' . $leadContact->company_id . '/' . $leadContact->id . '/' . Str::uuid() . '.' . strtolower($photo->getClientOriginalExtension());
-        Storage::disk('local')->put($photoPath, $photoContents);
-        $attachment = [
-            'data' => base64_encode($photoContents),
-            'mimeType' => $photo->getMimeType(),
-            'fileName' => $photo->getClientOriginalName(),
-            'sendAsDocument' => false,
-        ];
+        $photoPath = null;
+        $attachment = null;
+
+        if ($photo) {
+            $photoContents = file_get_contents($photo->getRealPath());
+            $photoPath = 'lead-chat/' . $leadContact->company_id . '/' . $leadContact->id . '/' . Str::uuid() . '.' . strtolower($photo->getClientOriginalExtension());
+            Storage::disk('local')->put($photoPath, $photoContents);
+            $attachment = [
+                'data' => base64_encode($photoContents),
+                'mimeType' => $photo->getMimeType(),
+                'fileName' => $photo->getClientOriginalName(),
+                'sendAsDocument' => false,
+            ];
+        }
 
         if (!$gatewayService->sendMessage($sanitizedPhone, $message, $sessionKey, $attachment)) {
-            Storage::disk('local')->delete($photoPath);
+            if ($photoPath) {
+                Storage::disk('local')->delete($photoPath);
+            }
             return Reply::error($gatewayService->getLastError() ?: 'Unable to send WhatsApp message.');
         }
+
+        $providerResponse = $gatewayService->getLastResponseData();
+        $contentType = $photo ? 'image' : 'text';
 
         $sentMessage = LeadWhatsAppMessage::create([
             'company_id' => $leadContact->company_id,
             'lead_id' => $leadContact->id,
             'direction' => 'outbound',
             'phone' => $sanitizedPhone,
-            'content_type' => 'image',
+            'provider_message_id' => data_get($providerResponse, 'id'),
+            'content_type' => $contentType,
             'message' => $message,
             'status' => 'sent',
             'metadata' => [
                 'session_key' => $sessionKey,
                 'created_by' => user()->id,
-                'media_path' => $photoPath,
-                'media_mime' => $photo->getMimeType(),
-                'media_name' => $photo->getClientOriginalName(),
-                'media_size' => $photo->getSize(),
+                ...($photo ? [
+                    'media_path' => $photoPath,
+                    'media_mime' => $photo->getMimeType(),
+                    'media_name' => $photo->getClientOriginalName(),
+                    'media_size' => $photo->getSize(),
+                ] : []),
             ],
             'message_at' => now(),
         ]);
 
         $this->pushLeadHistory($leadContact->id, 'whatsapp_message_sent', [
-            'title' => 'WhatsApp Photo Sent',
-            'description' => $photo->getClientOriginalName(),
+            'title' => $photo ? 'WhatsApp Photo Sent' : 'WhatsApp Message Sent',
+            'description' => $photo ? $photo->getClientOriginalName() : Str::limit($message, 150),
             'meta' => [
                 'channel' => 'whatsapp',
                 'recipient' => $sanitizedPhone,
             ],
         ]);
 
-        return Reply::successWithData('WhatsApp photo sent successfully.', [
-            'message' => [
+        return Reply::successWithData($photo ? 'WhatsApp photo sent successfully.' : 'WhatsApp message sent successfully.', [
+            'chat_message' => [
                 'id' => $sentMessage->id,
                 'direction' => $sentMessage->direction,
                 'message' => $sentMessage->message,
@@ -275,6 +293,72 @@ class LeadContactController extends AccountBaseController
                 'message_at' => optional($sentMessage->message_at)->toIso8601String(),
             ],
         ]);
+    }
+
+    private function syncLeadChatHistory(Lead $leadContact, WhatsAppGatewayService $gatewayService): void
+    {
+        $contactNumber = $leadContact->mobile ?: ($leadContact->cell ?: $leadContact->office);
+        $phone = preg_replace('/\D+/', '', (string) $contactNumber);
+
+        if ($phone === '' || !$gatewayService->isConfigured()) {
+            return;
+        }
+
+        $cacheKey = 'lead-chat-history-sync:' . $leadContact->company_id . ':' . $leadContact->id;
+        if (!Cache::add($cacheKey, true, now()->addMinute())) {
+            return;
+        }
+
+        $setting = WhatsappNotificationSetting::withoutGlobalScopes()
+            ->where('company_id', $leadContact->company_id)
+            ->first();
+        $sessionKey = $setting?->resolved_lead_created_sender_number ?: null;
+        $history = $gatewayService->getMessageHistory($phone, $sessionKey, 100);
+
+        if (!($history['success'] ?? false)) {
+            Cache::forget($cacheKey);
+            return;
+        }
+
+        foreach ((array) data_get($history, 'data.messages', []) as $item) {
+            $providerMessageId = trim((string) data_get($item, 'messageId'));
+            if ($providerMessageId === '') {
+                continue;
+            }
+
+            $timestamp = (int) data_get($item, 'timestamp', time());
+            if ($timestamp > 20000000000) {
+                $timestamp = (int) floor($timestamp / 1000);
+            }
+
+            $fromMe = (bool) data_get($item, 'fromMe');
+            $itemPhone = preg_replace('/\D+/', '', (string) data_get($item, $fromMe ? 'to' : 'from')) ?: $phone;
+            $chatMessage = LeadWhatsAppMessage::withoutGlobalScopes()->firstOrNew([
+                'provider_message_id' => Str::limit($providerMessageId, 191, ''),
+            ]);
+
+            if ($chatMessage->exists && (int) $chatMessage->lead_id !== (int) $leadContact->id) {
+                continue;
+            }
+
+            $chatMessage->fill([
+                'company_id' => $leadContact->company_id,
+                'lead_id' => $leadContact->id,
+                'direction' => $fromMe ? 'outbound' : 'inbound',
+                'phone' => $itemPhone,
+                'content_type' => (string) data_get($item, 'contentType', 'text'),
+                'message' => trim((string) data_get($item, 'body')),
+                'status' => $fromMe ? 'sent' : 'received',
+                'metadata' => array_merge((array) $chatMessage->metadata, [
+                    'session_key' => data_get($item, 'sessionKey', $sessionKey),
+                    'chat_id' => data_get($item, 'chatId'),
+                    'has_media' => (bool) data_get($item, 'hasMedia'),
+                    'synced_from_history' => true,
+                ]),
+                'message_at' => Carbon::createFromTimestampUTC($timestamp),
+            ]);
+            $chatMessage->save();
+        }
     }
 
     public function chatMedia($leadId, $messageId)

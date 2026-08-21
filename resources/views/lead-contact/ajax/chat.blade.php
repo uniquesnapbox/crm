@@ -30,7 +30,7 @@
             <div class="lead-chat-header d-flex align-items-center justify-content-between flex-wrap">
                 <div>
                     <h5><i class="fa fa-comments text-primary mr-1"></i> Chat with {{ $leadContact->client_name ?: 'Lead' }}</h5>
-                    <small class="text-muted">WhatsApp photo conversation</small>
+                    <small class="text-muted">WhatsApp conversation</small>
                 </div>
                 @if ($chatPhone)
                     <span class="text-muted f-13 mt-2 mt-md-0"><i class="fa fa-phone mr-1"></i>{{ $chatNumber }}</span>
@@ -42,7 +42,7 @@
                     <div class="alert alert-warning mb-0">This lead does not have a mobile number for WhatsApp chat.</div>
                 @else
                     @if (!$chatGatewayConfigured)
-                        <div class="lead-chat-fallback mb-3">WhatsApp service is not connected. Start the WhatsApp service to send photos.</div>
+                        <div class="lead-chat-fallback mb-3">WhatsApp service is not connected. Start the WhatsApp service to send messages.</div>
                     @endif
 
                     <div class="lead-chat-thread" id="lead-chat-thread" data-messages-url="{{ route('lead-contact.chat.messages', $leadContact->id) }}">
@@ -67,7 +67,7 @@
                                 </div>
                             </div>
                         @empty
-                            <div class="lead-chat-empty">No photos yet. Select a photo below to start the conversation.</div>
+                            <div class="lead-chat-empty">No messages yet. Type a message or attach a photo to start the conversation.</div>
                         @endforelse
                     </div>
 
@@ -77,11 +77,11 @@
                         <div class="lead-chat-compose-bar">
                             <button type="button" class="lead-chat-icon js-lead-chat-attach" title="Attach photo"><i class="fa fa-plus"></i></button>
                             <button type="button" class="lead-chat-icon js-lead-chat-emoji" title="Add emoji">&#9786;</button>
-                            <input type="text" name="message" class="form-control" maxlength="1000" placeholder="Type a caption (optional)">
+                            <input type="text" name="message" class="form-control" maxlength="1000" placeholder="Type a message">
                             <button type="submit" class="btn btn-primary rounded-pill px-3 js-lead-chat-send" @disabled(!$chatGatewayConfigured)><i class="fa fa-paper-plane"></i></button>
                         </div>
                         <div class="lead-chat-photo-name js-lead-chat-photo-name"></div>
-                        <div class="lead-chat-note">Only photos can be sent from this Chat tab. New customer photos will appear here automatically.</div>
+                        <div class="lead-chat-note">Send a message, photo, or photo with caption. New customer replies will appear automatically.</div>
                     </form>
                 @endif
             </div>
@@ -102,7 +102,7 @@
 
         const renderMessages = function(messages) {
             if (!messages.length) {
-                $thread.html('<div class="lead-chat-empty">No photos yet. Select a photo below to start the conversation.</div>');
+                $thread.html('<div class="lead-chat-empty">No messages yet. Type a message or attach a photo to start the conversation.</div>');
                 return;
             }
 
@@ -150,9 +150,10 @@
             const form = this;
             const $button = $(form).find('.js-lead-chat-send');
             const file = $(form).find('.js-lead-chat-photo')[0].files[0];
+            const message = $(form).find('input[name="message"]').val().trim();
 
-            if (!file) {
-                if (typeof toastr !== 'undefined') toastr.warning('Please select a photo first.');
+            if (!file && !message) {
+                if (typeof toastr !== 'undefined') toastr.warning('Type a message or select a photo first.');
                 return;
             }
 
@@ -169,11 +170,15 @@
                     form.reset();
                     $(form).find('.js-lead-chat-photo-name').hide().text('');
                     refreshMessages();
-                    if (typeof toastr !== 'undefined') toastr.success(response.message || 'Photo sent successfully.');
+                    if (typeof toastr !== 'undefined') toastr.success(response.message || 'Message sent successfully.');
+                } else if (typeof toastr !== 'undefined') {
+                    toastr.error(response.message || 'Unable to send message.');
                 }
             }).fail(function(xhr) {
-                const error = xhr.responseJSON && (xhr.responseJSON.message || xhr.responseJSON.error);
-                if (typeof toastr !== 'undefined') toastr.error(error || 'Unable to send photo.');
+                const validationErrors = xhr.responseJSON && xhr.responseJSON.errors;
+                const firstValidationError = validationErrors ? Object.values(validationErrors).flat()[0] : null;
+                const error = firstValidationError || (xhr.responseJSON && (xhr.responseJSON.message || xhr.responseJSON.error));
+                if (typeof toastr !== 'undefined') toastr.error(error || 'Unable to send message.');
             }).always(function() { $button.prop('disabled', false); });
         });
     })();

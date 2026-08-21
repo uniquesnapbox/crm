@@ -10,10 +10,16 @@ use Illuminate\Support\Facades\Log;
 class WhatsAppGatewayService
 {
     private ?string $lastError = null;
+    private ?array $lastResponseData = null;
 
     public function getLastError(): ?string
     {
         return $this->lastError;
+    }
+
+    public function getLastResponseData(): ?array
+    {
+        return $this->lastResponseData;
     }
 
     public function isConfigured(): bool
@@ -24,6 +30,7 @@ class WhatsAppGatewayService
 
     public function sendMessage(string $mobile, string $message, ?string $sessionKey = null, ?array $attachment = null): bool
     {
+        $this->lastResponseData = null;
         $baseUrl = rtrim((string) config('services.whatsapp_service.base_url'), '/');
         $apiKey = (string) config('services.whatsapp_service.api_key');
         $session = $this->resolveSessionKey($sessionKey);
@@ -91,6 +98,7 @@ class WhatsAppGatewayService
 
             if ($response->successful() && ($json['success'] ?? false) === true) {
                 $this->lastError = null;
+                $this->lastResponseData = is_array($json['data'] ?? null) ? $json['data'] : null;
                 return true;
             }
 
@@ -112,6 +120,34 @@ class WhatsAppGatewayService
         }
 
         return false;
+    }
+
+    public function getMessageHistory(string $mobile, ?string $sessionKey = null, int $limit = 100): array
+    {
+        $baseUrl = rtrim((string) config('services.whatsapp_service.base_url'), '/');
+        $apiKey = (string) config('services.whatsapp_service.api_key');
+        $session = $this->resolveSessionKey($sessionKey);
+        $phone = preg_replace('/\D+/', '', $mobile);
+        $timeout = max(10, min(60, (int) config('services.whatsapp_service.timeout', 30)));
+
+        if ($baseUrl === '' || $apiKey === '' || $phone === '') {
+            return ['success' => false, 'error' => 'WhatsApp history service is not configured.', 'data' => null];
+        }
+
+        try {
+            $response = $this->client($baseUrl, $apiKey, $timeout)
+                ->get('/messages/history', [
+                    'to' => $phone,
+                    'channelKey' => $session,
+                    'limit' => max(1, min(200, $limit)),
+                ]);
+
+            return $this->mapJsonResponse($response, 'Unable to read WhatsApp message history.');
+        } catch (ConnectionException $exception) {
+            return ['success' => false, 'error' => $exception->getMessage(), 'data' => null];
+        } catch (\Throwable $exception) {
+            return ['success' => false, 'error' => $exception->getMessage(), 'data' => null];
+        }
     }
 
     public function getHealth(): array

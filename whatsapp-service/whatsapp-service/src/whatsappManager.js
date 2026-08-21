@@ -217,6 +217,17 @@ class WhatsAppManager extends EventEmitter {
       }
     });
 
+    client.on("message", async (message) => {
+      try {
+        this.emit("whatsapp-message", await this.serializeMessage(message, key, true));
+      } catch (error) {
+        logger.warn("Unable to process incoming WhatsApp message", {
+          sessionKey: key,
+          error: error.message
+        });
+      }
+    });
+
     return client;
   }
 
@@ -625,6 +636,57 @@ class WhatsAppManager extends EventEmitter {
       await this.waitForStatus(key, "ready", 60000);
       return await sendWithClient(refreshedClient);
     }
+  }
+
+  async getMessageHistory({ to, channelKey, limit = 100 }) {
+    const key = channelKey || this.config.defaultSession;
+    const client = await this.ensureClient(key);
+
+    if (!client || this.getStatus(key) !== "ready") {
+      throw new Error(`Session ${key} not ready`);
+    }
+
+    const chatId = this.toChatId(to);
+    const chat = await client.getChatById(chatId);
+    const messages = await chat.fetchMessages({
+      limit: Math.max(1, Math.min(200, Number(limit) || 100))
+    });
+
+    return Promise.all(messages.map((message) => this.serializeMessage(message, key, false)));
+  }
+
+  async serializeMessage(message, sessionKey, includeMedia) {
+    const payload = {
+      sessionKey,
+      messageId: message?.id?._serialized || String(message?.id || ""),
+      from: String(message?.from || ""),
+      to: String(message?.to || ""),
+      body: String(message?.body || ""),
+      contentType: String(message?.type || "text"),
+      timestamp: Number(message?.timestamp || Math.floor(Date.now() / 1000)),
+      fromMe: Boolean(message?.fromMe),
+      chatId: String(message?.fromMe ? message?.to : message?.from || ""),
+      hasMedia: Boolean(message?.hasMedia),
+      media: null
+    };
+
+    if (!includeMedia || !message?.hasMedia) {
+      return payload;
+    }
+
+    const media = await message.downloadMedia();
+    const mimeType = String(media?.mimetype || "").toLowerCase();
+    const size = media?.data ? Buffer.byteLength(media.data, "base64") : 0;
+
+    if (media?.data && mimeType.startsWith("image/") && size <= 5 * 1024 * 1024) {
+      payload.media = {
+        data: media.data,
+        mimeType,
+        fileName: media.filename || `whatsapp-${payload.messageId || Date.now()}`
+      };
+    }
+
+    return payload;
   }
 
   async waitForStatus(sessionKey, desiredStatus, timeoutMs = 30000) {

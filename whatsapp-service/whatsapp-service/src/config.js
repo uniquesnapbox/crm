@@ -84,6 +84,8 @@ function parseSocketCorsOrigins(raw) {
 module.exports = {
   port: Number(process.env.PORT || 3100),
   apiKey: process.env.WHATSAPP_API_KEY || "",
+  inboundWebhookUrl: process.env.WHATSAPP_INBOUND_WEBHOOK_URL || "",
+  inboundWebhookToken: process.env.WHATSAPP_INBOUND_WEBHOOK_TOKEN || "",
   nodeEnv: process.env.NODE_ENV || "development",
   socketCorsOrigins: parseSocketCorsOrigins(process.env.WHATSAPP_SOCKET_CORS_ORIGIN || "*"),
   socketAllowNoOrigin: parseBoolean(process.env.WHATSAPP_SOCKET_ALLOW_NO_ORIGIN, true),

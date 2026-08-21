@@ -284,6 +284,47 @@ function attachManagerEventBridge() {
   manager.on("whatsapp-status", (payload) => {
     io.emit("whatsapp-status", payload);
   });
+
+  manager.on("whatsapp-message", (payload) => {
+    io.emit("whatsapp-message", payload);
+    forwardIncomingMessage(payload);
+  });
+}
+
+async function forwardIncomingMessage(payload) {
+  if (!config.inboundWebhookUrl || !config.inboundWebhookToken) {
+    logger.warn("Incoming WhatsApp webhook is not configured", {
+      sessionKey: payload?.sessionKey || null
+    });
+    return;
+  }
+
+  try {
+    const response = await fetch(config.inboundWebhookUrl, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-whatsapp-webhook-token": config.inboundWebhookToken
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(15000)
+    });
+
+    if (!response.ok) {
+      logger.warn("CRM rejected incoming WhatsApp message", {
+        sessionKey: payload?.sessionKey || null,
+        messageId: payload?.messageId || null,
+        status: response.status,
+        response: (await response.text()).slice(0, 500)
+      });
+    }
+  } catch (error) {
+    logger.warn("Unable to forward incoming WhatsApp message", {
+      sessionKey: payload?.sessionKey || null,
+      messageId: payload?.messageId || null,
+      error: error.message
+    });
+  }
 }
 
 io.on("connection", async (socket) => {
@@ -524,6 +565,36 @@ app.post("/messages/send", requireApiKey, async (req, res) => {
     return res.status(statusCode).json({
       success: false,
       error: msg
+    });
+  }
+});
+
+app.get("/messages/history", requireApiKey, async (req, res) => {
+  const to = String(req.query.to || "").trim();
+  const channelKey = String(req.query.channelKey || config.defaultSession).trim() || config.defaultSession;
+  const limit = Math.max(1, Math.min(200, Number(req.query.limit) || 100));
+
+  if (!to) {
+    return res.status(422).json({ success: false, error: "Recipient is required" });
+  }
+
+  try {
+    const messages = await manager.getMessageHistory({ to, channelKey, limit });
+
+    return res.status(200).json({
+      success: true,
+      data: { messages }
+    });
+  } catch (error) {
+    logger.warn("Unable to read WhatsApp message history", {
+      channelKey,
+      to,
+      error: error.message
+    });
+
+    return res.status(500).json({
+      success: false,
+      error: error.message || "Unable to read WhatsApp message history"
     });
   }
 });
