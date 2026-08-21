@@ -44,6 +44,8 @@ trait EmployeeDashboard
     public function employeeDashboard()
     {
         $user = user();
+        $this->user = $user;
+        $employeeDetail = $user->employeeDetail ?? $user->employeeDetails ?? null;
         $companyId = company()->id;
         $today = now(company()->timezone)->toDateString();
         $dashboardCacheTtl = now()->addSeconds(60);
@@ -66,7 +68,7 @@ trait EmployeeDashboard
             $officeEndTime->addDay();
         }
 
-        $this->cannotLogin = Attendance::where('user_id', $this->user->id)
+        $this->cannotLogin = Attendance::where('user_id', $user->id)
             ->whereBetween('clock_in_time', [$today . ' 00:00:00', $today . ' 23:59:59'])
             ->whereNotNull('clock_out_time')
             ->where('clock_in_time', '<=', now())
@@ -94,17 +96,17 @@ trait EmployeeDashboard
 
         $this->checkJoiningDate = true;
 
-        if (is_null(user()->employeeDetail->joining_date) || user()->employeeDetail->joining_date->gt($currentDate)) {
+        if (is_null($employeeDetail?->joining_date) || $employeeDetail->joining_date->gt($currentDate)) {
             $this->checkJoiningDate = false;
         }
 
-        $this->viewEventPermission = user()->permission('view_events');
-        $this->viewHolidayPermission = user()->permission('view_holiday');
-        $this->viewTaskPermission = user()->permission('view_tasks');
-        $this->viewTicketsPermission = user()->permission('view_tickets');
-        $this->viewLeavePermission = user()->permission('view_leave');
-        $this->viewNoticePermission = user()->permission('view_notice');
-        $this->editTimelogPermission = user()->permission('edit_timelogs');
+        $this->viewEventPermission = $user->permission('view_events');
+        $this->viewHolidayPermission = $user->permission('view_holiday');
+        $this->viewTaskPermission = $user->permission('view_tasks');
+        $this->viewTicketsPermission = $user->permission('view_tickets');
+        $this->viewLeavePermission = $user->permission('view_leave');
+        $this->viewNoticePermission = $user->permission('view_notice');
+        $this->editTimelogPermission = $user->permission('edit_timelogs');
         $this->widgets = Cache::remember('private_dashboard_widgets_' . $companyId, now()->addMinutes(1), fn() => DashboardWidget::where('dashboard_type', 'private-dashboard')->get());
         $this->activeWidgets = $this->widgets->filter(fn($value) => $value->status == '1')->pluck('widget_name')->toArray();
         $dashboardUserCardRelations = function ($query) {
@@ -186,6 +188,8 @@ trait EmployeeDashboard
         $this->dueProjects = (int) ($stats->due_projects ?? 0);
 
         if (!is_null($this->viewNoticePermission) && $this->viewNoticePermission != 'none') {
+            $departmentId = $employeeDetail?->department_id ?? 0;
+
             if ($this->viewNoticePermission == 'added') {
                 $this->notices = Cache::remember('employee_dashboard_notices_added_' . $companyId . '_' . $this->user->id, $dashboardCacheTtl, function () {
                     return Notice::latest()->where('added_by', $this->user->id)
@@ -195,23 +199,23 @@ trait EmployeeDashboard
                 });
             }
             elseif ($this->viewNoticePermission == 'owned') {
-                $this->notices = Cache::remember('employee_dashboard_notices_owned_' . $companyId . '_' . $this->user->id . '_' . ($this->user->employeeDetails->department_id ?? 0), $dashboardCacheTtl, function () {
+                $this->notices = Cache::remember('employee_dashboard_notices_owned_' . $companyId . '_' . $this->user->id . '_' . $departmentId, $dashboardCacheTtl, function () use ($departmentId) {
                     return Notice::latest()
                         ->select('id', 'heading', 'created_at')
                         ->where(['to' => 'employee', 'department_id' => null])
-                        ->orWhere(['department_id' => $this->user->employeeDetails->department_id])
+                        ->orWhere(['department_id' => $departmentId])
                         ->limit(10)
                         ->get();
                 });
             }
             elseif ($this->viewNoticePermission == 'both') {
-                $this->notices = Cache::remember('employee_dashboard_notices_both_' . $companyId . '_' . $this->user->id . '_' . ($this->user->employeeDetails->department_id ?? 0), $dashboardCacheTtl, function () {
+                $this->notices = Cache::remember('employee_dashboard_notices_both_' . $companyId . '_' . $this->user->id . '_' . $departmentId, $dashboardCacheTtl, function () use ($departmentId) {
                     return Notice::latest()
                         ->select('id', 'heading', 'created_at')
                         ->where('added_by', $this->user->id)
                         ->orWhere(function ($q) {
                             $q->where(['to' => 'employee', 'department_id' => null])
-                                ->orWhere(['department_id' => $this->user->employeeDetails->department_id]);
+                                ->orWhere(['department_id' => $departmentId]);
                         })
                         ->limit(10)
                         ->get();
@@ -291,15 +295,15 @@ trait EmployeeDashboard
         $this->checkTodayHoliday = Cache::remember('employee_dashboard_today_holiday_' . $companyId . '_' . $this->user->id . '_' . $todayDate, $dashboardCacheTtl, function () use ($currentDate, $user) {
             return Holiday::where('date', $currentDate)
                 ->where(function ($query) use ($user) {
-                    $query->orWhere('department_id_json', 'like', '%"' . $user->employeeDetails->department_id . '"%')
+                    $query->orWhere('department_id_json', 'like', '%"' . ($user->employeeDetail?->department_id ?? $user->employeeDetails?->department_id ?? 0) . '"%')
                         ->orWhereNull('department_id_json');
                 })
                 ->where(function ($query) use ($user) {
-                    $query->orWhere('designation_id_json', 'like', '%"' . $user->employeeDetails->designation_id . '"%')
+                    $query->orWhere('designation_id_json', 'like', '%"' . ($user->employeeDetail?->designation_id ?? $user->employeeDetails?->designation_id ?? 0) . '"%')
                         ->orWhereNull('designation_id_json');
                 })
                 ->where(function ($query) use ($user) {
-                    $query->orWhere('employment_type_json', 'like', '%"' . $user->employeeDetails->employment_type . '"%')
+                    $query->orWhere('employment_type_json', 'like', '%"' . ($user->employeeDetail?->employment_type ?? $user->employeeDetails?->employment_type ?? '') . '"%')
                         ->orWhereNull('employment_type_json');
                 })
                 ->first();
@@ -466,7 +470,7 @@ trait EmployeeDashboard
         $this->currentWeekDates = $currentWeekDates;
         $this->weekShifts = $weekShifts;
         $this->showClockIn = $showClockIn->show_clock_in_button;
-        $this->event_filter = explode(',', user()->employeeDetails->calendar_view);
+        $this->event_filter = explode(',', $employeeDetail?->calendar_view ?? '');
 
         $this->dateWiseTimelogs = collect();
         $this->dateWiseTimelogBreak = collect();
@@ -695,7 +699,7 @@ trait EmployeeDashboard
             }
         }
 
-        $employeeDetail = user()->employeeDetail;
+        $employeeDetail = $user->employeeDetail ?? $user->employeeDetails ?? null;
         $enforceGeofence = $this->shouldEnforceGeofence($employeeDetail);
 
         // Check user by location
