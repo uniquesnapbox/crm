@@ -326,7 +326,8 @@ class LeadContactController extends AccountBaseController
         }
 
         $cacheKey = 'lead-chat-history-sync:' . $leadContact->company_id . ':' . $leadContact->id;
-        if (!Cache::add($cacheKey, true, now()->addMinute())) {
+        // Keep concurrent tabs from hitting the bridge together without delaying live chat.
+        if (!Cache::add($cacheKey, true, now()->addSecond())) {
             return;
         }
 
