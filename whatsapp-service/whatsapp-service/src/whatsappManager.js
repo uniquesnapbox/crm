@@ -686,25 +686,47 @@ class WhatsAppManager extends EventEmitter {
       }
     }
 
-    const chats = await client.getChats();
-    for (const chat of chats) {
-      if (chat?.isGroup) {
-        continue;
-      }
+    const matchedChatId = await client.pupPage.evaluate((phoneSuffix) => {
+      const collections = window.require("WAWebCollections");
+      const chats = collections.Chat.getModelsArray();
+      const normalize = (value) => String(value || "").replace(/\D/g, "");
+      const matches = (value) => {
+        const normalized = normalize(value);
+        return normalized && normalized.slice(-10) === phoneSuffix;
+      };
+      const idValues = (value) => [
+        value?._serialized,
+        value?.user,
+        value?.phoneNumber?._serialized,
+        value?.phoneNumber?.user,
+        value?.number
+      ];
 
-      const chatUser = String(chat?.id?.user || "").replace(/\D/g, "");
-      if (chatUser && chatUser.slice(-10) === comparable) {
-        return chat;
-      }
-
-      try {
-        const contact = await chat.getContact();
-        const contactNumber = String(contact?.number || contact?.id?.user || "").replace(/\D/g, "");
-        if (contactNumber && contactNumber.slice(-10) === comparable) {
-          return chat;
+      for (const chat of chats) {
+        if (chat?.isGroup) {
+          continue;
         }
+
+        const candidates = [
+          ...idValues(chat?.id),
+          ...idValues(chat?.contact),
+          ...idValues(chat?.contact?.id),
+          ...idValues(chat?.contact?.phoneNumber)
+        ];
+
+        if (candidates.some(matches)) {
+          return chat.id?._serialized || null;
+        }
+      }
+
+      return null;
+    }, comparable);
+
+    if (matchedChatId) {
+      try {
+        return await client.getChatById(matchedChatId);
       } catch (_) {
-        // Some archived/system chats do not expose a contact.
+        return null;
       }
     }
 
