@@ -682,6 +682,9 @@ class WhatsAppManager extends EventEmitter {
     if (storedChatId) {
       try {
         const storedChat = await client.getChatById(storedChatId);
+        if (typeof storedChat.syncHistory === "function") {
+          await storedChat.syncHistory();
+        }
         const fetchedMessages = await storedChat.fetchMessages({
           limit: Math.max(1, Math.min(200, Number(limit) || 100))
         });
@@ -891,13 +894,19 @@ class WhatsAppManager extends EventEmitter {
       || [fromMe ? "true" : "false", String(remote || ""), String(id.id || raw.t || Date.now())].join("_");
     const from = read(() => message.from, () => raw.from, () => !fromMe ? remote : null) || "";
     const to = read(() => message.to, () => raw.to, () => fromMe ? remote : null) || "";
+    const contentType = String(read(() => message.type, () => raw.type) || "text");
+    let body = String(read(() => message.body, () => raw.caption, () => raw.body) || "");
+    if (["image", "video", "sticker"].includes(contentType) && body.length > 10000) {
+      body = "";
+    }
+
     const payload = {
       sessionKey,
       messageId: String(messageId),
       from: String(from),
       to: String(to),
-      body: String(read(() => message.body, () => raw.body) || ""),
-      contentType: String(read(() => message.type, () => raw.type) || "text"),
+      body,
+      contentType,
       timestamp: Number(read(() => message.timestamp, () => raw.t) || Math.floor(Date.now() / 1000)),
       fromMe,
       chatId: String(remote || (fromMe ? to : from)),
