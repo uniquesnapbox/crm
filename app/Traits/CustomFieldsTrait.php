@@ -17,6 +17,8 @@ trait CustomFieldsTrait
     private $extraData;
     public $custom_fields;
     public $custom_fields_data;
+    private bool $customFieldGroupsLoaded = false;
+    private $customFieldGroupsCache = null;
 
     /** Get company ID for current object
      * @return int Returns current object's company id
@@ -66,14 +68,27 @@ trait CustomFieldsTrait
 
     public function getCustomFieldGroups($fields = false)
     {
+        if ($this->customFieldGroupsLoaded) {
+            $customFieldGroup = $this->customFieldGroupsCache;
+
+            if ($fields && $customFieldGroup) {
+                $customFieldGroup->loadMissing(['customField'])->append(['fields']);
+            }
+
+            return $customFieldGroup;
+        }
+
         $customFieldGroup = CustomFieldGroup::where('model', $this->getModelName());
 
         $customFieldGroup = $customFieldGroup->when(method_exists($this, 'company'), function ($query) {
             return $query->where('company_id', $this->company_id ?: company()->id);
         })->first();
 
+        $this->customFieldGroupsLoaded = true;
+        $this->customFieldGroupsCache = $customFieldGroup;
+
         if ($fields && $customFieldGroup) {
-            $customFieldGroup->load(['customField'])->append(['fields']);
+            $customFieldGroup->loadMissing(['customField'])->append(['fields']);
         }
 
         return $customFieldGroup;

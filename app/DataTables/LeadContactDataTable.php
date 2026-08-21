@@ -363,7 +363,7 @@ class LeadContactDataTable extends BaseDataTable
         }
 
         return '<div class="lead-inline-select-wrap">' .
-            '<select class="form-control form-control-sm select-picker js-lead-table-inline-select" style="min-width:140px;" data-container="body" data-live-search="true" data-field="status_id" data-prev-value="' . e($selectedValue) . '" data-url="' . e($url) . '" data-id="' . (int) $row->id . '">' .
+            '<select class="form-control form-control-sm select-picker js-lead-table-inline-select" id="lead-contact-status-' . (int) $row->id . '" name="lead_contact_status_' . (int) $row->id . '" style="min-width:140px;" data-container="body" data-live-search="true" data-field="status_id" data-prev-value="' . e($selectedValue) . '" data-url="' . e($url) . '" data-id="' . (int) $row->id . '">' .
             $options .
             '</select>' .
             '</div>';
@@ -402,7 +402,7 @@ class LeadContactDataTable extends BaseDataTable
         }
 
         return '<div class="lead-inline-select-wrap">' .
-            '<select class="form-control form-control-sm select-picker js-lead-table-inline-select" style="min-width:120px;" data-container="body" data-live-search="true" data-field="interest_level" data-prev-value="' . e($selectedValue) . '" data-url="' . e($url) . '" data-id="' . (int) $row->id . '">' .
+            '<select class="form-control form-control-sm select-picker js-lead-table-inline-select" id="lead-contact-interest-level-' . (int) $row->id . '" name="lead_contact_interest_level_' . (int) $row->id . '" style="min-width:120px;" data-container="body" data-live-search="true" data-field="interest_level" data-prev-value="' . e($selectedValue) . '" data-url="' . e($url) . '" data-id="' . (int) $row->id . '">' .
             $htmlOptions .
             '</select>' .
             '</div>';
@@ -425,7 +425,7 @@ class LeadContactDataTable extends BaseDataTable
         }
 
         return '<div class="lead-inline-select-wrap">' .
-            '<select class="form-control form-control-sm js-lead-table-inline-select" style="min-width:150px;" data-field="assigned_to" data-prev-value="' . e($selectedValue) . '" data-url="' . e($url) . '" data-id="' . (int) $row->id . '">' .
+            '<select class="form-control form-control-sm js-lead-table-inline-select" id="lead-contact-assigned-to-' . (int) $row->id . '" name="lead_contact_assigned_to_' . (int) $row->id . '" style="min-width:150px;" data-field="assigned_to" data-prev-value="' . e($selectedValue) . '" data-url="' . e($url) . '" data-id="' . (int) $row->id . '">' .
             $options .
             '</select>' .
             '</div>';

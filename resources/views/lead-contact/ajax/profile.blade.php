@@ -622,7 +622,7 @@
                             <p class="lead-label">@lang('modules.lead.source')</p>
                             <div class="lead-value-wrap w-100">
                                 <div class="lead-inline-select-group">
-                                    <select class="form-control select-picker js-lead-inline-field js-lead-inline-select js-inline-autosave" data-live-search="true"
+                                    <select class="form-control select-picker js-lead-inline-field js-lead-inline-select js-inline-autosave" id="lead-source-id" name="source_id" data-live-search="true"
                                         data-field="source_id" data-url="{{ $quickUpdateUrl }}" data-prev-value="{{ $leadContact->source_id ?? '' }}">
                                         <option value="">--</option>
                                         @foreach ($sources as $source)
@@ -648,7 +648,7 @@
                             <p class="lead-label">@lang('modules.lead.leadCategory')</p>
                             <div class="lead-value-wrap w-100">
                                 <div class="lead-inline-select-group">
-                                    <select class="form-control select-picker js-lead-inline-field js-lead-inline-select js-inline-autosave" data-live-search="true"
+                                    <select class="form-control select-picker js-lead-inline-field js-lead-inline-select js-inline-autosave" id="lead-category-id" name="category_id" data-live-search="true"
                                         data-field="category_id" data-url="{{ $quickUpdateUrl }}" data-prev-value="{{ $leadContact->category_id ?? '' }}">
                                         <option value="">--</option>
                                         @foreach ($categories as $category)
@@ -674,7 +674,7 @@
                             <p class="lead-label">Lead Status</p>
                             <div class="lead-value-wrap w-100">
                                 <div class="lead-inline-select-group">
-                                    <select class="form-control select-picker js-lead-inline-field js-lead-inline-select js-inline-autosave" data-live-search="true"
+                                    <select class="form-control select-picker js-lead-inline-field js-lead-inline-select js-inline-autosave" id="lead-status-id" name="status_id" data-live-search="true"
                                         data-container="body"
                                         data-field="status_id" data-url="{{ $quickUpdateUrl }}" data-prev-value="{{ $leadContact->status_id ?? '' }}">
                                         <option value="">--</option>
@@ -717,7 +717,7 @@
                             <p class="lead-label">Interest Level</p>
                             <div class="lead-value-wrap w-100">
                                 <div class="lead-inline-select-group">
-                                    <select class="form-control select-picker js-lead-inline-field js-lead-inline-select js-inline-autosave" data-live-search="true" data-container="body"
+                                    <select class="form-control select-picker js-lead-inline-field js-lead-inline-select js-inline-autosave" id="lead-interest-level" name="interest_level" data-live-search="true" data-container="body"
                                         data-field="interest_level" data-url="{{ $quickUpdateUrl }}" data-prev-value="{{ $leadContact->interest_level ?? '' }}">
                                         <option value="">--</option>
                                         <option value="low" @selected($leadContact->interest_level === 'low')
@@ -744,7 +744,7 @@
                         <div class="lead-profile-row">
                             <p class="lead-label">Deal Size</p>
                             <div class="lead-value-wrap w-100">
-                                <input type="number" min="0" step="0.01" class="form-control js-lead-inline-field js-inline-autosave" data-field="deal_size" data-url="{{ $quickUpdateUrl }}"
+                                <input type="number" min="0" step="0.01" class="form-control js-lead-inline-field js-inline-autosave" id="lead-deal-size" name="deal_size" data-field="deal_size" data-url="{{ $quickUpdateUrl }}"
                                     data-prev-value="{{ !is_null($leadContact->deal_size) ? $leadContact->deal_size : '' }}" value="{{ !is_null($leadContact->deal_size) ? $leadContact->deal_size : '' }}">
                                 <small class="text-muted d-none js-inline-save-state"></small>
                             </div>
@@ -761,7 +761,7 @@
                         <div class="lead-value-wrap w-100">
                             @if ($canInlineQuickEdit)
                                 <div class="lead-inline-select-group">
-                                    <select class="form-control select-picker js-lead-inline-field js-lead-inline-select" data-live-search="true"
+                                    <select class="form-control select-picker js-lead-inline-field js-lead-inline-select" id="lead-contact-status" name="contact_status" data-live-search="true"
                                         data-field="contact_status" data-url="{{ $quickUpdateUrl }}" data-prev-value="{{ $leadContact->contact_status ?? '' }}">
                                         <option value="">--</option>
                                         <option value="pending" @selected($leadContact->contact_status === 'pending')>Pending</option>
@@ -788,9 +788,9 @@
                         <div class="lead-value-wrap w-100">
                             @if ($canInlineQuickEdit)
                                 <div class="lead-inline-select-group">
-                                    <select class="form-control select-picker js-lead-inline-field js-lead-inline-select js-inline-autosave"
+                                    <select class="form-control select-picker js-lead-inline-field js-lead-inline-select js-inline-autosave" id="lead-products-services" name="products_services[]" multiple
                                         data-live-search="true" data-field="products_services" data-url="{{ $quickUpdateUrl }}"
-                                        data-prev-value="{{ $selectedProductServices->implode(', ') }}" multiple data-size="8"
+                                        data-prev-value="{{ $selectedProductServices->implode(', ') }}" data-size="8"
                                         title="Select products/services">
                                         @foreach (($products ?? collect()) as $productItem)
                                             <option value="{{ $productItem->name }}" @selected($selectedProductServices->contains($productItem->name))>
@@ -819,7 +819,7 @@
                         <div class="lead-profile-row">
                             <p class="lead-label">@lang('app.name')</p>
                             <div class="lead-value-wrap w-100">
-                                <input type="text" class="form-control js-lead-inline-field" data-field="client_name" data-url="{{ $quickUpdateUrl }}"
+                                <input type="text" class="form-control js-lead-inline-field" id="lead-client-name" name="client_name" data-field="client_name" data-url="{{ $quickUpdateUrl }}"
                                     data-prev-value="{{ $leadContact->client_name ?? '' }}" value="{{ $leadContact->client_name ?? '' }}">
                                 <small class="text-muted d-none js-inline-save-state"></small>
                             </div>
@@ -832,7 +832,7 @@
                         <div class="lead-profile-row">
                             <p class="lead-label">@lang('app.email')</p>
                             <div class="lead-value-wrap w-100">
-                                <input type="email" class="form-control js-lead-inline-field" data-field="client_email" data-url="{{ $quickUpdateUrl }}"
+                                <input type="email" class="form-control js-lead-inline-field" id="lead-client-email" name="client_email" data-field="client_email" data-url="{{ $quickUpdateUrl }}"
                                     data-prev-value="{{ $leadContact->client_email ?? '' }}" value="{{ $leadContact->client_email ?? '' }}">
                                 <small class="text-muted d-none js-inline-save-state"></small>
                             </div>
@@ -845,7 +845,7 @@
                         <div class="lead-profile-row">
                             <p class="lead-label">@lang('modules.lead.companyName')</p>
                             <div class="lead-value-wrap w-100">
-                                <input type="text" class="form-control js-lead-inline-field" data-field="company_name" data-url="{{ $quickUpdateUrl }}"
+                                <input type="text" class="form-control js-lead-inline-field" id="lead-company-name" name="company_name" data-field="company_name" data-url="{{ $quickUpdateUrl }}"
                                     data-prev-value="{{ $leadContact->company_name ?? '' }}" value="{{ $leadContact->company_name ?? '' }}">
                                 <small class="text-muted d-none js-inline-save-state"></small>
                             </div>
@@ -858,7 +858,7 @@
                         <div class="lead-profile-row">
                             <p class="lead-label">@lang('modules.lead.website')</p>
                             <div class="lead-value-wrap w-100">
-                                <input type="text" class="form-control js-lead-inline-field" data-field="website" data-url="{{ $quickUpdateUrl }}"
+                                <input type="text" class="form-control js-lead-inline-field" id="lead-website" name="website" data-field="website" data-url="{{ $quickUpdateUrl }}"
                                     data-prev-value="{{ $leadContact->website ?? '' }}" value="{{ $leadContact->website ?? '' }}">
                                 <small class="text-muted d-none js-inline-save-state"></small>
                             </div>
@@ -882,7 +882,7 @@
                                             @endforeach
                                         </select>
                                     </div>
-                                    <input type="text" class="form-control js-lead-inline-field" data-field="mobile" data-url="{{ $quickUpdateUrl }}"
+                                    <input type="text" class="form-control js-lead-inline-field" id="lead-mobile" name="mobile" data-field="mobile" data-url="{{ $quickUpdateUrl }}"
                                         maxlength="12" inputmode="numeric" autocomplete="off" data-prev-value="{{ $profileMobileLocal }}" value="{{ $profileMobileLocal }}">
                                 </div>
                                 <small class="text-muted d-none js-inline-save-state"></small>
@@ -896,7 +896,7 @@
                         <div class="lead-profile-row">
                             <p class="lead-label">@lang('modules.client.officePhoneNumber')</p>
                             <div class="lead-value-wrap w-100">
-                                <input type="text" class="form-control js-lead-inline-field" data-field="office" data-url="{{ $quickUpdateUrl }}"
+                                <input type="text" class="form-control js-lead-inline-field" id="lead-office" name="office" data-field="office" data-url="{{ $quickUpdateUrl }}"
                                     data-prev-value="{{ $leadContact->office ?? '' }}" value="{{ $leadContact->office ?? '' }}">
                                 <small class="text-muted d-none js-inline-save-state"></small>
                             </div>
@@ -910,7 +910,7 @@
                             <p class="lead-label">@lang('app.country')</p>
                             <div class="lead-value-wrap w-100">
                                 <div class="lead-inline-select-group">
-                                    <select class="form-control select-picker js-lead-inline-field js-lead-inline-select" data-live-search="true"
+                                    <select class="form-control select-picker js-lead-inline-field js-lead-inline-select" id="lead-country" name="country" data-live-search="true"
                                         data-field="country" data-url="{{ $quickUpdateUrl }}" data-prev-value="{{ $leadContact->country ?? '' }}">
                                         <option value="">--</option>
                                         @foreach ($countries as $countryItem)
@@ -933,7 +933,7 @@
                         <div class="lead-profile-row">
                             <p class="lead-label">@lang('modules.lead.address')</p>
                             <div class="lead-value-wrap w-100">
-                                <textarea class="form-control js-lead-inline-field" rows="3" data-field="address" data-url="{{ $quickUpdateUrl }}" data-prev-value="{{ $leadContact->address ?? '' }}">{{ $leadContact->address ?? '' }}</textarea>
+                                <textarea class="form-control js-lead-inline-field" id="lead-address" name="address" rows="3" data-field="address" data-url="{{ $quickUpdateUrl }}" data-prev-value="{{ $leadContact->address ?? '' }}">{{ $leadContact->address ?? '' }}</textarea>
                                 <small class="text-muted d-none js-inline-save-state"></small>
                             </div>
                         </div>
@@ -948,7 +948,7 @@
                                 @if ($canInlineQuickEdit && $canManageLeadAssignment && !empty($employees))
                                     <div class="lead-inline-select-group">
                                         <select class="form-control select-picker js-lead-inline-field js-lead-inline-select js-inline-autosave"
-                                            data-live-search="true" data-container="body" data-size="8"
+                                            id="lead-added-by" name="added_by" data-live-search="true" data-container="body" data-size="8"
                                             data-field="added_by" data-url="{{ $quickUpdateUrl }}" data-prev-value="{{ $leadContact->added_by ?? '' }}">
                                             <option value="">--</option>
                                             @foreach ($employees as $item)
@@ -971,7 +971,7 @@
                                 @if ($canInlineQuickEdit && $canManageLeadAssignment && !empty($employees))
                                     <div class="lead-inline-select-group">
                                         <select class="form-control select-picker js-lead-inline-field js-lead-inline-select js-inline-autosave"
-                                            data-live-search="true" data-container="body" data-size="8"
+                                            id="lead-assigned-to" name="assigned_to" data-live-search="true" data-container="body" data-size="8"
                                             data-field="assigned_to" data-url="{{ $quickUpdateUrl }}" data-prev-value="{{ $leadContact->assigned_to ?? '' }}">
                                             <option value="">--</option>
                                             @foreach ($employees as $item)

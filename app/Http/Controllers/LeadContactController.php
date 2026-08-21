@@ -14,6 +14,7 @@ use App\Http\Requests\Lead\StoreRequest;
 use App\Http\Requests\Lead\UpdateRequest;
 use App\Imports\LeadImport;
 use App\Jobs\ImportLeadJob;
+use App\Jobs\SyncLeadChatHistoryJob;
 use App\Models\ClientNote;
 use App\Models\ClientCategory;
 use App\Models\LeadCategory;
@@ -76,7 +77,18 @@ class LeadContactController extends AccountBaseController
 
     public function show($id)
     {
-        $this->leadContact = Lead::with(['leadSource', 'leadStatus', 'category', 'addedBy', 'assignedTo', 'followUps', 'latestFollowUp'])->findOrFail($id)->withCustomFields();
+        $tab = request('tab');
+        $isProfileTab = blank($tab) || $tab === 'profile';
+
+        $leadRelations = $isProfileTab
+            ? ['leadSource', 'leadStatus', 'category', 'addedBy', 'assignedTo', 'followUps', 'latestFollowUp']
+            : ['addedBy'];
+
+        $this->leadContact = Lead::with($leadRelations)->findOrFail($id);
+
+        if ($isProfileTab) {
+            $this->leadContact->withCustomFields();
+        }
 
         $this->viewPermission = user()->permission('view_lead');
 
@@ -84,36 +96,13 @@ class LeadContactController extends AccountBaseController
 
         $this->pageTitle = $this->leadContact->client_name; // removed salutation
 
-        $this->categories = LeadCategory::query()->select('id', 'category_name')->orderBy('category_name')->get();
-        $this->sources = LeadSource::query()->select('id', 'type')->orderBy('type')->get();
-        $this->statuses = LeadStatus::query()->select('id', 'type', 'label_color', 'priority', 'default')->orderBy('priority')->get();
-        $this->products = Product::query()->select('id', 'name')->orderBy('name')->get();
-        $this->countries = countries();
-        $this->canManageLeadAssignment = $this->canManageLeadAssignment();
-        if ($this->canManageLeadAssignment) {
-            $this->employees = User::allEmployees(null, true, null, company()->id);
-        }
-        $this->editPermission = user()->permission('edit_lead');
-        $this->canInlineEdit = (
-            $this->editPermission == 'all'
-            || ($this->editPermission == 'added' && $this->leadContact->added_by == user()->id)
-            || ($this->editPermission == 'owned' && $this->leadContact->assigned_to == user()->id)
-            || ($this->editPermission == 'both' && ($this->leadContact->added_by == user()->id || $this->leadContact->assigned_to == user()->id))
-            || user()->id == $this->leadContact->added_by
-            || user()->id == $this->leadContact->assigned_to
-        );
-
-        $this->leadFormFields = LeadCustomForm::with('customField')->where('status', 'active')->where('custom_fields_id', '!=', 'null')->get();
-
         $this->leadId = $id;
 
-        if ($this->leadContact->getCustomFieldGroupsWithFields()) {
-            $this->fields = $this->leadContact->getCustomFieldGroupsWithFields()->fields;
+        if ($isProfileTab) {
+            $this->loadLeadProfileData();
         }
 
         $this->deleteLeadPermission = user()->permission('delete_lead');
-
-        $tab = request('tab');
 
         switch ($tab) {
         case 'follow-up':
@@ -137,6 +126,38 @@ class LeadContactController extends AccountBaseController
 
     }
 
+    private function loadLeadProfileData(): void
+    {
+        $this->categories = LeadCategory::query()->select('id', 'category_name')->orderBy('category_name')->get();
+        $this->sources = LeadSource::query()->select('id', 'type')->orderBy('type')->get();
+        $this->statuses = LeadStatus::query()->select('id', 'type', 'label_color', 'priority', 'default')->orderBy('priority')->get();
+        $this->products = Product::query()->select('id', 'name')->orderBy('name')->get();
+        $this->countries = countries();
+        $this->canManageLeadAssignment = $this->canManageLeadAssignment();
+
+        if ($this->canManageLeadAssignment) {
+            $this->employees = User::allEmployees(null, true, null, company()->id);
+        }
+
+        $this->editPermission = user()->permission('edit_lead');
+        $this->canInlineEdit = (
+            $this->editPermission == 'all'
+            || ($this->editPermission == 'added' && $this->leadContact->added_by == user()->id)
+            || ($this->editPermission == 'owned' && $this->leadContact->assigned_to == user()->id)
+            || ($this->editPermission == 'both' && ($this->leadContact->added_by == user()->id || $this->leadContact->assigned_to == user()->id))
+            || user()->id == $this->leadContact->added_by
+            || user()->id == $this->leadContact->assigned_to
+        );
+
+        $this->leadFormFields = LeadCustomForm::with('customField')->where('status', 'active')->where('custom_fields_id', '!=', 'null')->get();
+
+        $customFieldGroups = $this->leadContact->getCustomFieldGroupsWithFields();
+
+        if ($customFieldGroups) {
+            $this->fields = $customFieldGroups->fields;
+        }
+    }
+
     public function chat()
     {
         $contactNumber = $this->leadContact->mobile ?: ($this->leadContact->cell ?: $this->leadContact->office);
@@ -147,7 +168,6 @@ class LeadContactController extends AccountBaseController
         $this->chatWhatsAppUrl = $sanitizedPhone ? 'https://wa.me/' . $sanitizedPhone : null;
         $gatewayService = app(WhatsAppGatewayService::class);
         $this->chatGatewayConfigured = $gatewayService->isConfigured();
-        $this->syncLeadChatHistory($this->leadContact, $gatewayService);
         $this->chatMessages = LeadWhatsAppMessage::query()
             ->where('lead_id', $this->leadContact->id)
             ->orderByDesc('message_at')
@@ -162,6 +182,10 @@ class LeadContactController extends AccountBaseController
         $this->activeTab = 'chat';
         $this->view = 'lead-contact.ajax.chat';
 
+        if ($this->chatGatewayConfigured && $sanitizedPhone !== '') {
+            SyncLeadChatHistoryJob::dispatch($this->leadContact->id)->afterResponse();
+        }
+
         if (request()->ajax()) {
             return $this->returnAjax($this->view);
         }
@@ -173,8 +197,6 @@ class LeadContactController extends AccountBaseController
     {
         $leadContact = Lead::findOrFail($id);
         abort_403(!$this->canAccessLead($leadContact));
-
-        $this->syncLeadChatHistory($leadContact, app(WhatsAppGatewayService::class));
 
         $messages = LeadWhatsAppMessage::query()
             ->where('lead_id', $leadContact->id)
@@ -316,7 +338,7 @@ class LeadContactController extends AccountBaseController
         ]);
     }
 
-    private function syncLeadChatHistory(Lead $leadContact, WhatsAppGatewayService $gatewayService): void
+    public function syncLeadChatHistory(Lead $leadContact, WhatsAppGatewayService $gatewayService): void
     {
         $contactNumber = $leadContact->mobile ?: ($leadContact->cell ?: $leadContact->office);
         $phone = preg_replace('/\D+/', '', (string) $contactNumber);
@@ -591,7 +613,7 @@ class LeadContactController extends AccountBaseController
             ->map(fn ($id) => (int) $id)
             ->all();
 
-        $legacyFollowUps = LeadFollowUp::with('addedBy')
+        $legacyFollowUps = LeadFollowUp::with('addedBy', 'lead')
             ->where('lead_id', $this->leadContact->id)
             ->when(!empty($existingFollowUpIds), function ($query) use ($existingFollowUpIds) {
                 $query->whereNotIn('id', $existingFollowUpIds);
@@ -605,6 +627,7 @@ class LeadContactController extends AccountBaseController
             $nextDateText = $followUp->next_follow_up_date
                 ? ' | Next: ' . $followUp->next_follow_up_date->timezone(company()->timezone)->format(company()->date_format . ' ' . company()->time_format)
                 : '';
+            $canEditFollowUp = $this->canEditFollowUpRecord($followUp);
 
             $historyItems->push([
                 'event_type' => 'followup_legacy',
@@ -616,8 +639,8 @@ class LeadContactController extends AccountBaseController
                 'followup_id' => $followUp->id,
                 'followup_status' => $followUp->status ?: 'pending',
                 'followup_edit_url' => route('lead-contact.follow_up_edit', $followUp->id),
-                'can_update_followup_status' => $this->canEditFollowUpRecord($followUp),
-                'can_edit_followup' => $this->canEditFollowUpRecord($followUp),
+                'can_update_followup_status' => $canEditFollowUp,
+                'can_edit_followup' => $canEditFollowUp,
             ]);
         }
 

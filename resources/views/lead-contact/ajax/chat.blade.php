@@ -94,6 +94,7 @@
 <script>
     (function() {
         const $thread = $('#lead-chat-thread');
+        const CHAT_REFRESH_INTERVAL_MS = 10000;
         let lastMessageSignature = null;
         let refreshInProgress = false;
 
@@ -102,6 +103,25 @@
             if (!value) return '--';
             const date = new Date(value);
             return Number.isNaN(date.getTime()) ? '--' : date.toLocaleString();
+        };
+
+        const stopPolling = function() {
+            if (window.leadChatRefreshTimer) {
+                window.clearInterval(window.leadChatRefreshTimer);
+                window.leadChatRefreshTimer = null;
+            }
+        };
+
+        const startPolling = function() {
+            if (!$thread.length || document.hidden) {
+                stopPolling();
+                return;
+            }
+
+            stopPolling();
+            window.leadChatRefreshTimer = window.setInterval(function() {
+                refreshMessages(false);
+            }, CHAT_REFRESH_INTERVAL_MS);
         };
 
         const renderMessages = function(messages, forceScroll) {
@@ -131,7 +151,7 @@
 
         const refreshMessages = function(forceScroll) {
             if (!$thread.length || !document.documentElement.contains($thread[0])) {
-                window.clearInterval(window.leadChatRefreshTimer);
+                stopPolling();
                 return;
             }
             if (refreshInProgress || document.hidden) return;
@@ -159,16 +179,27 @@
         if ($thread.length) {
             $thread.scrollTop($thread[0].scrollHeight);
             refreshMessages(true);
-            window.clearInterval(window.leadChatRefreshTimer);
-            window.leadChatRefreshTimer = window.setInterval(function() {
-                refreshMessages(false);
-            }, 2000);
+            startPolling();
 
             $(document).off('visibilitychange.leadChat').on('visibilitychange.leadChat', function() {
-                if (!document.hidden) refreshMessages(true);
+                if (document.hidden) {
+                    stopPolling();
+                    return;
+                }
+
+                refreshMessages(true);
+                startPolling();
             });
             $(window).off('focus.leadChat').on('focus.leadChat', function() {
+                if (document.hidden || !$thread.length) {
+                    return;
+                }
+
                 refreshMessages(false);
+                startPolling();
+            });
+            $(window).off('blur.leadChat').on('blur.leadChat', function() {
+                stopPolling();
             });
         }
 

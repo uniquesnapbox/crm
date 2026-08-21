@@ -62,126 +62,241 @@ class LeadFollowUpWhatsAppReminderService
             ->get();
 
         foreach ($followUps as $followUp) {
-            $followUpDueAt = Carbon::parse((string) $followUp->next_follow_up_date, 'UTC')
-                ->timezone($timezone)
-                ->subMinutes(10);
-            $isCatchUp = $now->greaterThan($followUpDueAt);
-            $followUpLockKey = sprintf(
-                'lead_followup_whatsapp_reminder:%d:%s',
-                $followUp->id,
-                Carbon::parse((string) $followUp->next_follow_up_date, 'UTC')->timestamp
-            );
-
-            if (!Cache::add($followUpLockKey, now()->timestamp, $lockTtl)) {
-                Log::debug('Lead follow-up WhatsApp reminder skipped because another worker is processing it.', [
-                    'company_id' => $companyId,
-                    'follow_up_id' => $followUp->id,
-                    'next_follow_up_date' => optional($followUp->next_follow_up_date)->timezone($timezone)?->toDateTimeString(),
-                ]);
-                continue;
-            }
-
-            $recipient = $this->resolveFollowUpRecipient($followUp, $activeEmployees);
-
-            if (!$recipient) {
-                Cache::forget($followUpLockKey);
-                Log::info('Lead follow-up WhatsApp reminder skipped because no active recipient was found.', [
-                    'company_id' => $companyId,
-                    'follow_up_id' => $followUp->id,
-                    'lead_id' => $followUp->lead_id,
-                    'next_follow_up_date' => optional($followUp->next_follow_up_date)->timezone($timezone)?->toDateTimeString(),
-                ]);
-                continue;
-            }
-
-            $mobile = $this->normalizeUserMobile($recipient);
-
-            if ($mobile === '') {
-                Cache::forget($followUpLockKey);
-                Log::info('Lead follow-up WhatsApp reminder skipped because recipient mobile was missing.', [
-                    'company_id' => $companyId,
-                    'follow_up_id' => $followUp->id,
-                    'user_id' => $recipient->id,
-                    'lead_id' => $followUp->lead_id,
-                ]);
-                continue;
-            }
-
-            $message = $this->buildReminderMessage(
+            $this->sendReminderForLoadedFollowUp(
                 $company,
+                $setting,
                 $followUp,
-                $recipient,
-                $setting->lead_followup_template ?: WhatsappNotificationSetting::DEFAULT_LEAD_FOLLOWUP_TEMPLATE
+                $activeEmployees,
+                $timezone,
+                $lockTtl,
+                null
             );
+        }
+    }
 
-            if ($message === '') {
-                Cache::forget($followUpLockKey);
-                Log::info('Lead follow-up WhatsApp reminder skipped because message body resolved empty.', [
+    public function sendReminderForFollowUp(int $companyId, int $followUpId, ?string $scheduledAtUtc = null): bool
+    {
+        $company = Company::query()
+            ->select('id', 'company_name', 'timezone', 'date_format', 'time_format')
+            ->find($companyId);
+
+        if (!$company) {
+            return false;
+        }
+
+        $setting = WhatsappNotificationSetting::where('company_id', $companyId)->first();
+
+        if (!$setting || $setting->status !== 'active' || !$setting->isLeadFollowUpMessageEnabled()) {
+            return false;
+        }
+
+        $relations = [
+            'lead:id,client_name,mobile,cell,office,assigned_to,added_by,company_id',
+        ];
+
+        if (Schema::hasTable('lead_follow_up_attachments')) {
+            $relations[] = 'attachments:id,lead_follow_up_id,filename,hashname,mime_type,size';
+        }
+
+        $followUp = LeadFollowUp::with($relations)->find($followUpId);
+
+        if (!$followUp || !$followUp->lead || (int) $followUp->lead->company_id !== (int) $companyId) {
+            Log::info('Lead follow-up reminder job skipped because the record was not found for the company.', [
+                'company_id' => $companyId,
+                'follow_up_id' => $followUpId,
+            ]);
+
+            return false;
+        }
+
+        if (!$followUp->next_follow_up_date || $followUp->status !== 'pending' || !is_null($followUp->whatsapp_reminder_sent_at)) {
+            Log::info('Lead follow-up reminder job skipped because it is no longer pending.', [
+                'company_id' => $companyId,
+                'follow_up_id' => $followUpId,
+                'status' => $followUp->status,
+                'sent_at' => $followUp->whatsapp_reminder_sent_at,
+            ]);
+
+            return false;
+        }
+
+        if ($scheduledAtUtc !== null) {
+            $scheduledAtTimestamp = Carbon::parse($scheduledAtUtc, 'UTC')->timestamp;
+            $currentTimestamp = Carbon::parse((string) $followUp->next_follow_up_date, 'UTC')->timestamp;
+
+            if ($scheduledAtTimestamp !== $currentTimestamp) {
+                Log::info('Lead follow-up reminder job skipped because the scheduled time changed.', [
                     'company_id' => $companyId,
-                    'follow_up_id' => $followUp->id,
-                    'user_id' => $recipient->id,
-                    'lead_id' => $followUp->lead_id,
+                    'follow_up_id' => $followUpId,
+                    'scheduled_at_utc' => $scheduledAtUtc,
+                    'current_follow_up_date_utc' => Carbon::parse((string) $followUp->next_follow_up_date, 'UTC')->toIso8601String(),
                 ]);
-                continue;
+
+                return false;
             }
+        }
 
-            $attachments = $this->buildReminderAttachments($followUp);
-            $sent = false;
-            $sessionCandidates = $this->resolveSessionCandidates($setting);
-            $lastSession = null;
+        $timezone = $this->companyTimezone($company);
+        $activeEmployees = User::allEmployees(null, true, null, $companyId)->keyBy('id');
+        $lockTtl = now($timezone)->addMinutes(15);
 
-            foreach ($sessionCandidates as $sessionKey) {
-                $lastSession = $sessionKey;
-                $sent = $this->sendReminderMessages($mobile, $message, $sessionKey, $attachments);
+        return $this->sendReminderForLoadedFollowUp(
+            $company,
+            $setting,
+            $followUp,
+            $activeEmployees,
+            $timezone,
+            $lockTtl,
+            $scheduledAtUtc
+        );
+    }
 
-                if ($sent) {
-                    break;
-                }
+    /**
+     * @param \Illuminate\Support\Collection<int, User> $activeEmployees
+     */
+    private function sendReminderForLoadedFollowUp(
+        Company $company,
+        WhatsappNotificationSetting $setting,
+        LeadFollowUp $followUp,
+        $activeEmployees,
+        string $timezone,
+        Carbon $lockTtl,
+        ?string $scheduledAtUtc
+    ): bool {
+        if (!$followUp->next_follow_up_date) {
+            return false;
+        }
 
-                $error = strtolower((string) $this->gatewayService->getLastError());
-                if (!str_contains($error, 'session not ready')
-                    && !str_contains($error, 'not ready')
-                    && !str_contains($error, 'disconnected')
-                    && !str_contains($error, 'unknown')) {
-                    break;
-                }
-            }
+        $scheduledFor = Carbon::parse((string) $followUp->next_follow_up_date, 'UTC')
+            ->timezone($timezone)
+            ->toDateTimeString();
+        $followUpDueAt = Carbon::parse((string) $followUp->next_follow_up_date, 'UTC')
+            ->timezone($timezone)
+            ->subMinutes(10);
+        $isCatchUp = now($timezone)->greaterThan($followUpDueAt);
+        $followUpLockKey = sprintf(
+            'lead_followup_whatsapp_reminder:%d:%s',
+            $followUp->id,
+            Carbon::parse((string) $followUp->next_follow_up_date, 'UTC')->timestamp
+        );
+
+        if (!Cache::add($followUpLockKey, now()->timestamp, $lockTtl)) {
+            Log::debug('Lead follow-up WhatsApp reminder skipped because another worker is processing it.', [
+                'company_id' => $company->id,
+                'follow_up_id' => $followUp->id,
+                'next_follow_up_date' => $scheduledFor,
+            ]);
+
+            return false;
+        }
+
+        $recipient = $this->resolveFollowUpRecipient($followUp, $activeEmployees);
+
+        if (!$recipient) {
+            Cache::forget($followUpLockKey);
+            Log::info('Lead follow-up WhatsApp reminder skipped because no active recipient was found.', [
+                'company_id' => $company->id,
+                'follow_up_id' => $followUp->id,
+                'lead_id' => $followUp->lead_id,
+                'next_follow_up_date' => $scheduledFor,
+            ]);
+
+            return false;
+        }
+
+        $mobile = $this->normalizeUserMobile($recipient);
+
+        if ($mobile === '') {
+            Cache::forget($followUpLockKey);
+            Log::info('Lead follow-up WhatsApp reminder skipped because recipient mobile was missing.', [
+                'company_id' => $company->id,
+                'follow_up_id' => $followUp->id,
+                'user_id' => $recipient->id,
+                'lead_id' => $followUp->lead_id,
+            ]);
+
+            return false;
+        }
+
+        $message = $this->buildReminderMessage(
+            $company,
+            $followUp,
+            $recipient,
+            $setting->lead_followup_template ?: WhatsappNotificationSetting::DEFAULT_LEAD_FOLLOWUP_TEMPLATE
+        );
+
+        if ($message === '') {
+            Cache::forget($followUpLockKey);
+            Log::info('Lead follow-up WhatsApp reminder skipped because message body resolved empty.', [
+                'company_id' => $company->id,
+                'follow_up_id' => $followUp->id,
+                'user_id' => $recipient->id,
+                'lead_id' => $followUp->lead_id,
+            ]);
+
+            return false;
+        }
+
+        $attachments = $this->buildReminderAttachments($followUp);
+        $sent = false;
+        $sessionCandidates = $this->resolveSessionCandidates($setting);
+        $lastSession = null;
+
+        foreach ($sessionCandidates as $sessionKey) {
+            $lastSession = $sessionKey;
+            $sent = $this->sendReminderMessages($mobile, $message, $sessionKey, $attachments);
 
             if ($sent) {
-                $followUp->forceFill([
-                    'whatsapp_reminder_sent_at' => now(),
-                ])->save();
-
-                Log::info('Lead follow-up WhatsApp reminder sent.', [
-                    'company_id' => $companyId,
-                    'follow_up_id' => $followUp->id,
-                    'lead_id' => $followUp->lead_id,
-                    'user_id' => $recipient->id,
-                    'mobile' => $mobile,
-                    'session' => $lastSession,
-                    'scheduled_for' => optional($followUp->next_follow_up_date)->timezone($timezone)?->toDateTimeString(),
-                    'due_at' => $followUpDueAt->toDateTimeString(),
-                    'sent_at' => now($timezone)->toDateTimeString(),
-                    'catch_up' => $isCatchUp,
-                ]);
-
-                continue;
+                break;
             }
 
-            Cache::forget($followUpLockKey);
+            $error = strtolower((string) $this->gatewayService->getLastError());
+            if (!str_contains($error, 'session not ready')
+                && !str_contains($error, 'not ready')
+                && !str_contains($error, 'disconnected')
+                && !str_contains($error, 'unknown')) {
+                break;
+            }
+        }
 
-            Log::warning('Lead follow-up WhatsApp reminder failed.', [
-                'company_id' => $companyId,
+        if ($sent) {
+            $followUp->forceFill([
+                'whatsapp_reminder_sent_at' => now(),
+            ])->save();
+
+            Log::info('Lead follow-up WhatsApp reminder sent.', [
+                'company_id' => $company->id,
                 'follow_up_id' => $followUp->id,
+                'lead_id' => $followUp->lead_id,
                 'user_id' => $recipient->id,
                 'mobile' => $mobile,
                 'session' => $lastSession,
-                'scheduled_for' => optional($followUp->next_follow_up_date)->timezone($timezone)?->toDateTimeString(),
+                'scheduled_for' => $scheduledFor,
                 'due_at' => $followUpDueAt->toDateTimeString(),
+                'sent_at' => now($timezone)->toDateTimeString(),
                 'catch_up' => $isCatchUp,
-                'error' => $this->gatewayService->getLastError(),
+                'scheduled_at_utc' => $scheduledAtUtc,
             ]);
+
+            return true;
         }
+
+        Cache::forget($followUpLockKey);
+
+        Log::warning('Lead follow-up WhatsApp reminder failed.', [
+            'company_id' => $company->id,
+            'follow_up_id' => $followUp->id,
+            'user_id' => $recipient->id,
+            'mobile' => $mobile,
+            'session' => $lastSession,
+            'scheduled_for' => $scheduledFor,
+            'due_at' => $followUpDueAt->toDateTimeString(),
+            'catch_up' => $isCatchUp,
+            'scheduled_at_utc' => $scheduledAtUtc,
+            'error' => $this->gatewayService->getLastError(),
+        ]);
+
+        return false;
     }
 
     private function buildReminderMessage(Company $company, LeadFollowUp $followUp, User $recipient, string $template): string

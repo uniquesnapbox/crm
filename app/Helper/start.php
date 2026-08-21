@@ -39,19 +39,26 @@ if (!function_exists('user')) {
      */
     function user()
     {
-        if (session()->has('user')) {
-            return session('user');
+        static $cachedUser = null;
+        static $resolved = false;
+
+        if ($resolved) {
+            return $cachedUser;
         }
 
-        $user = auth()->user();
+        $resolved = true;
 
-        if ($user) {
-            session(['user' => $user->load(['session'])]);
+        $userId = auth()->id();
 
-            return session('user');
+        if (!$userId) {
+            return null;
         }
 
-        return null;
+        $cachedUser = \App\Models\User::query()
+            ->without(['clientDetails', 'leaves'])
+            ->find($userId);
+
+        return $cachedUser;
     }
 
 }
@@ -64,19 +71,28 @@ if (!function_exists('user_roles')) {
     // @codingStandardsIgnoreLine
     function user_roles()
     {
-        if (session()->has('user_roles')) {
-            return session('user_roles');
+        static $cachedRoles = null;
+        static $cachedRoleIds = null;
+        static $resolved = false;
+
+        if ($resolved) {
+            return $cachedRoles;
         }
 
         $user = user();
 
         if ($user) {
-            $roles = user()->roles;
-            session(['user_roles' => $roles->pluck('name')->toArray()]);
-            session(['user_role_ids' => $roles->pluck('id')->toArray()]);
+            $roles = $user->roles;
+            $cachedRoles = $roles->pluck('name')->toArray();
+            $cachedRoleIds = $roles->pluck('id')->toArray();
+            session(['user_roles' => $cachedRoles]);
+            session(['user_role_ids' => $cachedRoleIds]);
+            $resolved = true;
 
-            return session('user_roles');
+            return $cachedRoles;
         }
+
+        $resolved = true;
 
         return null;
     }
@@ -1113,25 +1129,24 @@ if (!function_exists('company')) {
 
     function company()
     {
+        static $cachedCompany = null;
+        static $resolved = false;
 
-        if (session()->has('company')) {
-            return session('company');
+        if ($resolved) {
+            return $cachedCompany;
         }
 
+        $resolved = true;
 
-        if (user()) {
+        $user = user();
 
-            if (user()->company) {
-                $company = user()->company;
-                session(['company' => $company]);
-
-                return $company;
-            }
-
-            return session('company');
+        if (!$user || !$user->company_id) {
+            return false;
         }
 
-        return false;
+        $cachedCompany = Company::find($user->company_id);
+
+        return $cachedCompany;
     }
 
 }

@@ -28,17 +28,33 @@
                 margin-bottom: 1.25rem;
             }
 
-            .auth-login-page .primary-badge {
-                display: inline-flex;
+            .auth-login-page .login-card-brand {
+                display: flex;
                 align-items: center;
                 justify-content: center;
-                font-size: 0.73rem;
-                color: #1d4ed8;
-                background: #dbeafe;
-                border: 1px solid #bfdbfe;
-                border-radius: 999px;
-                padding: 4px 10px;
-                margin-bottom: 12px;
+                gap: 10px;
+                margin: 0 auto 14px;
+            }
+
+            .auth-login-page .login-card-logo {
+                width: auto;
+                height: 46px;
+                max-width: 120px;
+                object-fit: contain;
+            }
+
+            .auth-login-page .login_header h3 {
+                display: none;
+            }
+
+            .auth-login-page .login_header {
+                display: none !important;
+            }
+
+            .auth-login-page .login-card-brand-name {
+                margin: 0;
+                color: #1f2937;
+                font-size: 1.05rem;
                 font-weight: 600;
                 letter-spacing: 0.02em;
             }
@@ -69,47 +85,6 @@
                 filter: brightness(1.02);
             }
 
-            .auth-login-page .wa-login-panel {
-                margin-top: 1.25rem;
-                padding: 16px;
-                border: 1px solid #e5e7eb;
-                border-radius: 16px;
-                background: #f9fafb;
-                text-align: left;
-            }
-
-            .auth-login-page .wa-panel-title {
-                font-size: 0.85rem;
-                font-weight: 600;
-                color: #047857;
-                margin-bottom: 0.75rem;
-                display: inline-flex;
-                align-items: center;
-                gap: 6px;
-            }
-
-            .auth-login-page .wa-secondary-btn {
-                border-radius: 12px;
-                background: #16a34a;
-                border: 0;
-                box-shadow: 0 8px 18px rgba(22, 163, 74, 0.26);
-                transition: transform 0.2s ease, box-shadow 0.2s ease;
-            }
-
-            .auth-login-page .wa-secondary-btn:hover,
-            .auth-login-page .wa-secondary-btn:focus {
-                transform: translateY(-1px);
-                box-shadow: 0 12px 22px rgba(22, 163, 74, 0.32);
-            }
-
-            .auth-login-page .wa-verify-btn {
-                border-radius: 12px;
-            }
-
-            .auth-login-page .login_or_separator {
-                margin: 1.2rem 0 0.95rem;
-            }
-
             @media (max-width: 767.98px) {
                 .auth-login-page .login_section {
                     padding-top: 1.5rem;
@@ -131,7 +106,15 @@
 
     <form id="login-form" action="{{ route('login') }}" class="ajax-form" method="POST">
         {{ csrf_field() }}
-        <span class="primary-badge">Primary Login</span>
+        @php
+            $loginBrand = $company ?: $globalSetting;
+            $loginBrandLogo = $loginBrand->logo_url ?: $globalSetting->logo_url;
+            $loginBrandName = $loginBrand->app_name ?? $globalSetting->global_app_name;
+        @endphp
+        <div class="login-card-brand">
+            <img class="login-card-logo" src="{{ $loginBrandLogo }}" alt="{{ $loginBrandName }} logo">
+            <div class="login-card-brand-name">{{ $loginBrandName }}</div>
+        </div>
         <h3 class="text-capitalize mb-4 f-w-500">@lang('app.login')</h3>
         <p class="login-subtitle">Use email and password for fastest access</p>
 
@@ -248,68 +231,6 @@
 
 
 
-    {{-- ============ WhatsApp OTP Login Section ============ --}}
-<div class="position-relative my-4 login_or_separator">
-    <hr/>
-    <span class="position-absolute bg-white px-3 text-muted"
-          style="top:-12px; left:50%; transform:translateX(-50%); font-size:13px;">
-        OR
-    </span>
-</div>
-
-<div class="wa-login-panel">
-    <div class="wa-panel-title"><i class="fab fa-whatsapp"></i> Secondary Option: WhatsApp Login</div>
-{{-- Step 1: Enter WhatsApp Number --}}
-<div id="wa-number-step">
-    <div class="form-group text-left">
-        <label class="f-15 mb-2">Login with WhatsApp Number</label>
-        <input type="tel"
-               id="wa_mobile"
-               class="form-control height-50 f-15 light_text"
-               placeholder="e.g. 923001234567 (with country code)"/>
-        <small class="text-muted">Enter number with country code, no + or spaces</small>
-    </div>
-    <div id="wa-send-error" class="text-danger f-13 mb-2 d-none"></div>
-    <button type="button"
-            id="wa-send-btn"
-            onclick="waSendOtp()"
-            class="btn wa-secondary-btn text-white f-w-500 rounded w-100 height-50 f-15">
-        <i class="fab fa-whatsapp mr-2"></i> Send OTP via WhatsApp
-    </button>
-</div>
-
-{{-- Step 2: Enter OTP --}}
-<div id="wa-otp-step" class="d-none">
-    <div class="form-group text-left">
-        <label class="f-15">
-            <i class="fab fa-whatsapp text-success"></i>
-            Enter OTP sent to your WhatsApp
-        </label>
-        <input type="text"
-               id="wa_otp"
-               class="form-control height-50 f-15 light_text text-center f-20 letter-spacing-5"
-               placeholder="_ _ _ _ _ _"
-               maxlength="6"
-               style="letter-spacing: 8px; font-size: 22px;"/>
-        <small class="text-muted">OTP expires in 5 minutes</small>
-    </div>
-    <div id="wa-otp-error" class="text-danger f-13 mb-2 d-none"></div>
-    <button type="button"
-            id="wa-verify-btn"
-            onclick="waVerifyOtp()"
-            class="btn btn-primary wa-verify-btn f-w-500 rounded w-100 height-50 f-15">
-        Verify OTP &amp; Login
-    </button>
-    <button type="button"
-            onclick="waReset()"
-            class="btn btn-link w-100 mt-2 f-13 text-muted">
-        &larr; Use different number
-    </button>
-</div>
-{{-- ============ End WhatsApp Section ============ --}}
-</div>
-
-
     <x-slot name="scripts">
 
 
@@ -378,62 +299,6 @@
         </script>
 
 
-
-
-
-<script>
-function waSendOtp() {
-    const mobile = document.getElementById('wa_mobile').value.trim();
-    // const errDiv = document.getElementById('wa-number-error');
-      const errDiv = document.getElementById('wa-send-error')
-    const btn    = document.getElementById('wa-send-btn');
-    errDiv.classList.add('d-none');
-    if (!mobile) { errDiv.textContent = 'Please enter your WhatsApp number.'; errDiv.classList.remove('d-none'); return; }
-    btn.disabled = true;
-    btn.textContent = 'Sending...';
-    fetch('{{ route("whatsapp.send_otp") }}', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-        body: JSON.stringify({ mobile: mobile })
-    })
-    .then(r => r.json())
-    .then(data => {
-        btn.disabled = false; btn.textContent = 'Send OTP via WhatsApp';
-        if (data.status === 'success') {
-            document.getElementById('wa-number-step').classList.add('d-none');
-            document.getElementById('wa-otp-step').classList.remove('d-none');
-        } else { errDiv.textContent = data.message; errDiv.classList.remove('d-none'); }
-    })
-    .catch(() => { btn.disabled = false; btn.textContent = 'Send OTP via WhatsApp'; errDiv.textContent = 'Something went wrong.'; errDiv.classList.remove('d-none'); });
-}
-
-function waVerifyOtp() {
-    const mobile = document.getElementById('wa_mobile').value.trim();
-    const otp    = document.getElementById('wa_otp').value.trim();
-    const errDiv = document.getElementById('wa-otp-error');
-    const btn    = document.getElementById('wa-verify-btn');
-    errDiv.classList.add('d-none');
-    if (!otp || otp.length !== 6) { errDiv.textContent = 'Please enter the 6-digit OTP.'; errDiv.classList.remove('d-none'); return; }
-    btn.disabled = true; btn.textContent = 'Verifying...';
-    fetch('{{ route("whatsapp.verify_otp") }}', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-        body: JSON.stringify({ mobile: mobile, otp: otp })
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.status === 'success') { window.location.href = data.redirect; }
-        else { btn.disabled = false; btn.textContent = 'Verify OTP & Login'; errDiv.textContent = data.message; errDiv.classList.remove('d-none'); }
-    })
-    .catch(() => { btn.disabled = false; btn.textContent = 'Verify OTP & Login'; errDiv.textContent = 'Something went wrong.'; errDiv.classList.remove('d-none'); });
-}
-
-function waReset() {
-    document.getElementById('wa-number-step').classList.remove('d-none');
-    document.getElementById('wa-otp-step').classList.add('d-none');
-    document.getElementById('wa_otp').value = '';
-}
-</script>
     </x-slot>
 
 </x-auth>

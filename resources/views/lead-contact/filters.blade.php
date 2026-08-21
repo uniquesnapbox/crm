@@ -97,7 +97,7 @@
     <x-filters.more-filter-box>
 
         <div class="more-filter-items">
-            <label class="f-14 text-dark-grey mb-12 text-capitalize" for="usr">@lang('app.dateFilterOn')</label>
+            <label class="f-14 text-dark-grey mb-12 text-capitalize" for="date_filter_on">@lang('app.dateFilterOn')</label>
             <div class="select-filter mb-4">
                 <select class="form-control select-picker" name="date_filter_on" id="date_filter_on">
                     <option value="created_at">@lang('app.createdOn')</option>
@@ -108,7 +108,7 @@
 
         <div class="more-filter-items">
             <label class="f-14 text-dark-grey mb-12 text-capitalize"
-                for="usr">@lang('modules.lead.leadCategory')</label>
+                for="filter_category_id">@lang('modules.lead.leadCategory')</label>
             <div class="select-filter mb-4">
                 <div class="select-others">
                     <select class="form-control select-picker" id="filter_category_id" data-live-search="true" data-container="body" data-size="8">
@@ -151,7 +151,7 @@
         </div>
 
         <div class="more-filter-items">
-            <label class="f-14 text-dark-grey mb-12 text-capitalize" for="usr">@lang('modules.lead.leadSource')</label>
+            <label class="f-14 text-dark-grey mb-12 text-capitalize" for="filter_source_id">@lang('modules.lead.leadSource')</label>
             <div class="select-filter mb-4">
                 <div class="select-others">
                     <select class="form-control select-picker" id="filter_source_id" data-live-search="true" data-container="body" data-size="8">
@@ -165,7 +165,7 @@
         </div>
 
         <div class="more-filter-items">
-            <label class="f-14 text-dark-grey mb-12 text-capitalize" for="usr">@lang('app.addedBy')</label>
+            <label class="f-14 text-dark-grey mb-12 text-capitalize" for="filter_addedBy">@lang('app.addedBy')</label>
             <div class="select-filter mb-4">
                 <div class="select-others">
                 <select class="form-control select-picker" id="filter_addedBy" data-live-search="true" data-container="body" data-size="8">
