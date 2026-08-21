@@ -347,10 +347,26 @@ class LeadContactController extends AccountBaseController
             }
 
             $fromMe = (bool) data_get($item, 'fromMe');
+            $direction = $fromMe ? 'outbound' : 'inbound';
+            $messageText = trim((string) data_get($item, 'body'));
+            $messageAt = Carbon::createFromTimestampUTC($timestamp);
             $itemPhone = preg_replace('/\D+/', '', (string) data_get($item, $fromMe ? 'to' : 'from')) ?: $phone;
-            $chatMessage = LeadWhatsAppMessage::withoutGlobalScopes()->firstOrNew([
-                'provider_message_id' => Str::limit($providerMessageId, 191, ''),
-            ]);
+            $normalizedProviderId = Str::limit($providerMessageId, 191, '');
+            $chatMessage = LeadWhatsAppMessage::withoutGlobalScopes()
+                ->where('provider_message_id', $normalizedProviderId)
+                ->first();
+
+            if (!$chatMessage) {
+                $chatMessage = LeadWhatsAppMessage::withoutGlobalScopes()
+                    ->where('lead_id', $leadContact->id)
+                    ->where('direction', $direction)
+                    ->where('message', $messageText)
+                    ->whereBetween('message_at', [$messageAt->copy()->subSeconds(2), $messageAt->copy()->addSeconds(2)])
+                    ->oldest('id')
+                    ->first();
+            }
+
+            $chatMessage ??= new LeadWhatsAppMessage();
 
             if ($chatMessage->exists && (int) $chatMessage->lead_id !== (int) $leadContact->id) {
                 continue;
@@ -359,10 +375,11 @@ class LeadContactController extends AccountBaseController
             $chatMessage->fill([
                 'company_id' => $leadContact->company_id,
                 'lead_id' => $leadContact->id,
-                'direction' => $fromMe ? 'outbound' : 'inbound',
+                'direction' => $direction,
                 'phone' => $itemPhone,
+                'provider_message_id' => $normalizedProviderId,
                 'content_type' => (string) data_get($item, 'contentType', 'text'),
-                'message' => trim((string) data_get($item, 'body')),
+                'message' => $messageText,
                 'status' => $fromMe ? 'sent' : 'received',
                 'metadata' => array_merge((array) $chatMessage->metadata, [
                     'session_key' => data_get($item, 'sessionKey', $sessionKey),
@@ -370,7 +387,7 @@ class LeadContactController extends AccountBaseController
                     'has_media' => (bool) data_get($item, 'hasMedia'),
                     'synced_from_history' => true,
                 ]),
-                'message_at' => Carbon::createFromTimestampUTC($timestamp),
+                'message_at' => $messageAt,
             ]);
             $chatMessage->save();
         }

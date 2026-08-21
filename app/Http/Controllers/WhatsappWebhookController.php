@@ -79,20 +79,22 @@ class WhatsappWebhookController extends Controller
 
         $messageAt = $this->messageTime($payload['timestamp'] ?? null);
 
-        $attributes = $providerMessageId !== ''
-            ? ['provider_message_id' => $providerMessageId]
-            : [
-                'lead_id' => $lead->id,
-                'direction' => $fromMe ? 'outbound' : 'inbound',
-                'message' => $message,
-                'message_at' => $messageAt,
-            ];
+        $direction = $fromMe ? 'outbound' : 'inbound';
+        $chatMessage = LeadWhatsAppMessage::withoutGlobalScopes()
+            ->where('lead_id', $lead->id)
+            ->where('direction', $direction)
+            ->where('message', $message)
+            ->whereBetween('message_at', [$messageAt->copy()->subSeconds(2), $messageAt->copy()->addSeconds(2)])
+            ->oldest('id')
+            ->first();
 
-        LeadWhatsAppMessage::withoutGlobalScopes()->updateOrCreate($attributes, [
+        $chatMessage ??= new LeadWhatsAppMessage();
+        $chatMessage->fill([
             'company_id' => $lead->company_id,
             'lead_id' => $lead->id,
-            'direction' => $fromMe ? 'outbound' : 'inbound',
+            'direction' => $direction,
             'phone' => $phone,
+            'provider_message_id' => $providerMessageId !== '' ? $providerMessageId : $chatMessage->provider_message_id,
             'content_type' => $media ? 'image' : (string) ($payload['contentType'] ?? 'text'),
             'message' => $message,
             'status' => $fromMe ? 'sent' : 'received',
@@ -103,7 +105,7 @@ class WhatsappWebhookController extends Controller
                 ...($media ?: []),
             ],
             'message_at' => $messageAt,
-        ]);
+        ])->save();
 
         return response()->json([
             'success' => true,

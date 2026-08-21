@@ -622,7 +622,7 @@ class WhatsAppManager extends EventEmitter {
         : await client.sendMessage(chatId, text);
 
       return {
-        id: sentMessage?.id?._serialized || sentMessage?.id || null,
+        id: this.serializeWhatsAppId(sentMessage?.id),
         to: chatId,
         contentType: hasMedia ? "media" : "text",
         timestamp: sentMessage?.timestamp || Date.now()
@@ -952,6 +952,26 @@ class WhatsAppManager extends EventEmitter {
     }
 
     return payload;
+  }
+
+  serializeWhatsAppId(id) {
+    if (!id) {
+      return null;
+    }
+    if (typeof id === "string") {
+      return id;
+    }
+    if (id._serialized) {
+      return String(id._serialized);
+    }
+
+    const remote = id.remote?._serialized || id.remote || "";
+    const token = id.id || "";
+    if (remote && token) {
+      return [id.fromMe ? "true" : "false", String(remote), String(token)].join("_");
+    }
+
+    return null;
   }
 
   async waitForStatus(sessionKey, desiredStatus, timeoutMs = 30000) {
