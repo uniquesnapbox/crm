@@ -10,52 +10,172 @@ $assignLeadPermission = in_array('admin', user_roles()) || user()->permission('a
 
 <link rel="stylesheet" href="{{ asset('vendor/css/dropzone.min.css') }}">
 
+<style>
+    .lead-contact-form-shell {
+        --lead-border: #d9e4f3;
+        --lead-shadow: 0 16px 36px rgba(22, 44, 87, 0.08);
+    }
+
+    .lead-contact-form-shell.add-client {
+        border: 1px solid var(--lead-border);
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 12px 28px rgba(22, 44, 87, 0.07);
+    }
+
+    .lead-contact-form-shell .lead-contact-section-title {
+        margin-bottom: 0;
+        padding: 10px 14px;
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+        color: #1d2b43;
+        background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+    }
+
+    .lead-contact-form-shell .lead-contact-grid {
+        margin-left: -8px;
+        margin-right: -8px;
+        padding: 12px 14px 14px;
+    }
+
+    .lead-contact-form-shell .lead-contact-grid .form-group,
+    .lead-contact-form-shell .lead-contact-grid .input-group,
+    .lead-contact-form-shell .lead-contact-grid .btn,
+    .lead-contact-form-shell .lead-contact-grid .bootstrap-select {
+        margin-bottom: 0;
+    }
+
+    .lead-contact-form-shell .lead-contact-grid > [class*="col-"] {
+        padding-left: 8px;
+        padding-right: 8px;
+        margin-bottom: 0;
+    }
+
+    .lead-contact-form-shell .lead-contact-grid .form-group.my-3,
+    .lead-contact-form-shell .lead-contact-grid .my-3 {
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
+    }
+
+    .lead-contact-form-shell .lead-contact-grid .mt-3 {
+        margin-top: 0 !important;
+    }
+
+    .lead-contact-form-shell .lead-contact-grid .mb-12 {
+        margin-bottom: 2px !important;
+    }
+
+    .lead-contact-form-shell .lead-contact-grid label,
+    .lead-contact-form-shell .lead-contact-grid .f-14.text-dark-grey.mb-12 {
+        font-size: 11px;
+        font-weight: 600;
+        color: #50627d;
+        margin-bottom: 4px !important;
+    }
+
+    .lead-contact-form-shell .lead-contact-grid .form-control,
+    .lead-contact-form-shell .lead-contact-grid .bootstrap-select > .dropdown-toggle {
+        min-height: 34px;
+        border-radius: 8px;
+        border-color: #d5dfec;
+        box-shadow: none;
+    }
+
+    .lead-contact-form-shell .lead-contact-grid .bootstrap-select > .dropdown-toggle {
+        padding-top: 6px;
+        padding-bottom: 6px;
+    }
+
+    .lead-contact-form-shell .lead-contact-grid .input-group-text {
+        min-height: 34px;
+        border-radius: 8px;
+    }
+
+    .lead-contact-form-shell .lead-contact-grid textarea.form-control {
+        min-height: 76px;
+    }
+
+    .lead-contact-form-shell .lead-contact-grid .btn {
+        border-radius: 8px;
+    }
+
+    .lead-contact-form-shell .lead-contact-grid .btn-outline-secondary {
+        min-height: 34px;
+        padding-top: 0.28rem;
+        padding-bottom: 0.28rem;
+        font-size: 12px;
+    }
+
+    .lead-contact-form-shell .lead-contact-grid .text-muted {
+        font-size: 11px;
+    }
+
+    .lead-contact-form-shell .lead-contact-inline-label {
+        margin-bottom: 0.1rem !important;
+    }
+
+    .lead-contact-form-shell #other-details,
+    .lead-contact-form-shell .lead-contact-qualification {
+        padding-top: 0;
+    }
+
+    .lead-contact-form-shell #other-details .col-md-12 .form-group {
+        margin-bottom: 0 !important;
+    }
+
+    .lead-contact-form-shell #other-details .form-group .d-flex {
+        margin-bottom: 2px;
+    }
+
+    .lead-contact-form-shell #other-details textarea.form-control {
+        margin-top: 0;
+    }
+</style>
+
 <div class="row">
     <div class="col-sm-12">
         <x-form id="save-lead-data-form" >
-            <div class="add-client bg-white rounded">
-                <h4 class="mb-0 p-20 f-21 font-weight-normal text-capitalize border-bottom-grey">
+            <div class="add-client bg-white rounded lead-contact-form-shell">
+                <h4 class="lead-contact-section-title border-bottom-grey">
                     @lang('modules.leadContact.leadDetails')</h4>
-                <div class="row p-20">
+                <div class="row lead-contact-grid">
 
                     <div class="col-lg-4 col-md-6">
                         <x-forms.text :fieldLabel="__('app.name')" fieldName="client_name"
-                            fieldId="client_name" :fieldPlaceholder="__('placeholders.name')" fieldRequired="true" />
+                            fieldId="client_name" :fieldPlaceholder="__('placeholders.name')" fieldRequired="true"
+                            field-label-inside="true" />
                     </div>
 
                     <div class="col-lg-4 col-md-6">
                         <x-forms.email fieldId="client_email" :fieldLabel="__('app.email')"
-                            fieldName="client_email" :fieldPlaceholder="__('placeholders.email')" :fieldHelp="__('modules.lead.leadEmailInfo')">
+                            fieldName="client_email" :fieldPlaceholder="__('placeholders.email')" field-label-inside="true">
                         </x-forms.email>
                     </div>
 
                     @if ($viewLeadSourcesPermission != 'none')
                         <div class="col-lg-4 col-md-6">
-                            <x-forms.label class="my-3" fieldId="source_id" :fieldLabel="__('modules.lead.leadSource')">
-                            </x-forms.label>
-                            <x-forms.input-group>
-                                <select class="form-control select-picker" name="source_id" id="source_id"
-                                    data-live-search="true">
-                                    <option value="">--</option>
-                                    @foreach ($sources as $source)
-                                        <option value="{{ $source->id }}">{{ $source->type }}</option>
-                                    @endforeach
-                                </select>
+                            <x-forms.select fieldId="source_id" :fieldLabel="__('modules.lead.leadSource')"
+                                fieldName="source_id" search="true" field-label-inside="true">
+                                <option value="">--</option>
+                                @foreach ($sources as $source)
+                                    <option value="{{ $source->id }}">{{ $source->type }}</option>
+                                @endforeach
 
                                 @if ($addLeadSourcesPermission == 'all' || $addLeadSourcesPermission == 'added')
                                     <x-slot name="append">
                                         <button type="button"
-                                            class="btn btn-outline-secondary border-grey add-lead-source"
+                                            class="btn btn-outline-secondary border-grey btn-sm px-3 add-lead-source"
                                             data-toggle="tooltip" data-original-title="{{ __('app.add').' '.__('modules.lead.leadSource') }}">
                                             @lang('app.add')</button>
                                     </x-slot>
                                 @endif
-                            </x-forms.input-group>
+                            </x-forms.select>
                         </div>
                     @endif
 
                     <div class="col-lg-4 col-md-6">
-                        <x-forms.select fieldId="status_id" fieldLabel="Lead Status" fieldName="status_id" search="true">
+                        <x-forms.select fieldId="status_id" fieldLabel="Lead Status" fieldName="status_id" search="true" field-label-inside="true">
                             <option value="">--</option>
                             @foreach ($status as $item)
                                 @php
@@ -79,7 +199,7 @@ $assignLeadPermission = in_array('admin', user_roles()) || user()->permission('a
                     @if ($addPermission == 'all')
                         <div class="col-lg-4 col-md-6">
                             <x-forms.select fieldId="added_by" :fieldLabel="__('app.added').' '.__('app.by')"
-                                fieldName="added_by">
+                                fieldName="added_by" search="true" field-label-inside="true">
                                 <option value="">--</option>
                                 @foreach ($employees as $item)
                                     <x-user-option :user="$item" :selected="user()->id == $item->id" />
@@ -90,47 +210,41 @@ $assignLeadPermission = in_array('admin', user_roles()) || user()->permission('a
 
                     @if ($assignLeadPermission)
                         <div class="col-lg-4 col-md-6">
-                            <div class="form-group my-3">
-                                <x-forms.label fieldId="assigned_to" :fieldLabel="__('modules.tasks.assignTo')">
-                                </x-forms.label>
-                                <x-forms.input-group>
-                                    <select class="form-control select-picker" name="assigned_to" id="assigned_to"
-                                        data-live-search="true" data-size="8">
-                                        <option value="">--</option>
-                                        @foreach ($employees as $item)
-                                            <x-user-option :user="$item" />
-                                        @endforeach
-                                    </select>
+                            <x-forms.select fieldId="assigned_to" :fieldLabel="__('modules.tasks.assignTo')"
+                                fieldName="assigned_to" search="true" field-label-inside="true">
+                                <option value="">--</option>
+                                @foreach ($employees as $item)
+                                    <x-user-option :user="$item" />
+                                @endforeach
 
-                                    @if ($addEmployeePermission == 'all' || $addEmployeePermission == 'added')
-                                        <x-slot name="append">
-                                            <button id="add-employee" type="button"
-                                                    class="btn btn-outline-secondary border-grey"
-                                                    data-toggle="tooltip"
-                                                    data-original-title="{{ __('modules.employees.addNewEmployee') }}">@lang('app.add')</button>
-                                        </x-slot>
-                                    @endif
-                                </x-forms.input-group>
-                            </div>
+                                @if ($addEmployeePermission == 'all' || $addEmployeePermission == 'added')
+                                    <x-slot name="append">
+                                        <button id="add-employee" type="button"
+                                                class="btn btn-outline-secondary border-grey btn-sm px-3"
+                                                data-toggle="tooltip"
+                                                data-original-title="{{ __('modules.employees.addNewEmployee') }}">@lang('app.add')</button>
+                                    </x-slot>
+                                @endif
+                            </x-forms.select>
                         </div>
                     @endif
 
                 </div>
 
-                <h4 class="mb-0 p-20 f-21 font-weight-normal text-capitalize border-top-grey">
+                <h4 class="lead-contact-section-title border-top-grey">
                     @lang('modules.client.companyDetails')
                 </h4>
 
-                <div class="row p-20" id="other-details">
+                <div class="row lead-contact-grid" id="other-details">
 
                     <div class="col-lg-3 col-md-6">
                         <x-forms.text :fieldLabel="__('modules.lead.companyName')" fieldName="company_name"
-                            fieldId="company_name" :fieldPlaceholder="__('placeholders.company')" />
+                            fieldId="company_name" :fieldPlaceholder="__('placeholders.company')" field-label-inside="true" />
                     </div>
 
                     <div class="col-lg-3 col-md-6">
                         <x-forms.text :fieldLabel="__('modules.lead.website')" fieldName="website" fieldId="website"
-                            :fieldPlaceholder="__('placeholders.website')" />
+                            :fieldPlaceholder="__('placeholders.website')" field-label-inside="true" />
                     </div>
 
                     <div class="col-lg-3 col-md-6">
@@ -156,18 +270,17 @@ $assignLeadPermission = in_array('admin', user_roles()) || user()->permission('a
                                     inputmode="numeric" pattern="[0-9]{10}" placeholder="9876543210" autocomplete="off">
                             </div>
                             <input type="hidden" name="mobile" id="mobile" value="">
-                            <small class="text-muted">Enter 10-digit mobile number. Country code +91 is fixed.</small>
                         </div>
                     </div>
 
                     <div class="col-lg-3 col-md-6">
                         <x-forms.text :fieldLabel="__('modules.client.officePhoneNumber')" fieldName="office"
-                            fieldId="office" fieldPlaceholder="" />
+                            fieldId="office" fieldPlaceholder="" field-label-inside="true" />
                     </div>
 
                     <div class="col-lg-3 col-md-6">
                         <x-forms.select fieldId="country" :fieldLabel="__('app.country')" fieldName="country"
-                            search="true">
+                            search="true" field-label-inside="true">
                             <option value="">--</option>
                             @foreach ($countries as $item)
                                 <option data-tokens="{{ $item->iso3 }}"
@@ -197,13 +310,13 @@ $assignLeadPermission = in_array('admin', user_roles()) || user()->permission('a
 
                 </div>
 
-                <h4 class="mb-0 p-20 f-21 font-weight-normal text-capitalize border-top-grey">
+                <h4 class="lead-contact-section-title border-top-grey lead-contact-qualification">
                     Lead Qualification
                 </h4>
 
-                <div class="row p-20">
+                <div class="row lead-contact-grid">
                     <div class="col-lg-4 col-md-6">
-                        <x-forms.select fieldId="interest_level" fieldLabel="Interest Level" fieldName="interest_level">
+                        <x-forms.select fieldId="interest_level" fieldLabel="Interest Level" fieldName="interest_level" field-label-inside="true">
                             <option value="">--</option>
                             <option value="low" data-content="<span><i class='fa fa-circle mr-2' style='color:#64748b'></i>Low</span>">Low</option>
                             <option value="medium" data-content="<span><i class='fa fa-circle mr-2' style='color:#2563eb'></i>Medium</span>">Medium</option>
@@ -221,31 +334,27 @@ $assignLeadPermission = in_array('admin', user_roles()) || user()->permission('a
 
                     @if ($viewLeadCategoryPermission != 'none')
                         <div class="col-lg-4 col-md-6">
-                            <x-forms.label class="my-3" fieldId="category_id" fieldLabel="Customer Group">
-                            </x-forms.label>
-                            <x-forms.input-group>
-                                <select class="form-control select-picker" name="category_id" id="category_id"
-                                    data-live-search="true">
-                                    <option value="">--</option>
-                                    @foreach ($categories as $category)
-                                        <option value="{{ $category->id }}">{{ $category->category_name }}</option>
-                                    @endforeach
-                                </select>
+                            <x-forms.select fieldId="category_id" fieldLabel="Customer Group"
+                                fieldName="category_id" search="true" field-label-inside="true">
+                                <option value="">--</option>
+                                @foreach ($categories as $category)
+                                    <option value="{{ $category->id }}">{{ $category->category_name }}</option>
+                                @endforeach
 
                                 @if ($addLeadCategoryPermission == 'all' || $addLeadCategoryPermission == 'added')
                                     <x-slot name="append">
                                         <button type="button"
-                                            class="btn btn-outline-secondary border-grey add-lead-category"
+                                            class="btn btn-outline-secondary border-grey btn-sm px-3 add-lead-category"
                                             data-toggle="tooltip" data-original-title="{{ __('app.add').' Customer Group' }}">
                                             @lang('app.add')</button>
                                     </x-slot>
                                 @endif
-                            </x-forms.input-group>
+                            </x-forms.select>
                         </div>
                     @endif
 
                     <div class="col-lg-4 col-md-6">
-                        <x-forms.select fieldId="contact_status" fieldLabel="Lead Contact Status" fieldName="contact_status">
+                        <x-forms.select fieldId="contact_status" fieldLabel="Lead Contact Status" fieldName="contact_status" field-label-inside="true">
                             <option value="">--</option>
                             <option value="pending">Pending</option>
                             <option value="connected">Connected</option>

@@ -2,7 +2,83 @@
 
 @push('datatable-styles')
     @include('sections.datatable_css')
+@endpush
+
+@push('styles')
     <style>
+        @media (min-width: 992px) {
+            .lead-contact-toolbar {
+                display: flex !important;
+                align-items: center;
+                gap: 0.35rem;
+                overflow-x: hidden;
+                white-space: nowrap;
+                flex-wrap: nowrap !important;
+                justify-content: flex-start;
+            }
+
+            .lead-contact-toolbar > * {
+                min-width: 0;
+            }
+
+            .lead-contact-toolbar .select-box,
+            .lead-contact-toolbar .task-search,
+            .lead-contact-toolbar .more-filters,
+            .lead-contact-toolbar #table-actions {
+                white-space: nowrap;
+            }
+
+            .lead-contact-toolbar #table-actions {
+                display: flex;
+                align-items: center;
+                flex-wrap: nowrap !important;
+                gap: 0.35rem;
+                margin-right: auto;
+            }
+
+            .lead-contact-toolbar #table-actions .btn {
+                margin-bottom: 0 !important;
+                white-space: nowrap;
+                padding: 0.28rem 0.55rem;
+                font-size: 12px;
+                line-height: 1.1;
+            }
+
+            .lead-contact-toolbar .task-search {
+                width: 185px;
+                min-width: 150px;
+                max-width: 200px;
+            }
+
+            .lead-contact-toolbar .select-box p,
+            .lead-contact-toolbar .more-filters a {
+                white-space: nowrap;
+                font-size: 12px;
+            }
+
+            .lead-contact-toolbar .select-box .form-control,
+            .lead-contact-toolbar .task-search .form-control,
+            .lead-contact-toolbar .select-picker {
+                min-height: 30px;
+                height: 30px;
+                font-size: 12px;
+                padding-top: 0.18rem;
+                padding-bottom: 0.18rem;
+            }
+
+            .lead-contact-toolbar .select-box {
+                padding-right: 0.35rem !important;
+            }
+
+            .lead-contact-toolbar .select-box .input-group-text {
+                padding: 0.25rem 0.4rem;
+            }
+
+            .lead-contact-toolbar .select-box .form-control {
+                min-width: 95px;
+            }
+        }
+
         #lead-contact-table tbody tr.lead-table-row td {
             padding-top: 8px !important;
             padding-bottom: 8px !important;
@@ -31,68 +107,21 @@
     </style>
 @endpush
 
-@section('filter-section')
-
-    @include('lead-contact.filters')
-
-@endsection
-
 @php
 $addLeadPermission = user()->permission('add_lead');
 $addLeadCustomFormPermission = user()->permission('manage_lead_custom_forms');
 $canBulkAssignLead = $canBulkAssignLead ?? false;
 @endphp
 
-@section('content')
+@section('filter-section')
+
+    @include('lead-contact.filters')
+
+@endsection
+
+    @section('content')
     <!-- CONTENT WRAPPER START -->
     <div class="content-wrapper">
-        <!-- Add Task Export Buttons Start -->
-        <div class="d-grid d-lg-flex d-md-flex action-bar">
-            <div id="table-actions" class="flex-grow-1 align-items-center">
-                @if ($addLeadPermission == 'all' || $addLeadPermission == 'added')
-                    <x-forms.link-primary :link="route('lead-contact.create')" class="mr-3 float-left mb-2 mb-lg-0 mb-md-0 openRightModal" icon="plus">
-                        @lang('modules.leadContact.addLeadContact')
-                    </x-forms.link-primary>
-                @endif
-
-                @if ($addLeadCustomFormPermission == 'all')
-                    <x-forms.button-secondary icon="pencil-alt" class="mr-3 float-left mb-2 mb-lg-0 mb-md-0" id="add-lead">
-                        @lang('modules.lead.leadForm')
-                    </x-forms.button-secondary>
-                @endif
-
-                @if ($addLeadPermission == 'all' || $addLeadPermission == 'added')
-                    <x-forms.link-secondary :link="route('lead-contact.import')" class="mr-3 openRightModal float-left mb-2 mb-lg-0 mb-md-0 d-none d-lg-block" icon="file-upload">
-                        @lang('app.importExcel')
-                    </x-forms.link-secondary>
-                @endif
-            </div>
-
-            <x-datatable.actions>
-                <div class="select-status mr-3 pl-3">
-                    <select name="action_type" class="form-control select-picker" id="quick-action-type" disabled>
-                        <option value="">@lang('app.selectAction')</option>
-                        @if ($canBulkAssignLead)
-                            <option value="assign-to">@lang('modules.tasks.assignTo')</option>
-                        @endif
-                        <option value="delete">@lang('app.delete')</option>
-                    </select>
-                </div>
-                @if ($canBulkAssignLead)
-                    <div class="select-status mr-3 d-none quick-action-field" id="change-agent-action">
-                        <select name="assigned_to" id="assigned_to" class="form-control select-picker" data-live-search="true" data-size="8">
-                            <option value="">@lang('modules.tasks.assignTo')</option>
-                            @foreach ($assignableEmployees ?? $employees as $employee)
-                                <x-user-option :user="$employee" />
-                            @endforeach
-                        </select>
-                    </div>
-                @endif
-            </x-datatable.actions>
-
-        </div>
-
-        <!-- Add Task Export Buttons End -->
         <!-- Task Box Start -->
         <div class="d-flex flex-column w-tables rounded mt-3 bg-white table-responsive">
 

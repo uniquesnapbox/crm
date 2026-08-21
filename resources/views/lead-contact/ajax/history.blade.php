@@ -128,6 +128,9 @@
                             <div class="lead-history-actions">
                                 @if (!empty($item['can_update_followup_status']))
                                     <select class="form-control form-control-sm js-history-followup-status"
+                                        id="history-followup-status-{{ $item['followup_id'] }}-{{ $loop->index }}"
+                                        name="history_followup_status[{{ $item['followup_id'] }}]"
+                                        aria-label="Follow-up status"
                                         data-followup-id="{{ $item['followup_id'] }}">
                                         <option value="pending" @selected(($item['followup_status'] ?? 'pending') === 'pending')>Pending</option>
                                         <option value="completed" @selected(($item['followup_status'] ?? '') === 'completed')>Completed</option>
@@ -135,7 +138,7 @@
                                     </select>
                                 @endif
 
-                                @if (!empty($item['followup_edit_url']))
+                                @if (!empty($item['followup_edit_url']) && !empty($item['can_edit_followup']))
                                     <a href="javascript:;" class="btn btn-sm btn-outline-primary js-history-edit-followup"
                                         data-url="{{ $item['followup_edit_url'] }}">Edit</a>
                                 @endif
@@ -171,6 +174,9 @@
                     if (typeof toastr !== 'undefined') {
                         toastr.success('Follow-up status updated');
                     }
+                    // Re-render the history row from the database so the
+                    // title, badge and selected status always stay in sync.
+                    window.location.reload();
                 }
             },
             error: function() {

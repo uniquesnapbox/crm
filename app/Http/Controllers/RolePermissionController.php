@@ -70,6 +70,7 @@ class RolePermissionController extends AccountBaseController
 
         $roleId = $request->roleId;
         $permissionId = $request->permissionId;
+        $permission = Permission::findOrFail($permissionId);
 
 
         $role = Role::with('users', 'users.role')->findOrFail($roleId);
@@ -96,20 +97,24 @@ class RolePermissionController extends AccountBaseController
 
         // Update user permission with the role
         foreach ($role->users as $roleuser) {
-            if (($role->name == 'employee' && count($roleuser->role) == 1) || $role->name != 'employee') {
-                $userPermission = UserPermission::where('user_permissions.permission_id', $permissionId)
-                    ->leftJoin('users', 'users.id', '=', 'user_permissions.user_id')
-                    ->where('user_permissions.user_id', $roleuser->id)
-                    ->select('users.customised_permissions', 'user_permissions.*')
-                    ->firstOrNew();
-
-                if ($userPermission->customised_permissions == 0) {
-                    $userPermission->permission_id = $permissionId;
-                    $userPermission->user_id = $roleuser->id;
-                    $userPermission->permission_type_id = $permissionType;
-                    $userPermission->save();
-                }
+            // A missing UserPermission row used to produce a new model with a
+            // null customised_permissions value, so the role change was
+            // skipped and never reached that employee.
+            if ((int) $roleuser->customised_permissions === 0) {
+                UserPermission::updateOrCreate(
+                    [
+                        'permission_id' => $permissionId,
+                        'user_id' => $roleuser->id,
+                    ],
+                    [
+                        'permission_type_id' => $permissionType,
+                    ]
+                );
             }
+
+            // Role changes must be visible immediately to users already using
+            // the account. The permission map is cached per user.
+            User::forgetPermissionCache($roleuser->id, $permission->name ?? null);
         }
 
         \Illuminate\Support\Facades\Artisan::call('cache:clear');
@@ -150,11 +155,21 @@ class RolePermissionController extends AccountBaseController
     public function updateUserPermissions($roleId, $userId)
     {
         $rolePermissions = PermissionRole::where('role_id', $roleId)->get();
+        $permissionNames = Permission::whereIn('id', $rolePermissions->pluck('permission_id'))
+            ->pluck('name', 'id');
 
         foreach ($rolePermissions as $key => $value) {
-            UserPermission::where('permission_id', $value->permission_id)
-                ->where('user_id', $userId)
-                ->update(['permission_type_id' => $value->permission_type_id]);
+            UserPermission::updateOrCreate(
+                [
+                    'permission_id' => $value->permission_id,
+                    'user_id' => $userId,
+                ],
+                [
+                    'permission_type_id' => $value->permission_type_id,
+                ]
+            );
+
+            User::forgetPermissionCache($userId, $permissionNames[$value->permission_id] ?? null);
         }
 
         return Reply::dataOnly(['status' => 'success']);

@@ -1,7 +1,49 @@
-<x-filters.filter-box>
+<x-filters.filter-box class="lead-contact-toolbar">
+    <div id="table-actions" class="d-flex align-items-center flex-nowrap pr-lg-2">
+        @if ($addLeadPermission == 'all' || $addLeadPermission == 'added')
+            <x-forms.link-primary :link="route('lead-contact.create')" class="mr-2 openRightModal" icon="plus">
+                @lang('modules.leadContact.addLeadContact')
+            </x-forms.link-primary>
+        @endif
+
+        @if ($addLeadCustomFormPermission == 'all')
+            <x-forms.button-secondary icon="pencil-alt" class="mr-2" id="add-lead">
+                @lang('modules.lead.leadForm')
+            </x-forms.button-secondary>
+        @endif
+
+        @if ($addLeadPermission == 'all' || $addLeadPermission == 'added')
+            <x-forms.link-secondary :link="route('lead-contact.import')" class="mr-2 openRightModal d-none d-lg-block" icon="file-upload">
+                @lang('app.importExcel')
+            </x-forms.link-secondary>
+        @endif
+
+        <x-datatable.actions>
+            <div class="select-status mr-2 pl-2">
+                <select name="action_type" class="form-control select-picker" id="quick-action-type" disabled>
+                    <option value="">@lang('app.selectAction')</option>
+                    @if ($canBulkAssignLead)
+                        <option value="assign-to">@lang('modules.tasks.assignTo')</option>
+                    @endif
+                    <option value="delete">@lang('app.delete')</option>
+                </select>
+            </div>
+            @if ($canBulkAssignLead)
+                <div class="select-status mr-2 d-none quick-action-field" id="change-agent-action">
+                    <select name="assigned_to" id="assigned_to" class="form-control select-picker" data-live-search="true" data-size="8">
+                        <option value="">@lang('modules.tasks.assignTo')</option>
+                        @foreach ($assignableEmployees ?? $employees as $employee)
+                            <x-user-option :user="$employee" />
+                        @endforeach
+                    </select>
+                </div>
+            @endif
+        </x-datatable.actions>
+    </div>
+
     <!-- DATE START -->
-    <div class="select-box d-flex pr-2 border-right-grey border-right-grey-sm-0">
-        <p class="mb-0 pr-2 f-14 text-dark-grey d-flex align-items-center">@lang('app.duration')</p>
+    <div class="select-box d-flex pr-1 border-right-grey border-right-grey-sm-0">
+        <p class="mb-0 pr-1 f-14 text-dark-grey d-flex align-items-center">@lang('app.duration')</p>
         <div class="select-status d-flex">
             <input type="text" class="position-relative text-dark form-control border-0 p-2 text-left f-14 f-w-500 border-additional-grey"
                 id="datatableRange" placeholder="@lang('placeholders.dateRange')">
@@ -14,8 +56,8 @@
     @endphp
 
     <!-- CLIENT START -->
-    <div class="select-box d-flex py-2 px-lg-2 px-md-2 px-0 border-right-grey border-right-grey-sm-0">
-        <p class="mb-0 pr-2 f-14 text-dark-grey d-flex align-items-center">@lang('modules.invoices.type')</p>
+    <div class="select-box d-flex py-2 px-lg-1 px-md-1 px-0 border-right-grey border-right-grey-sm-0">
+        <p class="mb-0 pr-1 f-14 text-dark-grey d-flex align-items-center">@lang('modules.invoices.type')</p>
         <div class="select-status">
             <select class="form-control select-picker" name="type" id="type">
                 <option {{ $selectedType == 'lead' ? 'selected' : '' }} value="lead">@lang('modules.lead.lead')
@@ -28,7 +70,7 @@
     <!-- CLIENT END -->
 
     <!-- SEARCH BY TASK START -->
-    <div class="task-search d-flex  py-1 px-lg-3 px-0 border-right-grey align-items-center">
+    <div class="task-search d-flex py-1 px-lg-2 px-0 border-right-grey align-items-center">
         <form class="w-100 mr-1 mr-lg-0 mr-md-1 ml-md-1 ml-0 ml-lg-0">
             <div class="input-group bg-grey rounded">
                 <div class="input-group-prepend">
@@ -44,7 +86,7 @@
     <!-- SEARCH BY TASK END -->
 
     <!-- RESET START -->
-    <div class="select-box d-flex py-1 px-lg-2 px-md-2 px-0">
+    <div class="select-box d-flex py-1 px-lg-1 px-md-1 px-0">
         <x-forms.button-secondary class="btn-xs d-none" id="reset-filters" icon="times-circle">
             @lang('app.clearFilters')
         </x-forms.button-secondary>
@@ -151,7 +193,6 @@
         </div>
 
     </x-filters.more-filter-box>
-    <!-- MORE FILTERS END -->
 </x-filters.filter-box>
 
 @push('scripts')

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class LeadFollowUp extends BaseModel
@@ -10,6 +11,7 @@ class LeadFollowUp extends BaseModel
 
     protected $casts = [
         'next_follow_up_date' => 'datetime',
+        'whatsapp_reminder_sent_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'latitude' => 'float',
@@ -24,5 +26,10 @@ class LeadFollowUp extends BaseModel
     public function addedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'added_by');
+    }
+
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(LeadFollowUpAttachment::class, 'lead_follow_up_id');
     }
 }

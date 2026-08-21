@@ -483,6 +483,7 @@
             $addLeadSourcesPermission = user()->permission('add_lead_sources');
             $addLeadCategoryPermission = user()->permission('add_lead_category');
             $canInlineQuickEdit = (bool) ($canInlineEdit ?? false);
+            $canManageLeadAssignment = (bool) ($canManageLeadAssignment ?? false);
             $quickUpdateUrl = route('lead-contact.quick_update', $leadContact->id);
             $leadSourceCreateUrl = ($addLeadSourcesPermission === 'all' || $addLeadSourcesPermission === 'added') ? route('lead-contact.quick_add_form', 'source') : null;
             $leadCategoryCreateUrl = ($addLeadCategoryPermission === 'all' || $addLeadCategoryPermission === 'added') ? route('lead-contact.quick_add_form', 'category') : null;
@@ -943,14 +944,46 @@
                     @if(!is_null($leadContact->added_by))
                         <div class="lead-profile-row">
                             <p class="lead-label">@lang('app.addedBy')</p>
-                            <div class="lead-value-wrap"><x-employee :user="$leadContact->addedBy" /></div>
+                            <div class="lead-value-wrap w-100">
+                                @if ($canInlineQuickEdit && $canManageLeadAssignment && !empty($employees))
+                                    <div class="lead-inline-select-group">
+                                        <select class="form-control select-picker js-lead-inline-field js-lead-inline-select js-inline-autosave"
+                                            data-live-search="true" data-container="body" data-size="8"
+                                            data-field="added_by" data-url="{{ $quickUpdateUrl }}" data-prev-value="{{ $leadContact->added_by ?? '' }}">
+                                            <option value="">--</option>
+                                            @foreach ($employees as $item)
+                                                <x-user-option :user="$item" :selected="$leadContact->added_by == $item->id" />
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <small class="text-muted d-none js-inline-save-state"></small>
+                                @else
+                                    <x-employee :user="$leadContact->addedBy" />
+                                @endif
+                            </div>
                         </div>
                     @endif
 
                     @if(!is_null($leadContact->assigned_to))
                         <div class="lead-profile-row">
                             <p class="lead-label">@lang('modules.tasks.assignTo')</p>
-                            <div class="lead-value-wrap"><x-employee :user="$leadContact->assignedTo" /></div>
+                            <div class="lead-value-wrap w-100">
+                                @if ($canInlineQuickEdit && $canManageLeadAssignment && !empty($employees))
+                                    <div class="lead-inline-select-group">
+                                        <select class="form-control select-picker js-lead-inline-field js-lead-inline-select js-inline-autosave"
+                                            data-live-search="true" data-container="body" data-size="8"
+                                            data-field="assigned_to" data-url="{{ $quickUpdateUrl }}" data-prev-value="{{ $leadContact->assigned_to ?? '' }}">
+                                            <option value="">--</option>
+                                            @foreach ($employees as $item)
+                                                <x-user-option :user="$item" :selected="$leadContact->assigned_to == $item->id" />
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <small class="text-muted d-none js-inline-save-state"></small>
+                                @else
+                                    <x-employee :user="$leadContact->assignedTo" />
+                                @endif
+                            </div>
                         </div>
                     @endif
 
@@ -1521,4 +1554,3 @@
     syncProfileCountryToCode();
     updateProfileMobilePrefix();
 </script>
-

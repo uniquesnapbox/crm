@@ -22,7 +22,7 @@ class WhatsAppGatewayService
             && filled(config('services.whatsapp_service.api_key'));
     }
 
-    public function sendMessage(string $mobile, string $message, ?string $sessionKey = null): bool
+    public function sendMessage(string $mobile, string $message, ?string $sessionKey = null, ?array $attachment = null): bool
     {
         $baseUrl = rtrim((string) config('services.whatsapp_service.base_url'), '/');
         $apiKey = (string) config('services.whatsapp_service.api_key');
@@ -36,6 +36,10 @@ class WhatsAppGatewayService
             'channelKey' => $session,
             'idempotencyKey' => $this->createIdempotencyKey($phone, $session, $message),
         ];
+
+        if (!empty($attachment)) {
+            $payload['attachment'] = $attachment;
+        }
 
         if ($baseUrl === '' || $apiKey === '') {
             $this->lastError = 'WhatsApp service is not configured.';

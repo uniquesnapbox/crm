@@ -32,6 +32,10 @@ class UserPermissionController extends AccountBaseController
             User::where('id', $id)->update(['customised_permissions' => 1]);
         }
 
+        $permissionName = $userPermission->permission?->name
+            ?? \App\Models\Permission::whereKey($request->permissionId)->value('name');
+        User::forgetPermissionCache((int) $id, $permissionName);
+
         return Reply::dataOnly(['status' => 'success']);
     }
 

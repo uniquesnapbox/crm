@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\DataTables\LeadFollowupDataTable;
 use App\DataTables\LeadContactDataTable;
 use App\DataTables\LeadNotesDataTable;
+use App\Helper\Files;
 use App\Helper\Reply;
 use App\Http\Requests\Admin\Employee\ImportProcessRequest;
 use App\Http\Requests\Admin\Employee\ImportRequest;
@@ -19,6 +20,7 @@ use App\Models\LeadCategory;
 use App\Models\Lead;
 use App\Models\LeadCustomForm;
 use App\Models\LeadFollowUp;
+use App\Models\LeadFollowUpAttachment;
 use App\Models\LeadHistory;
 use App\Models\LeadSource;
 use App\Models\LeadStatus;
@@ -30,6 +32,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class LeadContactController extends AccountBaseController
@@ -82,6 +85,10 @@ class LeadContactController extends AccountBaseController
         $this->statuses = LeadStatus::query()->select('id', 'type', 'label_color', 'priority', 'default')->orderBy('priority')->get();
         $this->products = Product::query()->select('id', 'name')->orderBy('name')->get();
         $this->countries = countries();
+        $this->canManageLeadAssignment = $this->canManageLeadAssignment();
+        if ($this->canManageLeadAssignment) {
+            $this->employees = User::allEmployees(null, true, null, company()->id);
+        }
         $this->editPermission = user()->permission('edit_lead');
         $this->canInlineEdit = (
             $this->editPermission == 'all'
@@ -154,8 +161,6 @@ class LeadContactController extends AccountBaseController
 
     public function history()
     {
-        $editFollowUpPermission = user()->permission('edit_lead_follow_up');
-        $canUpdateFollowUpStatus = in_array($editFollowUpPermission, ['all', 'added', 'both', 'owned']);
         $historyItems = collect();
 
         if (Schema::hasTable('lead_histories')) {
@@ -166,10 +171,35 @@ class LeadContactController extends AccountBaseController
                 ->limit(400)
                 ->get();
 
-            $historyItems = $historyRows->map(function (LeadHistory $row) use ($canUpdateFollowUpStatus) {
+            $followUpIds = $historyRows
+                ->pluck('meta')
+                ->filter(fn ($meta) => is_array($meta) && !empty($meta['followup_id']))
+                ->map(fn ($meta) => (int) $meta['followup_id'])
+                ->unique()
+                ->values();
+            $followUps = $followUpIds->isEmpty()
+                ? collect()
+                : LeadFollowUp::with('lead')->whereIn('id', $followUpIds)->get()->keyBy('id');
+            $actionableFollowUpIds = [];
+
+            $historyItems = $historyRows->map(function (LeadHistory $row) use ($followUps, &$actionableFollowUpIds) {
                 $meta = is_array($row->meta) ? $row->meta : [];
                 $followUpId = $meta['followup_id'] ?? null;
-                $followUpStatus = $meta['followup_status'] ?? null;
+                $followUp = $followUpId ? $followUps->get((int) $followUpId) : null;
+                // History metadata is an immutable snapshot. For actionable
+                // rows always render the live status from lead_follow_up;
+                // otherwise an old "Follow-up Added" event keeps showing
+                // Pending even after the follow-up was completed.
+                $followUpStatus = $followUp?->status
+                    ?? ($meta['followup_status'] ?? null);
+                $canEditFollowUp = $this->canEditFollowUpRecord($followUp);
+                $isLatestFollowUpEntry = false;
+
+                if ($followUpId && !isset($actionableFollowUpIds[(int) $followUpId])) {
+                    $actionableFollowUpIds[(int) $followUpId] = true;
+                    $isLatestFollowUpEntry = true;
+                }
+
                 $type = 'updated';
 
                 if (str_contains((string) $row->event_type, 'created')) {
@@ -192,7 +222,8 @@ class LeadContactController extends AccountBaseController
                     'followup_id' => $followUpId,
                     'followup_status' => $followUpStatus,
                     'followup_edit_url' => $followUpId ? route('lead-contact.follow_up_edit', $followUpId) : null,
-                    'can_update_followup_status' => $canUpdateFollowUpStatus && !empty($followUpId),
+                    'can_update_followup_status' => $canEditFollowUp && $isLatestFollowUpEntry,
+                    'can_edit_followup' => $canEditFollowUp && $isLatestFollowUpEntry,
                 ];
             });
         }
@@ -245,7 +276,8 @@ class LeadContactController extends AccountBaseController
                 'followup_id' => $followUp->id,
                 'followup_status' => $followUp->status ?: 'pending',
                 'followup_edit_url' => route('lead-contact.follow_up_edit', $followUp->id),
-                'can_update_followup_status' => $canUpdateFollowUpStatus,
+                'can_update_followup_status' => $this->canEditFollowUpRecord($followUp),
+                'can_edit_followup' => $this->canEditFollowUpRecord($followUp),
             ]);
         }
 
@@ -278,7 +310,7 @@ class LeadContactController extends AccountBaseController
         abort_403(!in_array($this->addPermission, ['all', 'added']));
 
         if ($this->shouldLoadLeadEmployees()) {
-            $this->employees = User::allEmployees();
+            $this->employees = User::allEmployees(null, true, null, company()->id);
         }
 
         $defaultStatus = LeadStatus::query()->select('id')->where('default', '1')->first();
@@ -413,7 +445,7 @@ class LeadContactController extends AccountBaseController
         );
 
         if ($this->shouldLoadLeadEmployees()) {
-            $this->employees = User::allEmployees();
+            $this->employees = User::allEmployees(null, true, null, company()->id);
         }
 
         if ($this->leadContact->getCustomFieldGroupsWithFields()) {
@@ -585,7 +617,7 @@ class LeadContactController extends AccountBaseController
         $rawValue = $request->input('value');
         $value = is_string($rawValue) ? trim($rawValue) : $rawValue;
 
-        if (in_array($field, ['source_id', 'category_id', 'status_id', 'assigned_to'], true)) {
+        if (in_array($field, ['source_id', 'category_id', 'status_id', 'assigned_to', 'added_by'], true)) {
             $value = ($value === '' || is_null($value)) ? null : (int) $value;
         }
 
@@ -611,11 +643,23 @@ class LeadContactController extends AccountBaseController
 
         if ($field === 'assigned_to') {
             if (!is_null($value)) {
-                $isEmployee = User::allEmployees()
+                $isEmployee = User::allEmployees(null, true, null, company()->id)
                     ->pluck('id')
                     ->contains((int) $value);
 
                 abort_unless($isEmployee, 422, 'Invalid assignee selected.');
+            }
+        }
+
+        if ($field === 'added_by') {
+            abort_403(!$this->canManageLeadAssignment());
+
+            if (!is_null($value)) {
+                $isEmployee = User::allEmployees(null, true, null, company()->id)
+                    ->pluck('id')
+                    ->contains((int) $value);
+
+                abort_unless($isEmployee, 422, 'Invalid employee selected.');
             }
         }
 
@@ -696,7 +740,7 @@ class LeadContactController extends AccountBaseController
 
         $currentValue = $leadContact->{$field};
         if ((is_null($currentValue) ? '' : (string) $currentValue) === (is_null($value) ? '' : (string) $value)) {
-            $leadContact->loadMissing(['leadSource', 'category', 'leadStatus', 'assignedTo']);
+            $leadContact->loadMissing(['leadSource', 'category', 'leadStatus', 'assignedTo', 'addedBy']);
 
             return Reply::successWithData(__('messages.updateSuccess'), [
                 'field' => $field,
@@ -705,6 +749,7 @@ class LeadContactController extends AccountBaseController
                 'category' => $leadContact->category?->category_name,
                 'lead_status' => $leadContact->leadStatus?->type,
                 'statusColor' => $leadContact->leadStatus?->label_color,
+                'added_by_name' => $leadContact->addedBy?->name,
                 'assigned_to_name' => $leadContact->assignedTo?->name,
             ]);
         }
@@ -716,7 +761,7 @@ class LeadContactController extends AccountBaseController
             $this->syncConvertedClientDealSize($leadContact);
         }
 
-        $leadContact->loadMissing(['leadSource', 'category', 'leadStatus', 'assignedTo']);
+        $leadContact->loadMissing(['leadSource', 'category', 'leadStatus', 'assignedTo', 'addedBy']);
 
         return Reply::successWithData(__('messages.updateSuccess'), [
             'field' => $field,
@@ -725,6 +770,7 @@ class LeadContactController extends AccountBaseController
             'category' => $leadContact->category?->category_name,
             'lead_status' => $leadContact->leadStatus?->type,
             'statusColor' => $leadContact->leadStatus?->label_color,
+            'added_by_name' => $leadContact->addedBy?->name,
             'assigned_to_name' => $leadContact->assignedTo?->name,
         ]);
     }
@@ -1006,6 +1052,8 @@ class LeadContactController extends AccountBaseController
             'start_time' => 'required|date_format:"' . company()->time_format . '"',
             'remind_time' => 'nullable|required_if:send_reminder,yes|integer|min:1',
             'remind_type' => 'nullable|in:minute,hour,day',
+            'attachments' => 'nullable|array',
+            'attachments.*' => 'image|max:5120',
         ]);
 
         $followUp = new LeadFollowUp();
@@ -1026,14 +1074,18 @@ class LeadContactController extends AccountBaseController
         $followUp->last_updated_by = user()->id;
         $followUp->save();
 
+        $attachmentCount = $this->storeFollowUpAttachments($followUp, $request);
+
         $this->syncLeadFollowUpFlag($lead->id);
 
         $this->pushLeadHistory($lead->id, 'followup_created', [
             'title' => 'Follow-up Added',
-            'description' => trim(strip_tags((string) $followUp->remark)) ?: 'New follow-up created.',
+            'description' => trim(strip_tags((string) $followUp->remark)) ?: 'New follow-up created.'
+                . ($attachmentCount > 0 ? ' | ' . $attachmentCount . ' photo(s) attached' : ''),
             'meta' => [
                 'followup_id' => $followUp->id,
                 'followup_status' => $followUp->status ?: 'pending',
+                'attachment_count' => $attachmentCount,
             ],
         ]);
 
@@ -1043,14 +1095,22 @@ class LeadContactController extends AccountBaseController
     public function editFollow($id)
     {
         $this->editFollowUpPermission = user()->permission('edit_lead_follow_up');
-        $this->follow = LeadFollowUp::with('lead')->findOrFail($id);
-        abort_403(!$this->canAccessLead($this->follow->lead));
+        $followUpQuery = LeadFollowUp::with('lead');
 
-        abort_403(!($this->editFollowUpPermission == 'all'
-            || ($this->editFollowUpPermission == 'added' && $this->follow->added_by == user()->id)
-            || ($this->editFollowUpPermission == 'owned' && $this->canAccessLead($this->follow->lead))
-            || ($this->editFollowUpPermission == 'both' && ($this->follow->added_by == user()->id || $this->canAccessLead($this->follow->lead)))
-        ));
+        if (Schema::hasTable('lead_follow_up_attachments')) {
+            $followUpQuery->with('attachments');
+            $this->followAttachments = collect();
+        }
+        else {
+            $this->followAttachments = collect();
+        }
+
+        $this->follow = $followUpQuery->findOrFail($id);
+        if (Schema::hasTable('lead_follow_up_attachments')) {
+            $this->followAttachments = $this->follow->attachments ?? collect();
+        }
+
+        abort_403(!$this->canEditFollowUpRecord($this->follow));
 
         return view('lead-contact.followups.edit', $this->data);
     }
@@ -1059,16 +1119,11 @@ class LeadContactController extends AccountBaseController
     {
         $this->editFollowUpPermission = user()->permission('edit_lead_follow_up');
         $followUp = LeadFollowUp::with('lead')->findOrFail($request->id);
-        abort_403(!$this->canAccessLead($followUp->lead));
 
         $startTime = $this->normalizeCompanyTimeValue($request->start_time);
         $request->merge(['start_time' => $startTime]);
 
-        abort_403(!($this->editFollowUpPermission == 'all'
-            || ($this->editFollowUpPermission == 'added' && $followUp->added_by == user()->id)
-            || ($this->editFollowUpPermission == 'owned' && $this->canAccessLead($followUp->lead))
-            || ($this->editFollowUpPermission == 'both' && ($followUp->added_by == user()->id || $this->canAccessLead($followUp->lead)))
-        ));
+        abort_403(!$this->canEditFollowUpRecord($followUp));
 
         $request->validate([
             'next_follow_up_date' => 'required|date_format:"' . company()->date_format . '"',
@@ -1076,6 +1131,8 @@ class LeadContactController extends AccountBaseController
             'remind_time' => 'nullable|required_if:send_reminder,yes|integer|min:1',
             'remind_type' => 'nullable|in:minute,hour,day',
             'status' => 'required|in:pending,canceled,completed',
+            'attachments' => 'nullable|array',
+            'attachments.*' => 'image|max:5120',
         ]);
 
         $oldStatus = (string) ($followUp->status ?: 'pending');
@@ -1095,6 +1152,7 @@ class LeadContactController extends AccountBaseController
         $followUp->longitude = null;
         $followUp->last_updated_by = user()->id;
         $followUp->save();
+        $attachmentCount = $this->storeFollowUpAttachments($followUp, $request);
         $this->syncLeadFollowUpFlag($followUp->lead_id);
 
         $newStatus = (string) ($followUp->status ?: 'pending');
@@ -1110,10 +1168,12 @@ class LeadContactController extends AccountBaseController
 
         $this->pushLeadHistory($followUp->lead_id, 'followup_updated', [
             'title' => 'Follow-up Updated',
-            'description' => !empty($changes) ? implode(' | ', $changes) : 'Follow-up details updated.',
+            'description' => trim((!empty($changes) ? implode(' | ', $changes) : 'Follow-up details updated.')
+                . ($attachmentCount > 0 ? ' | ' . $attachmentCount . ' photo(s) attached' : '')),
             'meta' => [
                 'followup_id' => $followUp->id,
                 'followup_status' => $followUp->status ?: 'pending',
+                'attachment_count' => $attachmentCount,
             ],
         ]);
 
@@ -1124,16 +1184,12 @@ class LeadContactController extends AccountBaseController
     {
         $this->deleteFollowUpPermission = user()->permission('delete_lead_follow_up');
         $followUp = LeadFollowUp::with('lead')->findOrFail($id);
-        abort_403(!$this->canAccessLead($followUp->lead));
 
-        abort_403(!($this->deleteFollowUpPermission == 'all'
-            || ($this->deleteFollowUpPermission == 'added' && $followUp->added_by == user()->id)
-            || ($this->deleteFollowUpPermission == 'owned' && $this->canAccessLead($followUp->lead))
-            || ($this->deleteFollowUpPermission == 'both' && ($followUp->added_by == user()->id || $this->canAccessLead($followUp->lead)))
-        ));
+        abort_403(!$this->canDeleteFollowUpRecord($followUp));
 
         $leadId = $followUp->lead_id;
         $oldStatus = (string) ($followUp->status ?: 'pending');
+        $this->deleteFollowUpAttachments($followUp);
         $followUp->delete();
 
         $this->syncLeadFollowUpFlag($leadId);
@@ -1150,13 +1206,12 @@ class LeadContactController extends AccountBaseController
     {
         $this->editFollowUpPermission = user()->permission('edit_lead_follow_up');
         $followUp = LeadFollowUp::with('lead')->findOrFail($request->id);
-        abort_403(!$this->canAccessLead($followUp->lead));
 
-        abort_403(!($this->editFollowUpPermission == 'all'
-            || ($this->editFollowUpPermission == 'added' && $followUp->added_by == user()->id)
-            || ($this->editFollowUpPermission == 'owned' && $this->canAccessLead($followUp->lead))
-            || ($this->editFollowUpPermission == 'both' && ($followUp->added_by == user()->id || $this->canAccessLead($followUp->lead)))
-        ));
+        $request->validate([
+            'status' => 'required|in:pending,canceled,completed',
+        ]);
+
+        abort_403(!$this->canEditFollowUpRecord($followUp));
 
         $oldStatus = (string) ($followUp->status ?: 'pending');
         $followUp->status = $request->status;
@@ -1359,6 +1414,64 @@ class LeadContactController extends AccountBaseController
         ]);
     }
 
+    private function storeFollowUpAttachments(LeadFollowUp $followUp, Request $request): int
+    {
+        if (!Schema::hasTable('lead_follow_up_attachments') || !$request->hasFile('attachments')) {
+            return 0;
+        }
+
+        $files = $request->file('attachments');
+        if (!is_array($files)) {
+            $files = [$files];
+        }
+
+        $savedCount = 0;
+
+        foreach ($files as $file) {
+            if (!$file) {
+                continue;
+            }
+
+            $filename = Files::uploadLocalOrS3($file, LeadFollowUpAttachment::FILE_PATH . '/' . $followUp->id);
+
+            LeadFollowUpAttachment::create([
+                'lead_id' => $followUp->lead_id,
+                'lead_follow_up_id' => $followUp->id,
+                'user_id' => user()->id,
+                'filename' => $file->getClientOriginalName(),
+                'hashname' => $filename,
+                'mime_type' => $file->getClientMimeType(),
+                'size' => (string) $file->getSize(),
+            ]);
+
+            $savedCount++;
+        }
+
+        return $savedCount;
+    }
+
+    private function deleteFollowUpAttachments(LeadFollowUp $followUp): void
+    {
+        if (!Schema::hasTable('lead_follow_up_attachments')) {
+            return;
+        }
+
+        $attachments = $followUp->relationLoaded('attachments')
+            ? $followUp->attachments
+            : $followUp->attachments()->get();
+        $disk = config('filesystems.default');
+
+        foreach ($attachments as $attachment) {
+            $path = LeadFollowUpAttachment::FILE_PATH . '/' . $followUp->id . '/' . $attachment->hashname;
+
+            if (Storage::disk($disk)->exists($path)) {
+                Storage::disk($disk)->delete($path);
+            }
+
+            LeadFollowUpAttachment::destroy($attachment->id);
+        }
+    }
+
     private function syncConvertedClientDealSize(Lead $lead): void
     {
         if (!$lead->client_id || !Schema::hasTable('client_details')) {
@@ -1440,6 +1553,40 @@ class LeadContactController extends AccountBaseController
         }
 
         return (int) $lead->assigned_to === (int) user()->id;
+    }
+
+    private function canEditFollowUpRecord(?LeadFollowUp $followUp): bool
+    {
+        if (!$followUp) {
+            return false;
+        }
+
+        $permission = user()->permission('edit_lead_follow_up');
+
+        return $permission === 'all'
+            || ($permission === 'added' && (int) $followUp->added_by === (int) user()->id)
+            || ($permission === 'owned' && $this->canAccessLead($followUp->lead))
+            || ($permission === 'both' && (
+                (int) $followUp->added_by === (int) user()->id
+                || $this->canAccessLead($followUp->lead)
+            ));
+    }
+
+    private function canDeleteFollowUpRecord(?LeadFollowUp $followUp): bool
+    {
+        if (!$followUp) {
+            return false;
+        }
+
+        $permission = user()->permission('delete_lead_follow_up');
+
+        return $permission === 'all'
+            || ($permission === 'added' && (int) $followUp->added_by === (int) user()->id)
+            || ($permission === 'owned' && $this->canAccessLead($followUp->lead))
+            || ($permission === 'both' && (
+                (int) $followUp->added_by === (int) user()->id
+                || $this->canAccessLead($followUp->lead)
+            ));
     }
 
     private function canManageLeadAssignment(): bool

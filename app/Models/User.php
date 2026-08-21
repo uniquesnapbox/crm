@@ -993,6 +993,20 @@ class User extends BaseModel implements AuthenticatableContract, AuthorizableCon
         unset(static::$permissionTypeIdMapCache[$userId]);
     }
 
+    /**
+     * Forget both the in-process permission map and the persistent cache entry
+     * used by permission(). Permission changes must be visible immediately.
+     */
+    public static function forgetPermissionCache(int $userId, ?string $permission = null): void
+    {
+        self::forgetPermissionMapCache($userId);
+
+        if ($permission !== null) {
+            Cache::forget('permission-' . $permission . '-' . $userId);
+            Cache::forget('permission-id-' . $permission . '-' . $userId);
+        }
+    }
+
     private function permissionMap(): array
     {
         if (!array_key_exists($this->id, static::$permissionMapCache)) {
@@ -1067,6 +1081,12 @@ class User extends BaseModel implements AuthenticatableContract, AuthorizableCon
 
         foreach (array_chunk($data, 100) as $item) {
             UserPermission::insert($item);
+        }
+
+        $permissionNames = Permission::whereIn('id', collect($rolePermissions)->pluck('permission_id'))
+            ->pluck('name');
+        foreach ($permissionNames as $permissionName) {
+            self::forgetPermissionCache((int) $this->id, $permissionName);
         }
     }
 

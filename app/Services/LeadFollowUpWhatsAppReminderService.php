@@ -4,11 +4,14 @@ namespace App\Services;
 
 use App\Models\Company;
 use App\Models\LeadFollowUp;
+use App\Models\LeadFollowUpAttachment;
 use App\Models\User;
 use App\Models\WhatsappNotificationSetting;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 
 class LeadFollowUpWhatsAppReminderService
 {
@@ -41,9 +44,15 @@ class LeadFollowUpWhatsAppReminderService
         $windowEnd = $target->copy()->endOfMinute()->setTimezone('UTC');
         $activeEmployees = User::allEmployees(null, true, null, $companyId)->keyBy('id');
 
-        $followUps = LeadFollowUp::with([
+        $relations = [
             'lead:id,client_name,mobile,cell,office,assigned_to,added_by,company_id',
-        ])
+        ];
+
+        if (Schema::hasTable('lead_follow_up_attachments')) {
+            $relations[] = 'attachments:id,lead_follow_up_id,filename,hashname,mime_type,size';
+        }
+
+        $followUps = LeadFollowUp::with($relations)
             ->where('status', 'pending')
             ->whereNull('whatsapp_reminder_sent_at')
             ->whereBetween('next_follow_up_date', [$windowStart, $windowEnd])
@@ -89,13 +98,14 @@ class LeadFollowUpWhatsAppReminderService
                 continue;
             }
 
+            $attachments = $this->buildReminderAttachments($followUp);
             $sent = false;
             $sessionCandidates = $this->resolveSessionCandidates($setting);
             $lastSession = null;
 
             foreach ($sessionCandidates as $sessionKey) {
                 $lastSession = $sessionKey;
-                $sent = $this->gatewayService->sendMessage($mobile, $message, $sessionKey);
+                $sent = $this->sendReminderMessages($mobile, $message, $sessionKey, $attachments);
 
                 if ($sent) {
                     break;
@@ -171,6 +181,73 @@ class LeadFollowUpWhatsAppReminderService
             '{{remarks}}' => mb_strimwidth($remark, 0, 120, '...'),
             '{{company_name}}' => (string) $company->company_name,
         ]));
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildReminderAttachments(LeadFollowUp $followUp): array
+    {
+        if (!Schema::hasTable('lead_follow_up_attachments')) {
+            return [];
+        }
+
+        $attachments = $followUp->relationLoaded('attachments')
+            ? $followUp->attachments
+            : $followUp->attachments()->get();
+
+        $payloads = [];
+
+        foreach ($attachments as $attachment) {
+            if (!$attachment instanceof LeadFollowUpAttachment) {
+                continue;
+            }
+
+            $path = LeadFollowUpAttachment::FILE_PATH . '/' . $followUp->id . '/' . $attachment->hashname;
+
+            if (!Storage::disk(config('filesystems.default'))->exists($path)) {
+                continue;
+            }
+
+            $contents = Storage::disk(config('filesystems.default'))->get($path);
+            if ($contents === '') {
+                continue;
+            }
+
+            $payloads[] = [
+                'data' => 'data:' . ($attachment->mime_type ?: Storage::disk(config('filesystems.default'))->mimeType($path) ?: 'application/octet-stream') . ';base64,' . base64_encode($contents),
+                'mimeType' => $attachment->mime_type ?: Storage::disk(config('filesystems.default'))->mimeType($path) ?: 'application/octet-stream',
+                'fileName' => $attachment->filename ?: $attachment->hashname,
+                'sendAsDocument' => false,
+            ];
+        }
+
+        return $payloads;
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $attachments
+     */
+    private function sendReminderMessages(string $mobile, string $message, string $sessionKey, array $attachments): bool
+    {
+        if (empty($attachments)) {
+            return $this->gatewayService->sendMessage($mobile, $message, $sessionKey);
+        }
+
+        $primaryAttachment = array_shift($attachments);
+        $messageSent = $this->gatewayService->sendMessage($mobile, $message, $sessionKey, $primaryAttachment);
+
+        if (!$messageSent) {
+            return false;
+        }
+
+        foreach ($attachments as $attachment) {
+            if (!$this->gatewayService->sendMessage($mobile, '', $sessionKey, $attachment)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
