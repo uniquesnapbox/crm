@@ -748,13 +748,21 @@ class WhatsAppManager extends EventEmitter {
         const remoteId = serializedId(remote);
         const messageId = serializedId(id)
           || [fromMe ? "true" : "false", remoteId, id?.id || model?.t || Date.now()].join("_");
+        const contentType = String(model?.type || model?.__x_type || "text");
+        let body = String(model?.body || model?.__x_body || "");
+        const looksLikeInlineMedia = body.startsWith("/9j/")
+          || body.startsWith("iVBOR")
+          || body.startsWith("UklGR");
+        if (["image", "video", "sticker"].includes(contentType) && looksLikeInlineMedia) {
+          body = "";
+        }
         results.push({
           sessionKey: session,
           messageId,
           from: serializedId(model?.from || model?.__x_from || (!fromMe ? remote : "")),
           to: serializedId(model?.to || model?.__x_to || (fromMe ? remote : "")),
-          body: String(model?.body || model?.__x_body || ""),
-          contentType: String(model?.type || model?.__x_type || "text"),
+          body,
+          contentType,
           timestamp: Number(model?.t || model?.timestamp || model?.__x_t || Math.floor(Date.now() / 1000)),
           fromMe,
           chatId: remoteId,
