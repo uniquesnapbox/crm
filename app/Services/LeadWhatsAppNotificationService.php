@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Lead;
+use App\Models\LeadWhatsAppMessage;
 use App\Models\WhatsappNotificationSetting;
 use Illuminate\Support\Facades\Log;
 
@@ -40,11 +41,32 @@ class LeadWhatsAppNotificationService
         $error = $this->gatewayService->getLastError();
 
         if ($sent) {
+            $sentAt = now();
             $lead->forceFill([
                 'whatsapp_greeting_status' => 'sent',
                 'whatsapp_greeting_error' => null,
-                'whatsapp_greeting_sent_at' => now(),
+                'whatsapp_greeting_sent_at' => $sentAt,
             ])->saveQuietly();
+
+            LeadWhatsAppMessage::withoutGlobalScopes()->updateOrCreate([
+                'provider_message_id' => 'crm:lead-created:' . $lead->id,
+            ], [
+                'company_id' => $lead->company_id,
+                'lead_id' => $lead->id,
+                'direction' => 'outbound',
+                'phone' => preg_replace('/\D+/', '', (string) $lead->mobile),
+                'content_type' => 'text',
+                'message' => $this->renderTemplate(
+                    $setting->lead_created_template ?: WhatsappNotificationSetting::DEFAULT_LEAD_CREATED_TEMPLATE,
+                    $lead
+                ),
+                'status' => 'sent',
+                'metadata' => [
+                    'session_key' => $setting->resolved_lead_created_sender_number,
+                    'created_automatically' => true,
+                ],
+                'message_at' => $sentAt,
+            ]);
         } else {
             $lead->forceFill([
                 'whatsapp_greeting_status' => 'failed',

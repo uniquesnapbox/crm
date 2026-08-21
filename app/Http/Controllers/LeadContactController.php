@@ -315,12 +315,18 @@ class LeadContactController extends AccountBaseController
         $sessionKey = $setting?->resolved_lead_created_sender_number ?: null;
         $history = $gatewayService->getMessageHistory($phone, $sessionKey, 100);
 
-        if (!($history['success'] ?? false)) {
+        if ($history['success'] ?? false) {
+            $this->storeSyncedChatMessages($leadContact, $phone, $sessionKey, (array) data_get($history, 'data.messages', []));
+        } else {
             Cache::forget($cacheKey);
-            return;
         }
 
-        foreach ((array) data_get($history, 'data.messages', []) as $item) {
+        $this->backfillLeadGreetingMessage($leadContact, $phone, $setting);
+    }
+
+    private function storeSyncedChatMessages(Lead $leadContact, string $phone, ?string $sessionKey, array $messages): void
+    {
+        foreach ($messages as $item) {
             $providerMessageId = trim((string) data_get($item, 'messageId'));
             if ($providerMessageId === '') {
                 continue;
@@ -359,6 +365,45 @@ class LeadContactController extends AccountBaseController
             ]);
             $chatMessage->save();
         }
+    }
+
+    private function backfillLeadGreetingMessage(Lead $leadContact, string $phone, ?WhatsappNotificationSetting $setting): void
+    {
+        if ($leadContact->whatsapp_greeting_status !== 'sent' || !$leadContact->whatsapp_greeting_sent_at) {
+            return;
+        }
+
+        $template = $setting?->lead_created_template ?: WhatsappNotificationSetting::DEFAULT_LEAD_CREATED_TEMPLATE;
+        $message = trim(strtr($template, [
+            '{{client_name}}' => (string) $leadContact->client_name,
+            '{{company_name}}' => (string) ($leadContact->company_name ?: optional($leadContact->company)->company_name ?: ''),
+            '{{email}}' => (string) $leadContact->client_email,
+            '{{mobile}}' => (string) $leadContact->mobile,
+            '{{lead_id}}' => (string) $leadContact->id,
+            '{{created_by}}' => (string) optional($leadContact->addedBy)->name,
+            '{{products_services}}' => (string) ($leadContact->products_services ?: ''),
+        ]));
+
+        if ($message === '') {
+            return;
+        }
+
+        LeadWhatsAppMessage::withoutGlobalScopes()->updateOrCreate([
+            'provider_message_id' => 'crm:lead-created:' . $leadContact->id,
+        ], [
+            'company_id' => $leadContact->company_id,
+            'lead_id' => $leadContact->id,
+            'direction' => 'outbound',
+            'phone' => $phone,
+            'content_type' => 'text',
+            'message' => $message,
+            'status' => 'sent',
+            'metadata' => [
+                'session_key' => $setting?->resolved_lead_created_sender_number,
+                'synced_from_lead_greeting' => true,
+            ],
+            'message_at' => $leadContact->whatsapp_greeting_sent_at,
+        ]);
     }
 
     public function chatMedia($leadId, $messageId)
