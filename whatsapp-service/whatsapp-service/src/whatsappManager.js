@@ -663,6 +663,24 @@ class WhatsAppManager extends EventEmitter {
     const candidateIds = [this.toChatId(digits)];
 
     try {
+      const resolvedIds = await client.pupPage.evaluate(async (phone) => {
+        const result = await window.WWebJS.enforceLidAndPnRetrieval(`${phone}@c.us`);
+        return [result?.lid?._serialized, result?.phone?._serialized].filter(Boolean);
+      }, digits);
+
+      for (const resolvedId of resolvedIds) {
+        if (!candidateIds.includes(resolvedId)) {
+          candidateIds.unshift(resolvedId);
+        }
+      }
+    } catch (error) {
+      logger.debug("Unable to resolve WhatsApp LID", {
+        phone: digits,
+        error: error.message
+      });
+    }
+
+    try {
       const registeredId = await client.getNumberId(digits);
       const serialized = registeredId?._serialized || String(registeredId || "");
       if (serialized && !candidateIds.includes(serialized)) {
@@ -688,6 +706,7 @@ class WhatsAppManager extends EventEmitter {
 
     const matchedChatId = await client.pupPage.evaluate((phoneSuffix) => {
       const collections = window.require("WAWebCollections");
+      const apiContact = window.require("WAWebApiContact");
       const chats = collections.Chat.getModelsArray();
       const normalize = (value) => String(value || "").replace(/\D/g, "");
       const matches = (value) => {
@@ -707,11 +726,19 @@ class WhatsAppManager extends EventEmitter {
           continue;
         }
 
+        let mappedPhone = null;
+        try {
+          mappedPhone = apiContact.getPhoneNumber(chat?.id);
+        } catch (_) {
+          // The chat may already use a phone-number WID.
+        }
+
         const candidates = [
           ...idValues(chat?.id),
           ...idValues(chat?.contact),
           ...idValues(chat?.contact?.id),
-          ...idValues(chat?.contact?.phoneNumber)
+          ...idValues(chat?.contact?.phoneNumber),
+          ...idValues(mappedPhone)
         ];
 
         if (candidates.some(matches)) {
