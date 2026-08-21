@@ -39,6 +39,17 @@ class LeadFollowUpWhatsAppReminderService
         $now = now($timezone);
         $cutoffUtc = $now->copy()->addMinutes(10)->setTimezone('UTC');
         $lockTtl = $now->copy()->addMinutes(15);
+        $sessionCandidates = $this->resolveSessionCandidates($setting);
+
+        if (!$this->gatewayService->hasReadySession($sessionCandidates)) {
+            Log::warning('Lead follow-up WhatsApp reminder scan deferred because no sender session is ready.', [
+                'company_id' => $companyId,
+                'sessions' => $sessionCandidates,
+                'error' => $this->gatewayService->getLastError(),
+            ]);
+
+            return;
+        }
 
         $activeEmployees = User::allEmployees(null, true, null, $companyId)->keyBy('id');
 
@@ -58,7 +69,9 @@ class LeadFollowUpWhatsAppReminderService
             ->whereHas('lead', function ($query) use ($companyId) {
                 $query->where('company_id', $companyId);
             })
-            ->orderBy('next_follow_up_date')
+            // Recent reminders must not wait behind a large historical backlog.
+            ->orderByDesc('next_follow_up_date')
+            ->limit(100)
             ->get();
 
         foreach ($followUps as $followUp) {
@@ -238,13 +251,24 @@ class LeadFollowUpWhatsAppReminderService
         }
 
         $attachments = $this->buildReminderAttachments($followUp);
+        $idempotencySeed = sprintf(
+            'lead-follow-up:%d:%d',
+            $followUp->id,
+            Carbon::parse((string) $followUp->next_follow_up_date, 'UTC')->timestamp
+        );
         $sent = false;
         $sessionCandidates = $this->resolveSessionCandidates($setting);
         $lastSession = null;
 
         foreach ($sessionCandidates as $sessionKey) {
             $lastSession = $sessionKey;
-            $sent = $this->sendReminderMessages($mobile, $message, $sessionKey, $attachments);
+            $sent = $this->sendReminderMessages(
+                $mobile,
+                $message,
+                $sessionKey,
+                $attachments,
+                $idempotencySeed
+            );
 
             if ($sent) {
                 break;
@@ -386,21 +410,39 @@ class LeadFollowUpWhatsAppReminderService
     /**
      * @param array<int, array<string, mixed>> $attachments
      */
-    private function sendReminderMessages(string $mobile, string $message, string $sessionKey, array $attachments): bool
+    private function sendReminderMessages(
+        string $mobile,
+        string $message,
+        string $sessionKey,
+        array $attachments,
+        string $idempotencySeed
+    ): bool
     {
         if (empty($attachments)) {
-            return $this->gatewayService->sendMessage($mobile, $message, $sessionKey);
+            return $this->gatewayService->sendMessage($mobile, $message, $sessionKey, null, $idempotencySeed . ':message');
         }
 
         $primaryAttachment = array_shift($attachments);
-        $messageSent = $this->gatewayService->sendMessage($mobile, $message, $sessionKey, $primaryAttachment);
+        $messageSent = $this->gatewayService->sendMessage(
+            $mobile,
+            $message,
+            $sessionKey,
+            $primaryAttachment,
+            $idempotencySeed . ':attachment:0'
+        );
 
         if (!$messageSent) {
             return false;
         }
 
-        foreach ($attachments as $attachment) {
-            if (!$this->gatewayService->sendMessage($mobile, '', $sessionKey, $attachment)) {
+        foreach ($attachments as $index => $attachment) {
+            if (!$this->gatewayService->sendMessage(
+                $mobile,
+                '',
+                $sessionKey,
+                $attachment,
+                $idempotencySeed . ':attachment:' . ($index + 1)
+            )) {
                 return false;
             }
         }

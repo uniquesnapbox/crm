@@ -28,7 +28,13 @@ class WhatsAppGatewayService
             && filled(config('services.whatsapp_service.api_key'));
     }
 
-    public function sendMessage(string $mobile, string $message, ?string $sessionKey = null, ?array $attachment = null): bool
+    public function sendMessage(
+        string $mobile,
+        string $message,
+        ?string $sessionKey = null,
+        ?array $attachment = null,
+        ?string $idempotencySeed = null
+    ): bool
     {
         $this->lastResponseData = null;
         $baseUrl = rtrim((string) config('services.whatsapp_service.base_url'), '/');
@@ -41,7 +47,7 @@ class WhatsAppGatewayService
             'to' => $phone,
             'message' => trim($message),
             'channelKey' => $session,
-            'idempotencyKey' => $this->createIdempotencyKey($phone, $session, $message),
+            'idempotencyKey' => $this->createIdempotencyKey($phone, $session, $message, $idempotencySeed),
         ];
 
         if (!empty($attachment)) {
@@ -184,6 +190,43 @@ class WhatsAppGatewayService
         }
     }
 
+    /**
+     * @param array<int, string> $sessionKeys
+     */
+    public function hasReadySession(array $sessionKeys): bool
+    {
+        $health = $this->getHealth();
+
+        if (!($health['success'] ?? false)) {
+            $this->lastError = (string) ($health['error'] ?? 'WhatsApp service is unavailable.');
+            return false;
+        }
+
+        $wantedSessions = array_values(array_unique(array_filter(array_map(
+            fn ($sessionKey) => $this->resolveSessionKey((string) $sessionKey),
+            $sessionKeys
+        ))));
+        $sessions = $health['data']['sessions'] ?? [];
+
+        foreach ($sessions as $session) {
+            if (!is_array($session)) {
+                continue;
+            }
+
+            $sessionKey = (string) ($session['sessionKey'] ?? '');
+            $status = strtolower((string) ($session['status'] ?? ''));
+
+            if (in_array($sessionKey, $wantedSessions, true)
+                && in_array($status, ['ready', 'authenticated'], true)) {
+                $this->lastError = null;
+                return true;
+            }
+        }
+
+        $this->lastError = 'No configured WhatsApp session is ready.';
+        return false;
+    }
+
     public function getQr(?string $sessionKey = null, bool $forceRefresh = false): array
     {
         $baseUrl = rtrim((string) config('services.whatsapp_service.base_url'), '/');
@@ -266,8 +309,17 @@ class WhatsAppGatewayService
         return $fallback !== '' ? $fallback : 'default';
     }
 
-    private function createIdempotencyKey(string $mobile, string $session, string $message): string
+    private function createIdempotencyKey(
+        string $mobile,
+        string $session,
+        string $message,
+        ?string $idempotencySeed = null
+    ): string
     {
+        if (filled($idempotencySeed)) {
+            return hash('sha256', $mobile . '|' . $session . '|' . trim((string) $idempotencySeed));
+        }
+
         try {
             $nonce = bin2hex(random_bytes(16));
         } catch (\Throwable) {

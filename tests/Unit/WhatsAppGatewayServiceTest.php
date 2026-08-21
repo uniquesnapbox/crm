@@ -65,4 +65,43 @@ class WhatsAppGatewayServiceTest extends TestCase
         $this->assertTrue($service->sendMessage('917035624149', 'Hello', '7099481497'));
         $this->assertSame('provider-message-id', data_get($service->getLastResponseData(), 'id'));
     }
+
+    public function test_it_detects_a_ready_configured_session(): void
+    {
+        Http::fake([
+            'http://whatsapp.test/health' => Http::response([
+                'success' => true,
+                'data' => [
+                    'sessions' => [
+                        ['sessionKey' => '7099481497', 'status' => 'ready'],
+                        ['sessionKey' => '7000000000', 'status' => 'qr_required'],
+                    ],
+                ],
+            ]),
+        ]);
+
+        $service = app(WhatsAppGatewayService::class);
+
+        $this->assertTrue($service->hasReadySession(['7099481497', '7000000000']));
+        $this->assertNull($service->getLastError());
+    }
+
+    public function test_it_reuses_the_same_idempotency_key_for_a_reminder_retry(): void
+    {
+        Http::fake([
+            'http://whatsapp.test/messages/send' => Http::response(['success' => true]),
+        ]);
+
+        $service = app(WhatsAppGatewayService::class);
+
+        $this->assertTrue($service->sendMessage('917035624149', 'Reminder', '7099481497', null, 'follow-up:279'));
+        $this->assertTrue($service->sendMessage('917035624149', 'Reminder', '7099481497', null, 'follow-up:279'));
+
+        $keys = Http::recorded()
+            ->map(fn ($record) => $record[0]['idempotencyKey'])
+            ->all();
+
+        $this->assertCount(2, $keys);
+        $this->assertSame($keys[0], $keys[1]);
+    }
 }
