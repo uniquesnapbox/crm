@@ -1,9 +1,9 @@
 <style>
-    .lead-chat-card { width: 100%; margin: 0; border: 0; border-radius: 0; box-shadow: none; background: transparent; overflow: visible; }
+    .lead-chat-card { width: 100%; min-height: calc(100vh - 190px); margin: 0; border: 0; border-radius: 0; box-shadow: none; background: transparent; overflow: visible; display: flex; flex-direction: column; }
     .lead-chat-header { padding: 8px 4px 14px; background: transparent; border-bottom: 1px solid #e7edf6; }
     .lead-chat-header h5 { margin: 0; color: #1d2b43; font-weight: 700; }
-    .lead-chat-body { padding: 14px 0 0; }
-    .lead-chat-thread { min-height: 230px; max-height: 460px; overflow-y: auto; padding: 4px 2px 14px; }
+    .lead-chat-body { min-height: 0; padding: 14px 0 0; display: flex; flex: 1; flex-direction: column; }
+    .lead-chat-thread { min-height: 230px; max-height: none; overflow-y: auto; padding: 4px 2px 14px; flex: 1; }
     .lead-chat-empty { min-height: 210px; display: flex; align-items: center; justify-content: center; color: #8a98ad; font-size: 13px; }
     .lead-chat-bubble-row { display: flex; margin-bottom: 10px; }
     .lead-chat-bubble-row.outbound { justify-content: flex-end; }
@@ -22,6 +22,10 @@
     .lead-chat-photo-name { display: none; margin: 6px 5px 2px; color: #49617f; font-size: 11px; }
     .lead-chat-note { color: #6c7b96; font-size: 12px; margin: 8px 5px 0; }
     .lead-chat-fallback { padding: 12px 14px; border-radius: 10px; background: #fff8e6; color: #7d5b00; font-size: 13px; }
+    @media (max-width: 767px) {
+        .lead-chat-card { min-height: calc(100vh - 150px); }
+        .lead-chat-thread { min-height: 300px; }
+    }
 </style>
 
 <div class="row">
