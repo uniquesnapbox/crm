@@ -39,14 +39,7 @@ if (!function_exists('user')) {
      */
     function user()
     {
-        static $cachedUser = null;
-        static $resolved = false;
-
-        if ($resolved) {
-            return $cachedUser;
-        }
-
-        $resolved = true;
+        static $cachedUsers = [];
 
         $userId = auth()->id();
 
@@ -54,11 +47,15 @@ if (!function_exists('user')) {
             return null;
         }
 
-        $cachedUser = \App\Models\User::query()
+        if (array_key_exists($userId, $cachedUsers)) {
+            return $cachedUsers[$userId];
+        }
+
+        $cachedUsers[$userId] = \App\Models\User::query()
             ->without(['clientDetails', 'leaves'])
             ->find($userId);
 
-        return $cachedUser;
+        return $cachedUsers[$userId];
     }
 
 }
@@ -71,30 +68,22 @@ if (!function_exists('user_roles')) {
     // @codingStandardsIgnoreLine
     function user_roles()
     {
-        static $cachedRoles = null;
-        static $cachedRoleIds = null;
-        static $resolved = false;
-
-        if ($resolved) {
-            return $cachedRoles;
-        }
-
         $user = user();
 
-        if ($user) {
-            $roles = $user->roles;
-            $cachedRoles = $roles->pluck('name')->toArray();
-            $cachedRoleIds = $roles->pluck('id')->toArray();
-            session(['user_roles' => $cachedRoles]);
-            session(['user_role_ids' => $cachedRoleIds]);
-            $resolved = true;
-
-            return $cachedRoles;
+        if (!$user) {
+            return null;
         }
 
-        $resolved = true;
+        static $cachedRoles = [];
 
-        return null;
+        if (!array_key_exists($user->id, $cachedRoles)) {
+            $roles = $user->roles;
+            $cachedRoles[$user->id] = $roles->pluck('name')->toArray();
+            session(['user_roles' => $cachedRoles[$user->id]]);
+            session(['user_role_ids' => $roles->pluck('id')->toArray()]);
+        }
+
+        return $cachedRoles[$user->id];
     }
 
 }
@@ -1129,24 +1118,19 @@ if (!function_exists('company')) {
 
     function company()
     {
-        static $cachedCompany = null;
-        static $resolved = false;
-
-        if ($resolved) {
-            return $cachedCompany;
-        }
-
-        $resolved = true;
-
         $user = user();
 
         if (!$user || !$user->company_id) {
             return false;
         }
 
-        $cachedCompany = Company::find($user->company_id);
+        static $cachedCompanies = [];
 
-        return $cachedCompany;
+        if (!array_key_exists($user->company_id, $cachedCompanies)) {
+            $cachedCompanies[$user->company_id] = Company::find($user->company_id);
+        }
+
+        return $cachedCompanies[$user->company_id];
     }
 
 }
