@@ -1,8 +1,8 @@
 <style>
-    .lead-chat-card { max-width: 860px; margin: 0 auto; border: 1px solid #dbe4f1; border-radius: 16px; box-shadow: 0 8px 24px rgba(22, 44, 87, .08); overflow: hidden; }
-    .lead-chat-header { padding: 18px 20px; background: linear-gradient(135deg, #eef4ff 0%, #fff 100%); border-bottom: 1px solid #e7edf6; }
+    .lead-chat-card { width: 100%; margin: 0; border: 0; border-radius: 0; box-shadow: none; background: transparent; overflow: visible; }
+    .lead-chat-header { padding: 8px 4px 14px; background: transparent; border-bottom: 1px solid #e7edf6; }
     .lead-chat-header h5 { margin: 0; color: #1d2b43; font-weight: 700; }
-    .lead-chat-body { padding: 20px; }
+    .lead-chat-body { padding: 14px 0 0; }
     .lead-chat-thread { min-height: 230px; max-height: 460px; overflow-y: auto; padding: 4px 2px 14px; }
     .lead-chat-empty { min-height: 210px; display: flex; align-items: center; justify-content: center; color: #8a98ad; font-size: 13px; }
     .lead-chat-bubble-row { display: flex; margin-bottom: 10px; }
