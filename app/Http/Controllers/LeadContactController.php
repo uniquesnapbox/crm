@@ -24,9 +24,12 @@ use App\Models\LeadFollowUpAttachment;
 use App\Models\LeadHistory;
 use App\Models\LeadSource;
 use App\Models\LeadStatus;
+use App\Models\LeadWhatsAppMessage;
 use App\Models\Product;
 use App\Models\Role;
 use App\Models\User;
+use App\Models\WhatsappNotificationSetting;
+use App\Services\WhatsAppGatewayService;
 use App\Traits\ImportExcel;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -116,6 +119,8 @@ class LeadContactController extends AccountBaseController
         case 'notes':
         case 'history':
             return $this->history();
+        case 'chat':
+            return $this->chat();
         default:
             $this->view = 'lead-contact.ajax.profile';
             break;
@@ -129,6 +134,170 @@ class LeadContactController extends AccountBaseController
 
         return view('lead-contact.show', $this->data);
 
+    }
+
+    public function chat()
+    {
+        $contactNumber = $this->leadContact->mobile ?: ($this->leadContact->cell ?: $this->leadContact->office);
+        $sanitizedPhone = $contactNumber ? preg_replace('/\D+/', '', $contactNumber) : null;
+
+        $this->chatNumber = $contactNumber;
+        $this->chatPhone = $sanitizedPhone;
+        $this->chatWhatsAppUrl = $sanitizedPhone ? 'https://wa.me/' . $sanitizedPhone : null;
+        $this->chatGatewayConfigured = app(WhatsAppGatewayService::class)->isConfigured();
+        $this->chatMessages = LeadWhatsAppMessage::query()
+            ->where('lead_id', $this->leadContact->id)
+            ->orderByDesc('message_at')
+            ->orderByDesc('id')
+            ->limit(100)
+            ->get()
+            ->sortBy([
+                ['message_at', 'asc'],
+                ['id', 'asc'],
+            ])
+            ->values();
+        $this->activeTab = 'chat';
+        $this->view = 'lead-contact.ajax.chat';
+
+        if (request()->ajax()) {
+            return $this->returnAjax($this->view);
+        }
+
+        return view('lead-contact.show', $this->data);
+    }
+
+    public function chatMessages($id)
+    {
+        $leadContact = Lead::findOrFail($id);
+        abort_403(!$this->canAccessLead($leadContact));
+
+        $messages = LeadWhatsAppMessage::query()
+            ->where('lead_id', $leadContact->id)
+            ->orderByDesc('message_at')
+            ->orderByDesc('id')
+            ->limit(100)
+            ->get()
+            ->sortBy([
+                ['message_at', 'asc'],
+                ['id', 'asc'],
+            ])
+            ->values()
+            ->map(function (LeadWhatsAppMessage $message) {
+                return [
+                    'id' => $message->id,
+                    'direction' => $message->direction,
+                    'message' => $message->message,
+                    'content_type' => $message->content_type,
+                    'media_url' => $this->chatMediaUrl($message),
+                    'status' => $message->status,
+                    'message_at' => optional($message->message_at)->toIso8601String(),
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'messages' => $messages,
+        ]);
+    }
+
+    public function sendChatMessage(Request $request, $id, WhatsAppGatewayService $gatewayService)
+    {
+        $request->validate([
+            'message' => ['nullable', 'string', 'max:1000'],
+            'photo' => ['required', 'file', 'image', 'mimes:jpg,jpeg,png,gif,webp', 'max:5120'],
+        ]);
+
+        $leadContact = Lead::findOrFail($id);
+        abort_403(!$this->canAccessLead($leadContact));
+
+        $contactNumber = $leadContact->mobile ?: ($leadContact->cell ?: $leadContact->office);
+        $sanitizedPhone = preg_replace('/\D+/', '', (string) $contactNumber);
+
+        if ($sanitizedPhone === '') {
+            return Reply::error('This lead does not have a valid WhatsApp number.');
+        }
+
+        $setting = WhatsappNotificationSetting::where('company_id', $leadContact->company_id)->first();
+        $sessionKey = $setting?->resolved_lead_created_sender_number ?: null;
+        $message = trim((string) $request->input('message'));
+        $photo = $request->file('photo');
+        $photoContents = file_get_contents($photo->getRealPath());
+        $photoPath = 'lead-chat/' . $leadContact->company_id . '/' . $leadContact->id . '/' . Str::uuid() . '.' . strtolower($photo->getClientOriginalExtension());
+        Storage::disk('local')->put($photoPath, $photoContents);
+        $attachment = [
+            'data' => base64_encode($photoContents),
+            'mimeType' => $photo->getMimeType(),
+            'fileName' => $photo->getClientOriginalName(),
+            'sendAsDocument' => false,
+        ];
+
+        if (!$gatewayService->sendMessage($sanitizedPhone, $message, $sessionKey, $attachment)) {
+            Storage::disk('local')->delete($photoPath);
+            return Reply::error($gatewayService->getLastError() ?: 'Unable to send WhatsApp message.');
+        }
+
+        $sentMessage = LeadWhatsAppMessage::create([
+            'company_id' => $leadContact->company_id,
+            'lead_id' => $leadContact->id,
+            'direction' => 'outbound',
+            'phone' => $sanitizedPhone,
+            'content_type' => 'image',
+            'message' => $message,
+            'status' => 'sent',
+            'metadata' => [
+                'session_key' => $sessionKey,
+                'created_by' => user()->id,
+                'media_path' => $photoPath,
+                'media_mime' => $photo->getMimeType(),
+                'media_name' => $photo->getClientOriginalName(),
+                'media_size' => $photo->getSize(),
+            ],
+            'message_at' => now(),
+        ]);
+
+        $this->pushLeadHistory($leadContact->id, 'whatsapp_message_sent', [
+            'title' => 'WhatsApp Photo Sent',
+            'description' => $photo->getClientOriginalName(),
+            'meta' => [
+                'channel' => 'whatsapp',
+                'recipient' => $sanitizedPhone,
+            ],
+        ]);
+
+        return Reply::successWithData('WhatsApp photo sent successfully.', [
+            'message' => [
+                'id' => $sentMessage->id,
+                'direction' => $sentMessage->direction,
+                'message' => $sentMessage->message,
+                'content_type' => $sentMessage->content_type,
+                'media_url' => $this->chatMediaUrl($sentMessage),
+                'status' => $sentMessage->status,
+                'message_at' => optional($sentMessage->message_at)->toIso8601String(),
+            ],
+        ]);
+    }
+
+    public function chatMedia($leadId, $messageId)
+    {
+        $leadContact = Lead::findOrFail($leadId);
+        abort_403(!$this->canAccessLead($leadContact));
+
+        $message = LeadWhatsAppMessage::where('lead_id', $leadContact->id)->findOrFail($messageId);
+        $path = data_get($message->metadata, 'media_path');
+
+        abort_unless($path && Storage::disk('local')->exists($path), 404);
+
+        return response()->file(Storage::disk('local')->path($path), [
+            'Content-Type' => data_get($message->metadata, 'media_mime', 'image/jpeg'),
+            'Content-Disposition' => 'inline; filename="' . addslashes((string) data_get($message->metadata, 'media_name', 'photo')) . '"',
+        ]);
+    }
+
+    private function chatMediaUrl(LeadWhatsAppMessage $message): ?string
+    {
+        return data_get($message->metadata, 'media_path')
+            ? route('lead-contact.chat.media', [$message->lead_id, $message->id])
+            : null;
     }
 
     public function notes()

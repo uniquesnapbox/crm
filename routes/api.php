@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\AttendanceAdminController;
 use App\Http\Controllers\Api\DashboardApiController;
 use App\Http\Controllers\Api\MobileCrmApiController;
 use App\Http\Controllers\LoginController;
+use App\Http\Controllers\WhatsappWebhookController;
 
 /*
 |--------------------------------------------------------------------------
@@ -49,6 +50,7 @@ Route::prefix('integrations')->middleware('integration.token')->group(function (
 
 Route::post('whatsapp/send-otp', [LoginController::class, 'sendWhatsappOtp'])->name('api.whatsapp.send_otp');
 Route::post('whatsapp/verify-otp', [LoginController::class, 'verifyWhatsappOtp'])->name('api.whatsapp.verify_otp');
+Route::post('internal/whatsapp/incoming', [WhatsappWebhookController::class, 'incoming'])->name('api.whatsapp.incoming');
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('me', [AuthController::class, 'profile'])->name('api.profile');

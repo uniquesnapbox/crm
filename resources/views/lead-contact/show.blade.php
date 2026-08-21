@@ -16,6 +16,7 @@
             </a>
             <x-tab :href="route('lead-contact.show', $leadContact->id)" :text="__('modules.lead.profile')" class="profile" />
             <x-tab :href="route('lead-contact.show', $leadContact->id).'?tab=history'" :text="'History'" class="history" ajax="false" />
+            <x-tab :href="route('lead-contact.show', $leadContact->id).'?tab=chat'" :text="'Chat'" class="chat" ajax="false" />
         </div>
         <a class="mb-0 d-block d-lg-none text-dark-grey ml-auto mr-2 border-left-grey"
             onclick="openClientDetailSidebar()"><i class="fa fa-ellipsis-v "></i></a>

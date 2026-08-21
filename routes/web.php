@@ -511,6 +511,9 @@ Route::group(['middleware' => 'auth:sanctum,web', 'prefix' => 'account'], functi
         Route::post('follow-up-update', [LeadContactController::class, 'updateFollow'])->name('lead-contact.follow_up_update');
         Route::post('follow-up-delete/{id}', [LeadContactController::class, 'deleteFollow'])->name('lead-contact.follow_up_delete');
         Route::post('change-follow-up-status', [LeadContactController::class, 'changeFollowUpStatus'])->name('lead-contact.change_follow_up_status');
+        Route::get('{lead}/chat/messages', [LeadContactController::class, 'chatMessages'])->name('lead-contact.chat.messages');
+        Route::post('{lead}/chat/send', [LeadContactController::class, 'sendChatMessage'])->name('lead-contact.chat.send');
+        Route::get('{lead}/chat/media/{message}', [LeadContactController::class, 'chatMedia'])->name('lead-contact.chat.media');
         Route::post('{lead}/convert-to-client', [LeadContactController::class, 'convertToClient'])->name('lead-contact.convert_to_client');
     });
 

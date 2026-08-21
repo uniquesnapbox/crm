@@ -85,6 +85,7 @@ return [
         'base_url' => env('WHATSAPP_SERVICE_URL', ''),
         'api_key' => env('WHATSAPP_SERVICE_API_KEY', ''),
         'session' => env('WHATSAPP_SERVICE_SESSION', 'default'),
+        'inbound_webhook_token' => env('WHATSAPP_INBOUND_WEBHOOK_TOKEN', ''),
         'timeout' => env('WHATSAPP_SERVICE_TIMEOUT', 30),
         'task_summary_time' => env('WHATSAPP_TASK_SUMMARY_TIME', '09:00'),
         'default_country_code' => env('WHATSAPP_DEFAULT_COUNTRY_CODE', '91'),
