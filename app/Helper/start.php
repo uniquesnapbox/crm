@@ -41,19 +41,19 @@ if (!function_exists('user')) {
     {
         static $cachedUsers = [];
 
-        $userId = auth()->id();
+        $authenticatedUser = auth()->user();
 
-        if (!$userId) {
+        if (!$authenticatedUser) {
             return null;
         }
+
+        $userId = $authenticatedUser->id;
 
         if (array_key_exists($userId, $cachedUsers)) {
             return $cachedUsers[$userId];
         }
 
-        $cachedUsers[$userId] = \App\Models\User::query()
-            ->without(['clientDetails', 'leaves'])
-            ->find($userId);
+        $cachedUsers[$userId] = $authenticatedUser;
 
         return $cachedUsers[$userId];
     }
