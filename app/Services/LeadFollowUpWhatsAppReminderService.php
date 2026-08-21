@@ -37,11 +37,9 @@ class LeadFollowUpWhatsAppReminderService
 
         $timezone = $this->companyTimezone($company);
         $now = now($timezone);
-        $target = $now->copy()->addMinutes(10);
-        $lockTtl = $target->copy()->addMinutes(5);
+        $cutoffUtc = $now->copy()->addMinutes(10)->setTimezone('UTC');
+        $lockTtl = $now->copy()->addMinutes(15);
 
-        $windowStart = $target->copy()->startOfMinute()->setTimezone('UTC');
-        $windowEnd = $target->copy()->endOfMinute()->setTimezone('UTC');
         $activeEmployees = User::allEmployees(null, true, null, $companyId)->keyBy('id');
 
         $relations = [
@@ -55,20 +53,31 @@ class LeadFollowUpWhatsAppReminderService
         $followUps = LeadFollowUp::with($relations)
             ->where('status', 'pending')
             ->whereNull('whatsapp_reminder_sent_at')
-            ->whereBetween('next_follow_up_date', [$windowStart, $windowEnd])
+            ->whereNotNull('next_follow_up_date')
+            ->where('next_follow_up_date', '<=', $cutoffUtc)
             ->whereHas('lead', function ($query) use ($companyId) {
                 $query->where('company_id', $companyId);
             })
+            ->orderBy('next_follow_up_date')
             ->get();
 
         foreach ($followUps as $followUp) {
+            $followUpDueAt = Carbon::parse((string) $followUp->next_follow_up_date, 'UTC')
+                ->timezone($timezone)
+                ->subMinutes(10);
+            $isCatchUp = $now->greaterThan($followUpDueAt);
             $followUpLockKey = sprintf(
                 'lead_followup_whatsapp_reminder:%d:%s',
                 $followUp->id,
-                $target->format('Y-m-d H:i')
+                Carbon::parse((string) $followUp->next_follow_up_date, 'UTC')->timestamp
             );
 
             if (!Cache::add($followUpLockKey, now()->timestamp, $lockTtl)) {
+                Log::debug('Lead follow-up WhatsApp reminder skipped because another worker is processing it.', [
+                    'company_id' => $companyId,
+                    'follow_up_id' => $followUp->id,
+                    'next_follow_up_date' => optional($followUp->next_follow_up_date)->timezone($timezone)?->toDateTimeString(),
+                ]);
                 continue;
             }
 
@@ -76,6 +85,12 @@ class LeadFollowUpWhatsAppReminderService
 
             if (!$recipient) {
                 Cache::forget($followUpLockKey);
+                Log::info('Lead follow-up WhatsApp reminder skipped because no active recipient was found.', [
+                    'company_id' => $companyId,
+                    'follow_up_id' => $followUp->id,
+                    'lead_id' => $followUp->lead_id,
+                    'next_follow_up_date' => optional($followUp->next_follow_up_date)->timezone($timezone)?->toDateTimeString(),
+                ]);
                 continue;
             }
 
@@ -83,6 +98,12 @@ class LeadFollowUpWhatsAppReminderService
 
             if ($mobile === '') {
                 Cache::forget($followUpLockKey);
+                Log::info('Lead follow-up WhatsApp reminder skipped because recipient mobile was missing.', [
+                    'company_id' => $companyId,
+                    'follow_up_id' => $followUp->id,
+                    'user_id' => $recipient->id,
+                    'lead_id' => $followUp->lead_id,
+                ]);
                 continue;
             }
 
@@ -95,6 +116,12 @@ class LeadFollowUpWhatsAppReminderService
 
             if ($message === '') {
                 Cache::forget($followUpLockKey);
+                Log::info('Lead follow-up WhatsApp reminder skipped because message body resolved empty.', [
+                    'company_id' => $companyId,
+                    'follow_up_id' => $followUp->id,
+                    'user_id' => $recipient->id,
+                    'lead_id' => $followUp->lead_id,
+                ]);
                 continue;
             }
 
@@ -125,6 +152,19 @@ class LeadFollowUpWhatsAppReminderService
                     'whatsapp_reminder_sent_at' => now(),
                 ])->save();
 
+                Log::info('Lead follow-up WhatsApp reminder sent.', [
+                    'company_id' => $companyId,
+                    'follow_up_id' => $followUp->id,
+                    'lead_id' => $followUp->lead_id,
+                    'user_id' => $recipient->id,
+                    'mobile' => $mobile,
+                    'session' => $lastSession,
+                    'scheduled_for' => optional($followUp->next_follow_up_date)->timezone($timezone)?->toDateTimeString(),
+                    'due_at' => $followUpDueAt->toDateTimeString(),
+                    'sent_at' => now($timezone)->toDateTimeString(),
+                    'catch_up' => $isCatchUp,
+                ]);
+
                 continue;
             }
 
@@ -136,6 +176,9 @@ class LeadFollowUpWhatsAppReminderService
                 'user_id' => $recipient->id,
                 'mobile' => $mobile,
                 'session' => $lastSession,
+                'scheduled_for' => optional($followUp->next_follow_up_date)->timezone($timezone)?->toDateTimeString(),
+                'due_at' => $followUpDueAt->toDateTimeString(),
+                'catch_up' => $isCatchUp,
                 'error' => $this->gatewayService->getLastError(),
             ]);
         }
@@ -315,6 +358,6 @@ class LeadFollowUpWhatsAppReminderService
 
     private function companyTimezone(Company $company): string
     {
-        return $company->timezone ?: config('app.timezone', 'UTC');
+        return $company->timezone ?: config('app.timezone', 'Asia/Kolkata');
     }
 }
