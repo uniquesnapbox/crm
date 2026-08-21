@@ -10,6 +10,22 @@
             z-index: 1 !important;
         }
 
+        .theme-asset-upload .dropify-wrapper {
+            border: 1px dashed #cbd5e1;
+            border-radius: 10px;
+            background: #f8fafc;
+        }
+
+        .theme-asset-upload .dropify-wrapper .dropify-preview {
+            background: #f8fafc;
+        }
+
+        .theme-asset-upload .dropify-wrapper .dropify-render img {
+            max-width: calc(100% - 32px);
+            max-height: calc(100% - 24px);
+            object-fit: contain;
+        }
+
     </style>
     <link rel="stylesheet" href="{{ asset('vendor/css/bootstrap-colorpicker.css') }}"/>
     <link rel="stylesheet" href="{{ asset('vendor/css/image-picker.min.css') }}">
@@ -58,32 +74,32 @@
                     </div>
 
 
-                    <div class="col-lg-6">
+                    <div class="col-lg-6 theme-asset-upload">
                         <x-forms.file allowedFileExtensions="png jpg jpeg svg bmp" class="mr-0 mr-lg-2 mr-md-2 cropper"
                                       :fieldLabel="__('modules.accountSettings.lightCompanyLogo')"
-                                      :fieldValue="company()->masked_light_logo_url" fieldName="light_logo"
+                                      :fieldValue="company()->light_logo_url" fieldName="light_logo"
                                       fieldId="light_logo"
                                       :popover="__('messages.lightThemeLogoTooltip')"/>
                     </div>
-                    <div class="col-lg-6">
+                    <div class="col-lg-6 theme-asset-upload">
                         <x-forms.file allowedFileExtensions="png jpg jpeg svg bmp" class="mr-0 mr-lg-2 mr-md-2 cropper"
                                       :fieldLabel="__('modules.accountSettings.darkCompanyLogo')"
-                                      :fieldValue="company()->masked_default_logo"
+                                      :fieldValue="company()->logo_url"
                                       fieldName="logo" fieldId="logo" :popover="__('messages.darkThemeLogoTooltip')"/>
                     </div>
-                    <div class="col-lg-6">
+                    <div class="col-lg-6 theme-asset-upload">
                         <x-forms.file allowedFileExtensions="png jpg jpeg svg bmp" class="mr-0 mr-lg-2 mr-md-2 cropper"
                                       :fieldLabel="__('modules.themeSettings.loginScreenBackground')"
-                                      :fieldValue="company()->masked_login_background_url" fieldName="login_background"
+                                      :fieldValue="company()->login_background_url" fieldName="login_background"
                                       fieldId="login_background"
                                       :popover="__('modules.themeSettings.loginBackgroundSize')"
                                       :popover="__('messages.fileFormat.ImageFile')"/>
                     </div>
-                    <div class="col-lg-6">
+                    <div class="col-lg-6 theme-asset-upload">
                         <x-forms.file allowedFileExtensions="png jpg jpeg svg bmp" class="mr-0 mr-lg-2 mr-md-2"
                                       :fieldLabel="__('modules.accountSettings.faviconImage')"
                                       :popover="__('modules.themeSettings.faviconSize')"
-                                      :fieldValue="company()->masked_favicon_url"
+                                      :fieldValue="company()->favicon_url"
                                       fieldName="favicon" fieldId="favicon"
                                       :popover="__('messages.fileFormat.ImageFile')"/>
                     </div>

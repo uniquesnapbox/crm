@@ -31,12 +31,18 @@ class Auth extends Component
     public function render()
     {
         $globalSetting = global_setting();
+        $company = Company::query()->first();
         $languages = language_setting();
 
         $appTheme = $globalSetting;
         App::setLocale(session('locale') ?? $globalSetting->locale);
 
-        return view('components.auth', ['globalSetting' => $globalSetting, 'appTheme' => $appTheme, 'languages' => $languages]);
+        return view('components.auth', [
+            'globalSetting' => $globalSetting,
+            'company' => $company,
+            'appTheme' => $appTheme,
+            'languages' => $languages,
+        ]);
     }
 
 }

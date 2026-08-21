@@ -36,13 +36,29 @@
         <link href="{{ asset('css/login-custom.css') }}" rel="stylesheet">
     @endif
 
-    @if ($globalSetting->sidebar_logo_style == 'full')
-        <style>
-            .login_header img {
-                max-width: unset;
+    @php
+        $brandSetting = $company ?: $globalSetting;
+        $brandLogoUrl = $brandSetting->logo_url ?: $globalSetting->logo_url;
+        $brandName = $brandSetting->app_name ?? $globalSetting->global_app_name;
+    @endphp
+
+    <style>
+        .login_header .auth-brand-logo {
+            width: auto;
+            height: 58px;
+            max-width: 180px;
+            max-height: 58px;
+            object-fit: contain;
+        }
+
+        @media (max-width: 575.98px) {
+            .login_header .auth-brand-logo {
+                height: 48px;
+                max-width: 145px;
+                max-height: 48px;
             }
-        </style>
-    @endif
+        }
+    </style>
 
 </head>
 
@@ -53,9 +69,9 @@
 <body class="{{ $globalSetting->auth_theme == 'dark' ? 'dark-theme' : '' }} {{ $isLoginPage ? 'auth-login-page' : '' }}">
 
 <header class="sticky-top d-flex justify-content-center align-items-center login_header bg-white px-4">
-    <img class="mr-2 rounded" src="{{ $globalSetting->logo_url }}" alt="Logo"/>
-    @if ($globalSetting->sidebar_logo_style != 'full')
-        <h3 class="mb-0 pl-1 {{ $globalSetting->auth_theme_text == 'light' ? ($globalSetting->auth_theme == 'dark' ? 'text-dark' : 'text-white') : '' }}">{{ $globalSetting->global_app_name ?? $globalSetting->app_name }}</h3>
+    <img class="auth-brand-logo mr-2" src="{{ $brandLogoUrl }}" alt="{{ $brandName }} logo"/>
+    @if ($brandSetting->sidebar_logo_style != 'full')
+        <h3 class="mb-0 pl-1 {{ $globalSetting->auth_theme_text == 'light' ? ($globalSetting->auth_theme == 'dark' ? 'text-dark' : 'text-white') : '' }}">{{ $brandName }}</h3>
     @endif
 </header>
 
