@@ -646,13 +646,69 @@ class WhatsAppManager extends EventEmitter {
       throw new Error(`Session ${key} not ready`);
     }
 
-    const chatId = this.toChatId(to);
-    const chat = await client.getChatById(chatId);
+    const chat = await this.findChatByPhone(client, to);
+    if (!chat) {
+      return [];
+    }
     const messages = await chat.fetchMessages({
       limit: Math.max(1, Math.min(200, Number(limit) || 100))
     });
 
     return Promise.all(messages.map((message) => this.serializeMessage(message, key, false)));
+  }
+
+  async findChatByPhone(client, rawNumber) {
+    const digits = String(rawNumber || "").replace(/\D/g, "");
+    const comparable = digits.slice(-10);
+    const candidateIds = [this.toChatId(digits)];
+
+    try {
+      const registeredId = await client.getNumberId(digits);
+      const serialized = registeredId?._serialized || String(registeredId || "");
+      if (serialized && !candidateIds.includes(serialized)) {
+        candidateIds.unshift(serialized);
+      }
+    } catch (error) {
+      logger.debug("Unable to resolve registered WhatsApp number", {
+        phone: digits,
+        error: error.message
+      });
+    }
+
+    for (const candidateId of candidateIds) {
+      try {
+        const chat = await client.getChatById(candidateId);
+        if (chat) {
+          return chat;
+        }
+      } catch (_) {
+        // Fall back to loaded chat/contact matching for WhatsApp LID accounts.
+      }
+    }
+
+    const chats = await client.getChats();
+    for (const chat of chats) {
+      if (chat?.isGroup) {
+        continue;
+      }
+
+      const chatUser = String(chat?.id?.user || "").replace(/\D/g, "");
+      if (chatUser && chatUser.slice(-10) === comparable) {
+        return chat;
+      }
+
+      try {
+        const contact = await chat.getContact();
+        const contactNumber = String(contact?.number || contact?.id?.user || "").replace(/\D/g, "");
+        if (contactNumber && contactNumber.slice(-10) === comparable) {
+          return chat;
+        }
+      } catch (_) {
+        // Some archived/system chats do not expose a contact.
+      }
+    }
+
+    return null;
   }
 
   async serializeMessage(message, sessionKey, includeMedia) {
