@@ -97,9 +97,12 @@ class AccountBaseController extends Controller
         $this->smtpSetting = smtp_setting();
         $this->pusherSettings = pusher_settings();
 
+        $this->company = company();
+        $companyLocale = $this->company ? $this->company->locale : 'en';
+
         App::setLocale(user()->locale);
         Carbon::setLocale(user()->locale);
-        setlocale(LC_TIME, user()->locale . '_' . mb_strtoupper($this->company->locale));
+        setlocale(LC_TIME, user()->locale . '_' . mb_strtoupper($companyLocale));
 
         $this->user = user();
         $this->unreadNotificationCount = $this->user->unreadNotifications()->count();

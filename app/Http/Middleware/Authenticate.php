@@ -35,13 +35,15 @@ class Authenticate extends Middleware
     public function handle($request, Closure $next, ...$guards)
     {
         if (user()) {
-            $isActive = cache()->rememberForever('user_is_active_' . user()->id, function () {
-                return User::where('id', user()->id)
+            $isActive = cache()->remember('user_is_active_' . user()->id, 3600, function () {
+                return User::withoutGlobalScopes()
+                    ->where('id', user()->id)
                     ->where('status', 'active')
                     ->exists();
             });
 
             if (!$isActive) {
+                cache()->forget('user_is_active_' . user()->id);
                 auth()->logout();
                 session()->flush();
 

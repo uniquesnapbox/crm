@@ -24,8 +24,7 @@ class WhatsAppGatewayService
 
     public function isConfigured(): bool
     {
-        return filled(config('services.whatsapp_service.base_url'))
-            && filled(config('services.whatsapp_service.api_key'));
+        return filled(config('services.whatsapp_service.base_url'));
     }
 
     public function sendMessage(string $mobile, string $message, ?string $sessionKey = null, ?array $attachment = null): bool
@@ -48,7 +47,7 @@ class WhatsAppGatewayService
             $payload['attachment'] = $attachment;
         }
 
-        if ($baseUrl === '' || $apiKey === '') {
+        if ($baseUrl === '') {
             $this->lastError = 'WhatsApp service is not configured.';
             return false;
         }
@@ -130,7 +129,7 @@ class WhatsAppGatewayService
         $phone = preg_replace('/\D+/', '', $mobile);
         $timeout = max(10, min(60, (int) config('services.whatsapp_service.timeout', 30)));
 
-        if ($baseUrl === '' || $apiKey === '' || $phone === '') {
+        if ($baseUrl === '' || $phone === '') {
             return ['success' => false, 'error' => 'WhatsApp history service is not configured.', 'data' => null];
         }
 
@@ -157,7 +156,7 @@ class WhatsAppGatewayService
         $timeout = (int) config('services.whatsapp_service.timeout', 30);
         $timeout = max(10, min(60, $timeout));
 
-        if ($baseUrl === '' || $apiKey === '') {
+        if ($baseUrl === '') {
             return [
                 'success' => false,
                 'error' => 'WhatsApp service is not configured.',
@@ -192,7 +191,7 @@ class WhatsAppGatewayService
         $timeout = max(10, min(60, $timeout));
         $session = $this->resolveSessionKey($sessionKey);
 
-        if ($baseUrl === '' || $apiKey === '') {
+        if ($baseUrl === '') {
             return [
                 'success' => false,
                 'error' => 'WhatsApp service is not configured.',

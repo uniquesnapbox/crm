@@ -298,7 +298,8 @@
         $.easyAjax({
             url: statusUrl,
             type: "GET",
-            container: "#editSettings",
+            blockUI: false,
+            container: "#whatsapp-qr-wrapper",
             success: function (response) {
                 const health = response.health || {};
                 const qr = response.qr || {};

@@ -1129,24 +1129,19 @@ if (!function_exists('company')) {
 
     function company()
     {
-        static $cachedCompany = null;
-        static $resolved = false;
-
-        if ($resolved) {
-            return $cachedCompany;
-        }
-
-        $resolved = true;
-
         $user = user();
 
         if (!$user || !$user->company_id) {
             return false;
         }
 
-        $cachedCompany = Company::find($user->company_id);
+        static $cachedCompanies = [];
 
-        return $cachedCompany;
+        if (!isset($cachedCompanies[$user->company_id])) {
+            $cachedCompanies[$user->company_id] = Company::find($user->company_id);
+        }
+
+        return $cachedCompanies[$user->company_id] ?: false;
     }
 
 }

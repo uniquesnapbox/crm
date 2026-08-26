@@ -28,8 +28,9 @@ class WhatsappSettingController extends AccountBaseController
 
     public function update(UpdateRequest $request, $id)
     {
+        $companyId = company() ? company()->id : null;
         $setting = WhatsappNotificationSetting::firstOrNew([
-            'company_id' => company()->id,
+            'company_id' => $companyId,
         ]);
 
         $setting->status = 'active';
@@ -63,8 +64,9 @@ class WhatsappSettingController extends AccountBaseController
 
     public function connectionStatus(WhatsAppGatewayService $gatewayService)
     {
+        $companyId = company() ? company()->id : null;
         $setting = WhatsappNotificationSetting::firstOrNew([
-            'company_id' => company()->id,
+            'company_id' => $companyId,
         ]);
 
         $preferredSessionKey = preg_replace('/\D+/', '', (string) $setting->lead_created_sender_number);
@@ -101,9 +103,9 @@ class WhatsappSettingController extends AccountBaseController
                 ->writer(new PngWriter())
                 ->data($qrData)
                 ->encoding(new Encoding('UTF-8'))
-                ->errorCorrectionLevel(ErrorCorrectionLevel::Low)
-                ->size(280)
-                ->margin(12)
+                ->errorCorrectionLevel(ErrorCorrectionLevel::Medium)
+                ->size(320)
+                ->margin(10)
                 ->roundBlockSizeMode(RoundBlockSizeMode::Margin)
                 ->build()
                 ->getDataUri();
@@ -125,8 +127,9 @@ class WhatsappSettingController extends AccountBaseController
 
     public function sendTestNotification(WhatsAppGatewayService $gatewayService)
     {
+        $companyId = company() ? company()->id : null;
         $setting = WhatsappNotificationSetting::firstOrNew([
-            'company_id' => company()->id,
+            'company_id' => $companyId,
         ]);
 
         $mobile = preg_replace('/\D+/', '', (string) ($setting->test_number ?? ''));
