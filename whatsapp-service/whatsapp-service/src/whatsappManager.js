@@ -113,19 +113,13 @@ class WhatsAppManager extends EventEmitter {
   }
 
   createClient(key) {
-    const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36";
     const client = new Client({
       authStrategy: new LocalAuth({
         clientId: key,
         dataPath: this.config.dataPath
       }),
-      webVersionCache: {
-        type: "remote",
-        remotePath: "https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.3000.1018943477-alpha.html"
-      },
       puppeteer: {
         headless: "new",
-        userAgent,
         args: [
           "--no-sandbox",
           "--disable-setuid-sandbox",
@@ -134,8 +128,7 @@ class WhatsAppManager extends EventEmitter {
           "--no-zygote",
           "--no-first-run",
           "--disable-site-isolation-trials",
-          "--disable-features=IsolateOrigins,site-per-process",
-          `--user-agent=${userAgent}`
+          "--disable-features=IsolateOrigins,site-per-process"
         ]
       }
     });
