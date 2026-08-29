@@ -228,9 +228,9 @@
                                 <x-forms.textarea :fieldLabel="'Template'" fieldName="task_assigned_staff_template"
                                     fieldId="task_assigned_staff_template" fieldRequired="true"
                                     :fieldValue="$whatsappSettings->task_assigned_staff_template ?: \App\Models\WhatsappNotificationSetting::DEFAULT_TASK_ASSIGNED_TEMPLATE"
-                                    fieldPlaceholder="A new task has been assigned to you. Task: @{{task_heading}}" />
+                                    fieldPlaceholder="Hello @{{user_name}}, a new task has been assigned to you. Task: @{{task_heading}}" />
                                 <div class="wa-placeholder">
-                                    Placeholders: <code>@{{task_heading}}</code>, <code>@{{task_id}}</code>, <code>@{{project_name}}</code>, <code>@{{due_date}}</code>, <code>@{{task_status}}</code>, <code>@{{assigned_by}}</code>
+                                    Placeholders: <code>@{{user_name}}</code>, <code>@{{task_heading}}</code>, <code>@{{task_id}}</code>, <code>@{{project_name}}</code>, <code>@{{due_date}}</code>, <code>@{{task_status}}</code>, <code>@{{assigned_by}}</code>
                                 </div>
                             </div>
                         </div>
@@ -262,7 +262,7 @@
                                     :fieldValue="$whatsappSettings->task_completed_template ?: \App\Models\WhatsappNotificationSetting::DEFAULT_TASK_COMPLETED_TEMPLATE"
                                     fieldPlaceholder="Task completed: @{{task_heading}}" />
                                 <div class="wa-placeholder">
-                                    Placeholders: <code>@{{task_heading}}</code>, <code>@{{task_id}}</code>, <code>@{{project_name}}</code>, <code>@{{completed_on}}</code>, <code>@{{completed_by}}</code>
+                                    Placeholders: <code>@{{user_name}}</code>, <code>@{{task_heading}}</code>, <code>@{{task_id}}</code>, <code>@{{project_name}}</code>, <code>@{{completed_on}}</code>, <code>@{{completed_by}}</code>
                                 </div>
                             </div>
                         </div>
