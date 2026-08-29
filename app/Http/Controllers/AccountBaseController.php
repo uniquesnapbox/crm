@@ -104,8 +104,9 @@ class AccountBaseController extends Controller
         $this->smtpSetting = smtp_setting();
         $this->pusherSettings = pusher_settings();
 
+        $this->company = company();
         $locale = $user->locale ?: config('app.locale');
-        $companyLocale = $this->company->locale ?? $locale;
+        $companyLocale = $this->company ? ($this->company->locale ?: $locale) : $locale;
 
         App::setLocale($locale);
         Carbon::setLocale($locale);

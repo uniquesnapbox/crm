@@ -297,7 +297,6 @@
         };
 
         window.whatsappConnectionPanelState = state;
-
         function stopPollingWhenPanelIsMissing() {
             if ($('#whatsapp-service-status').length) {
                 return false;

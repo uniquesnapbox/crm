@@ -82,7 +82,7 @@ return [
     ],
 
     'whatsapp_service' => [
-        'base_url' => env('WHATSAPP_SERVICE_URL', ''),
+        'base_url' => env('WHATSAPP_SERVICE_URL', 'http://127.0.0.1:3100'),
         'api_key' => env('WHATSAPP_SERVICE_API_KEY', ''),
         'session' => env('WHATSAPP_SERVICE_SESSION', env('WHATSAPP_DEFAULT_SESSION', 'default')),
         'inbound_webhook_token' => env('WHATSAPP_INBOUND_WEBHOOK_TOKEN', ''),

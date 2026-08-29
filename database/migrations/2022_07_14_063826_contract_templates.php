@@ -23,24 +23,26 @@ return new class extends Migration {
     {
         Company::renameOrganisationTableToCompanyTable();
 
-        Schema::create('contract_templates', function (Blueprint $table) {
-            $table->id();
-            $table->integer('company_id')->unsigned()->nullable();
-            $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade')->onUpdate('cascade');
-            $table->string('subject');
-            $table->longText('description')->nullable();
-            $table->string('amount');
-            $table->unsignedBigInteger('contract_type_id');
-            $table->foreign('contract_type_id')->references('id')->on('contract_types')->onDelete('cascade')->onUpdate('cascade');
-            $table->integer('currency_id')->unsigned()->nullable();
-            $table->longText('contract_detail')->nullable();
-            $table->foreign('currency_id')->references('id')
-                ->on('currencies')
-                ->onDelete('cascade')
-                ->onUpdate('cascade');
-            $table->integer('added_by')->default(1);
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('contract_templates')) {
+            Schema::create('contract_templates', function (Blueprint $table) {
+                $table->id();
+                $table->integer('company_id')->unsigned()->nullable();
+                $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade')->onUpdate('cascade');
+                $table->string('subject');
+                $table->longText('description')->nullable();
+                $table->string('amount');
+                $table->unsignedBigInteger('contract_type_id');
+                $table->foreign('contract_type_id')->references('id')->on('contract_types')->onDelete('cascade')->onUpdate('cascade');
+                $table->integer('currency_id')->unsigned()->nullable();
+                $table->longText('contract_detail')->nullable();
+                $table->foreign('currency_id')->references('id')
+                    ->on('currencies')
+                    ->onDelete('cascade')
+                    ->onUpdate('cascade');
+                $table->integer('added_by')->default(1);
+                $table->timestamps();
+            });
+        }
 
 
         if(Company::first()) {

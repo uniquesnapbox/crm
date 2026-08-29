@@ -1126,11 +1126,11 @@ if (!function_exists('company')) {
 
         static $cachedCompanies = [];
 
-        if (!array_key_exists($user->company_id, $cachedCompanies)) {
+        if (!isset($cachedCompanies[$user->company_id])) {
             $cachedCompanies[$user->company_id] = Company::find($user->company_id);
         }
 
-        return $cachedCompanies[$user->company_id];
+        return $cachedCompanies[$user->company_id] ?: false;
     }
 
 }
