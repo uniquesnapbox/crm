@@ -15,11 +15,25 @@ use Illuminate\Support\Facades\Storage;
 
 class LeadFollowUpWhatsAppReminderService
 {
+    private const DEFAULT_BACKFILL_HOURS = 168;
+
     public function __construct(private WhatsAppGatewayService $gatewayService)
     {
     }
 
     public function sendRemindersForCompany(int $companyId): void
+    {
+        $this->processCompanyReminderWindow($companyId);
+    }
+
+    public function backfillMissedRemindersForCompany(int $companyId, int $lookbackHours = self::DEFAULT_BACKFILL_HOURS): void
+    {
+        $lookbackHours = max(1, min($lookbackHours, 24 * 30));
+
+        $this->processCompanyReminderWindow($companyId, $lookbackHours);
+    }
+
+    private function processCompanyReminderWindow(int $companyId, ?int $lookbackHours = null): void
     {
         $company = Company::query()
             ->select('id', 'company_name', 'timezone', 'date_format', 'time_format')
@@ -38,6 +52,9 @@ class LeadFollowUpWhatsAppReminderService
         $timezone = $this->companyTimezone($company);
         $now = now($timezone);
         $cutoffUtc = $now->copy()->addMinutes(10)->setTimezone('UTC');
+        $lowerBoundUtc = $lookbackHours !== null
+            ? $now->copy()->subHours($lookbackHours)->setTimezone('UTC')
+            : null;
         $lockTtl = $now->copy()->addMinutes(15);
         $sessionCandidates = $this->resolveSessionCandidates($setting);
 
@@ -66,25 +83,33 @@ class LeadFollowUpWhatsAppReminderService
             ->whereNull('whatsapp_reminder_sent_at')
             ->whereNotNull('next_follow_up_date')
             ->where('next_follow_up_date', '<=', $cutoffUtc)
+            ->when($lowerBoundUtc !== null, function ($query) use ($lowerBoundUtc) {
+                $query->where('next_follow_up_date', '>=', $lowerBoundUtc);
+            })
             ->whereHas('lead', function ($query) use ($companyId) {
                 $query->where('company_id', $companyId);
             })
-            // Recent reminders must not wait behind a large historical backlog.
-            ->orderByDesc('next_follow_up_date')
-            ->limit(100)
-            ->get();
+            ->orderBy('id');
 
-        foreach ($followUps as $followUp) {
-            $this->sendReminderForLoadedFollowUp(
-                $company,
-                $setting,
-                $followUp,
-                $activeEmployees,
-                $timezone,
-                $lockTtl,
-                null
-            );
-        }
+        $followUps->chunkById(200, function ($chunk) use (
+            $company,
+            $setting,
+            $activeEmployees,
+            $timezone,
+            $lockTtl
+        ) {
+            foreach ($chunk as $followUp) {
+                $this->sendReminderForLoadedFollowUp(
+                    $company,
+                    $setting,
+                    $followUp,
+                    $activeEmployees,
+                    $timezone,
+                    $lockTtl,
+                    null
+                );
+            }
+        });
     }
 
     public function sendReminderForFollowUp(int $companyId, int $followUpId, ?string $scheduledAtUtc = null): bool
@@ -285,7 +310,7 @@ class LeadFollowUpWhatsAppReminderService
 
         if ($sent) {
             $followUp->forceFill([
-                'whatsapp_reminder_sent_at' => now(),
+                'whatsapp_reminder_sent_at' => now('UTC'),
             ])->save();
 
             Log::info('Lead follow-up WhatsApp reminder sent.', [

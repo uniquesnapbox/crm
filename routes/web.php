@@ -116,6 +116,7 @@ use App\Http\Controllers\ProjectTemplateMemberController;
 use App\Http\Controllers\ProjectTemplateSubTaskController;
 use App\Http\Controllers\EmployeeShiftChangeRequestController;
 use App\Http\Controllers\LeadContactController;
+use App\Http\Controllers\BulkWhatsAppController;
 use App\Http\Controllers\LiveTrackingController;
 use App\Http\Controllers\AsyncOptionsController;
 use App\Http\Controllers\Api\AuthController;
@@ -521,6 +522,15 @@ Route::group(['middleware' => 'auth:sanctum,web', 'prefix' => 'account'], functi
 
     Route::resource('lead-contact', LeadContactController::class);
     Route::post('lead-contact/apply-quick-action', [LeadContactController::class, 'applyQuickAction'])->name('lead-contact.apply_quick_action');
+
+    Route::prefix('whatsapp')->name('whatsapp.')->group(function () {
+        Route::get('bulk', [BulkWhatsAppController::class, 'index'])->name('bulk.index');
+        Route::post('bulk/preview', [BulkWhatsAppController::class, 'preview'])->name('bulk.preview');
+        Route::post('bulk/send', [BulkWhatsAppController::class, 'send'])->name('bulk.send');
+        Route::get('bulk/campaigns/{campaign}/status', [BulkWhatsAppController::class, 'status'])->name('bulk.status');
+        Route::get('bulk/campaigns/{campaign}/logs', [BulkWhatsAppController::class, 'logs'])->name('bulk.logs');
+        Route::post('bulk/templates', [BulkWhatsAppController::class, 'storeTemplate'])->name('bulk.templates.store');
+    });
 
     Route::get('deals/filter-options', [DealController::class, 'filterOptions'])->name('deals.filter_options');
     Route::get('deals/get-stage/{id}', [DisabledFeatureController::class, 'notFound'])->name('deals.get-stage');

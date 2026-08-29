@@ -15,6 +15,7 @@
                     $whatsappStatus = (string) ($whatsappSettings->status ?? 'inactive');
                     $whatsappError = trim((string) ($whatsappSettings->last_error_message ?? ''));
                     $whatsappStatusClass = $whatsappStatus === 'active' ? 'text-light-green' : 'text-warning';
+                    $whatsappSettingLabel = $whatsappStatus === 'active' ? 'Configured' : 'Disabled';
                 @endphp
                 <div class="px-4 pt-4">
                     <div class="card border-grey rounded mb-3">
@@ -23,13 +24,13 @@
                                 <div class="d-flex align-items-center mb-1">
                                     <h5 class="text-dark-grey f-15 mb-0 mr-2">WhatsApp QR Setup</h5>
                                     <span class="badge badge-light {{ $whatsappStatusClass }}">
-                                        {{ ucfirst($whatsappStatus) }}
+                                        {{ $whatsappSettingLabel }}
                                     </span>
                                 </div>
                                 <div class="text-muted f-12">
                                     Session: <code>{{ $whatsappSessionKey ?: 'default' }}</code>
                                     @if($whatsappError !== '')
-                                        | Last error: {{ $whatsappError }}
+                                        | Last recorded send error: {{ $whatsappError }}
                                     @endif
                                 </div>
                             </div>
@@ -57,7 +58,7 @@
                             <a class="nav-item nav-link f-15 whatsapp-setting"
                                 href="{{ route('notifications.index') }}?tab=whatsapp-setting" role="tab"
                                 aria-controls="nav-ticketTypes" aria-selected="true"
-                                ajax="false">WhatsApp API / QR<i
+                                ajax="false">WhatsApp API / QR<i title="Channel setting is {{ $whatsappStatus === 'active' ? 'enabled' : 'disabled' }}"
                                 class="fa fa-circle ml-1 {{ $whatsappSettings->status == 'active' ? 'text-light-green' : 'text-red' }}"></i>
                             </a>
                         </div>

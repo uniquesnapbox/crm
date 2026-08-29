@@ -55,16 +55,20 @@ class SendAutoFollowUpReminder extends Command
         foreach ($followups as $followup) {
 
             $remindTime = $followup->remind_time;
-            $reminderDate = null;
+            $reminderDate = $followup->next_follow_up_date?->copy();
 
             if ($followup->remind_type == 'day') {
-                $reminderDate = $followup->next_follow_up_date->subDays($remindTime);
+                $reminderDate = $reminderDate?->subDays($remindTime);
             }
             elseif ($followup->remind_type == 'hour') {
-                $reminderDate = $followup->next_follow_up_date->subHours($remindTime);
+                $reminderDate = $reminderDate?->subHours($remindTime);
             }
             else {
-                $reminderDate = $followup->next_follow_up_date->subMinutes($remindTime);
+                $reminderDate = $reminderDate?->subMinutes($remindTime);
+            }
+
+            if (!$reminderDate) {
+                continue;
             }
 
             if ($reminderDate->format('Y-m-d H:i') == now($company->timezone)->format('Y-m-d H:i')) {
@@ -76,5 +80,3 @@ class SendAutoFollowUpReminder extends Command
     }
 
 }
-
-

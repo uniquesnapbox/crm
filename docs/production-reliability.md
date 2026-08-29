@@ -50,6 +50,50 @@ php artisan queue:restart
 php artisan queue:failed
 ```
 
+## Laravel Scheduler
+
+Laravel scheduled commands only run when a scheduler process is already alive. The cron line in the UI is correct for Linux/macOS servers, but on Windows/XAMPP it is not enough by itself because nothing is launching `schedule:run` or `schedule:work` continuously.
+
+### Linux/macOS
+
+Use the standard cron entry shown in the app:
+
+```bash
+* * * * * php /path/to/crm/artisan schedule:run >> /dev/null 2>&1
+```
+
+### Windows/XAMPP
+
+Use the PowerShell launcher in `scripts/windows/start-scheduler.ps1` and register it as a Windows Scheduled Task:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "C:\xampp\htdocs\CRM\crm-main\scripts\windows\install-scheduler-task.ps1"
+```
+
+The installed task runs `schedule:work` in a loop, restarts it if it exits, and writes logs to:
+
+- `storage/logs/scheduler.log`
+- `storage/logs/scheduler-error.log`
+
+This is the reliable way to keep follow-up reminders, backups, and other scheduled jobs running on Windows.
+
+The WhatsApp bridge must also be running separately. The startup installer creates a hidden login-startup shortcut for `start-whatsapp-service.ps1`; the launcher keeps port `3100` available and restarts the Node service if it exits. Confirm the bridge with `http://127.0.0.1:3100/health`. A `qr_required` or `UNPAIRED` response means the bridge is healthy but the configured WhatsApp account must be scanned once from the CRM QR setup page.
+
+### Safe Reminder Backfill
+
+If the scheduler was down and reminders need a controlled replay, use the reminder command with a bounded backfill window:
+
+```bash
+php artisan send-lead-followup-whatsapp-reminders --backfill-hours=168
+```
+
+Safety guarantees:
+
+- `whatsapp_reminder_sent_at` is set only after a successful WhatsApp send.
+- Each reminder uses an idempotency key derived from the follow-up id and scheduled timestamp.
+- The backfill window is bounded so it does not reprocess the entire history unless you intentionally raise the lookback window.
+- Already-sent reminders are skipped automatically.
+
 ## Queue Candidates
 
 These areas are already queue-oriented or should remain queue-backed in production:

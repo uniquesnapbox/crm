@@ -48,6 +48,19 @@ function patchClientInject(Client) {
 
   const originalInject = Client.prototype.inject;
 
+  async function hasLiveWebHelpers(page) {
+    try {
+      return await page.evaluate(() => Boolean(
+        window.WWebJS &&
+        typeof window.WWebJS.getChat === "function" &&
+        typeof window.WWebJS.sendMessage === "function" &&
+        typeof window.WWebJS.getChats === "function"
+      ));
+    } catch (_) {
+      return false;
+    }
+  }
+
   async function attachDiagnostics(client) {
     if (client.__usbCrmDiagnosticsAttached || !client.pupPage) {
       return;
@@ -74,8 +87,12 @@ function patchClientInject(Client) {
     }
 
     if (this.__usbCrmInjectedStable && this.pupPage && !this.lastLoggedOut) {
-      await attachDiagnostics(this);
-      return this.info || null;
+      if (await hasLiveWebHelpers(this.pupPage)) {
+        await attachDiagnostics(this);
+        return this.info || null;
+      }
+
+      this.__usbCrmInjectedStable = false;
     }
 
     const run = (async () => {

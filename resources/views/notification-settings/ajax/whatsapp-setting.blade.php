@@ -355,7 +355,8 @@
                 }) || healthSessions[0] || {};
                 const sessionKey = requestedSessionKey || String(healthSession.sessionKey || '');
                 const connectionStatus = String(qrData.status || healthSession.status || 'unknown').toLowerCase();
-                const isConnected = Boolean(healthData.ready) || connectionStatus === 'ready';
+                // Global health can be ready because a different session is connected.
+                const isConnected = connectionStatus === 'ready';
                 const generatedAt = qrData.generatedAt ? new Date(qrData.generatedAt) : null;
 
                 $serviceStatus

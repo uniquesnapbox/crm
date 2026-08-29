@@ -956,12 +956,18 @@ class WhatsAppManager extends EventEmitter {
         throw new Error(`Session ${key} not ready. Current status: ${status}`);
       }
 
-      const sentMessage = hasMedia
-        ? await client.sendMessage(chatId, media, {
-            caption: text || undefined,
-            sendMediaAsDocument: attachment?.sendAsDocument !== false
-          })
-        : await client.sendMessage(chatId, text);
+      const sentMessage = await this.sendMessageWithLidFallback(
+        client,
+        chatId,
+        hasMedia ? media : text,
+        hasMedia
+          ? {
+              caption: text || undefined,
+              sendMediaAsDocument: attachment?.sendAsDocument !== false,
+            }
+          : undefined,
+        hasMedia
+      );
 
       return {
         id: this.serializeWhatsAppId(sentMessage?.id),
@@ -987,6 +993,98 @@ class WhatsAppManager extends EventEmitter {
       const refreshedClient = await this.recoverClient(key, "send_transient_error");
       return await sendWithClient(refreshedClient);
     }
+  }
+
+  async sendMessageWithLidFallback(client, chatId, content, options = undefined, hasMedia = false) {
+    if (!hasMedia) {
+      try {
+        return await this.sendMessageViaResolvedChat(client, chatId, content, options);
+      } catch (error) {
+        const errorMessage = String(error?.message || error || "");
+        const isLidRelated = /getChat|No LID for user|LID/i.test(errorMessage);
+
+        if (!isLidRelated) {
+          throw error;
+        }
+      }
+    }
+
+    try {
+      return hasMedia
+        ? await client.sendMessage(chatId, content, options)
+        : await client.sendMessage(chatId, content);
+    } catch (error) {
+      const errorMessage = String(error?.message || error || "");
+      const isLidRelated = /getChat|No LID for user|LID/i.test(errorMessage);
+
+      if (!isLidRelated || typeof client.getContactLidAndPhone !== "function") {
+        throw error;
+      }
+
+      let resolvedChatId = null;
+      try {
+        const resolved = await client.getContactLidAndPhone([chatId]);
+        const first = Array.isArray(resolved) ? resolved[0] : null;
+        resolvedChatId = String(first?.lid || first?.pn || "").trim() || null;
+      } catch (lookupError) {
+        logger.warn("Unable to resolve WhatsApp LID for send fallback", {
+          sessionKey: client.info?.wid?._serialized || null,
+          chatId,
+          error: lookupError.message
+        });
+      }
+
+      if (!resolvedChatId || resolvedChatId === chatId) {
+        throw error;
+      }
+
+      logger.info("Retrying WhatsApp send with resolved LID", {
+        originalChatId: chatId,
+        resolvedChatId
+      });
+
+      return hasMedia
+        ? await client.sendMessage(resolvedChatId, content, options)
+        : await client.sendMessage(resolvedChatId, content);
+    }
+  }
+
+  async sendMessageViaResolvedChat(client, chatId, content, options = undefined) {
+    if (!client?.pupPage) {
+      throw new Error("WhatsApp client page is unavailable");
+    }
+
+    return client.pupPage.evaluate(
+      async (targetChatId, payload, sendOptions) => {
+        const widFactory = window.require("WAWebWidFactory");
+        const collections = window.require("WAWebCollections");
+
+        const chatWid = widFactory.createWid(targetChatId);
+        let chat =
+          collections.Chat.get(chatWid) ||
+          (await window.require("WAWebFindChatAction").findOrCreateLatestChat(chatWid))
+            ?.chat ||
+          null;
+
+        if (!chat && typeof window.WWebJS?.getChat === "function") {
+          chat = await window.WWebJS.getChat(targetChatId, { getAsModel: false });
+        }
+
+        if (!chat) {
+          throw new Error(`Unable to resolve chat for ${targetChatId}`);
+        }
+
+        if (sendOptions?.sendSeen) {
+          await window.WWebJS.sendSeen(targetChatId);
+        }
+
+        const sent = await window.WWebJS.sendMessage(chat, payload, sendOptions || {});
+        return sent ? window.WWebJS.getMessageModel(sent) : undefined;
+      },
+      chatId,
+      content,
+      options || {}
+    );
   }
 
   async getMessageHistory({ to, channelKey, limit = 100 }) {

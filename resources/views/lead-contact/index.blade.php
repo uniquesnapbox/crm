@@ -390,6 +390,7 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
             $.easyAjax({
                 url: url,
                 type: 'POST',
+                blockUI: false,
                 data: {
                     _token: "{{ csrf_token() }}",
                     field: field,
@@ -398,7 +399,7 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
                 success: function(response) {
                     if (response.status === 'success') {
                         $field.attr('data-prev-value', value);
-                        showTable();
+                        window.setTimeout(showTable, 0);
                     } else {
                         $field.val(previousValue);
                     }
@@ -408,6 +409,11 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
                 },
                 complete: function() {
                     $field.prop('disabled', false);
+                    if (typeof $.easyUnblockUI === 'function') {
+                        $.easyUnblockUI();
+                    } else if (typeof $.unblockUI === 'function') {
+                        $.unblockUI();
+                    }
                 }
             });
         });

@@ -9,8 +9,15 @@
         } catch (\Throwable $th) {
             $phpPath = 'php';
         }
-           echo '<code  id="cron-command" class="f-12"> ' . $phpPath . ' ' . base_path() . '/artisan schedule:run >> /dev/null 2>&1</code>';
+        $isWindows = PHP_OS_FAMILY === 'Windows';
+        $windowsLauncher = base_path('scripts/windows/start-scheduler.ps1');
+        $windowsInstaller = base_path('scripts/windows/install-scheduler-task.ps1');
     @endphp
+    @if ($isWindows)
+        <code id="cron-command" class="f-12">powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "{{ $windowsLauncher }}"</code>
+    @else
+        <code id="cron-command" class="f-12">{{ $phpPath }} {{ base_path() }}/artisan schedule:run >> /dev/null 2>&1</code>
+    @endif
     <button type="button" data-clipboard-target="#cron-command"
             data-toggle="tooltip"
             data-original-title="@lang('app.copyAboveLink')"
@@ -19,9 +26,12 @@
     </button>
 
     <div class="mt-3"><strong>Note:</strong>
-
-        <ins>{{$phpPath}}</ins>
-        in the above command is the path of PHP on your server. To ensure it works correctly, please enter the correct PHP path for your server and provide the path to your script. If you're unsure how to set up a cron job, you may want to consult with your server administrator or hosting provider.
+        @if ($isWindows)
+            Run <ins>{{ $windowsInstaller }}</ins> once from an elevated PowerShell session to register a Task Scheduler entry that keeps <code>schedule:work</code> running.
+        @else
+            <ins>{{$phpPath}}</ins>
+            in the above command is the path of PHP on your server. To ensure it works correctly, please enter the correct PHP path for your server and provide the path to your script. If you're unsure how to set up a cron job, you may want to consult with your server administrator or hosting provider.
+        @endif
     </div>
 </div>
 
