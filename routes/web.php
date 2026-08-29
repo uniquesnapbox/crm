@@ -53,6 +53,7 @@ use App\Http\Controllers\BankAccountController;
 use App\Http\Controllers\DesignationController;
 use App\Http\Controllers\EmployeeDocController;
 use App\Http\Controllers\LeadCategoryController;
+use App\Http\Controllers\LeadPerformanceReportController;
 use App\Http\Controllers\LeaveReportController;
 use App\Http\Controllers\LeavesQuotaController;
 use App\Http\Controllers\MessageFileController;
@@ -525,10 +526,16 @@ Route::group(['middleware' => 'auth:sanctum,web', 'prefix' => 'account'], functi
 
     Route::prefix('whatsapp')->name('whatsapp.')->group(function () {
         Route::get('bulk', [BulkWhatsAppController::class, 'index'])->name('bulk.index');
+        Route::get('bulk/history', [BulkWhatsAppController::class, 'history'])->name('bulk.history');
+        Route::get('bulk/reports', [BulkWhatsAppController::class, 'reports'])->name('bulk.reports');
+        Route::post('bulk/filtered-lead-ids', [BulkWhatsAppController::class, 'filteredLeadIds'])->name('bulk.filtered_lead_ids');
         Route::post('bulk/preview', [BulkWhatsAppController::class, 'preview'])->name('bulk.preview');
         Route::post('bulk/send', [BulkWhatsAppController::class, 'send'])->name('bulk.send');
         Route::get('bulk/campaigns/{campaign}/status', [BulkWhatsAppController::class, 'status'])->name('bulk.status');
         Route::get('bulk/campaigns/{campaign}/logs', [BulkWhatsAppController::class, 'logs'])->name('bulk.logs');
+        Route::post('bulk/campaigns/{campaign}/pause', [BulkWhatsAppController::class, 'pause'])->name('bulk.pause');
+        Route::post('bulk/campaigns/{campaign}/resume', [BulkWhatsAppController::class, 'resume'])->name('bulk.resume');
+        Route::post('bulk/campaigns/{campaign}/stop', [BulkWhatsAppController::class, 'stop'])->name('bulk.stop');
         Route::post('bulk/templates', [BulkWhatsAppController::class, 'storeTemplate'])->name('bulk.templates.store');
     });
 
@@ -806,6 +813,8 @@ Route::group(['middleware' => 'auth:sanctum,web', 'prefix' => 'account'], functi
     Route::get('expense-report/expense-category-report', [ExpenseReportController::class, 'expenseCategoryReport'])->name('expense-report.expense_category_report');
 
     Route::resource('expense-report', ExpenseReportController::class);
+    Route::get('lead-performance-report/employee', [LeadPerformanceReportController::class, 'employee'])->name('lead-performance-report.employee');
+    Route::get('lead-performance-report/conversion', [LeadPerformanceReportController::class, 'conversion'])->name('lead-performance-report.conversion');
     Route::resource('lead-report', LeadReportController::class);
     Route::resource('sales-report', SalesReportController::class);
 

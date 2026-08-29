@@ -540,6 +540,9 @@
                     </div>
                 </div>
                 <div class="lead-header-actions">
+                    <a href="{{ route('lead-contact.index') }}" class="btn btn-outline-secondary lead-contact-back-link">
+                        <i class="fa fa-arrow-left mr-1"></i> Back
+                    </a>
                     @if (!$leadContact->client_id)
                         <button type="button" class="btn btn-primary convert-lead-to-client" data-url="{{ route('lead-contact.convert_to_client', $leadContact->id) }}">
                             <i class="fa fa-user-check mr-1"></i>@lang('modules.lead.changeToClient')

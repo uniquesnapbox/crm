@@ -36,6 +36,37 @@
 
 @push('scripts')
     <script>
+        const leadContactIndexUrl = "{{ route('lead-contact.index') }}";
+        const leadContactPageStateKey = "lead-contact-table:last-page";
+
+        function leadContactBackUrl() {
+            const rawState = sessionStorage.getItem(leadContactPageStateKey);
+
+            if (!rawState) {
+                return leadContactIndexUrl;
+            }
+
+            try {
+                const state = JSON.parse(rawState);
+                const page = Number(state.page);
+
+                if (!Number.isFinite(page) || page < 0) {
+                    return leadContactIndexUrl;
+                }
+
+                return `${leadContactIndexUrl}?dt_page=${page}`;
+            } catch (error) {
+                return leadContactIndexUrl;
+            }
+        }
+
+        $('.lead-contact-back-link').attr('href', leadContactBackUrl());
+
+        $('body').on('click', '.lead-contact-back-link', function(event) {
+            event.preventDefault();
+            window.location.href = leadContactBackUrl();
+        });
+
         $("body").on("click", ".ajax-tab", function(event) {
             event.preventDefault();
 
@@ -98,7 +129,7 @@
                         },
                         success: function(response) {
                             if (response.status == "success") {
-                                window.location.href = "{{ route('lead-contact.index')}}";
+                                window.location.href = leadContactBackUrl();
                             }
                         }
                     });

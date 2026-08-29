@@ -10,8 +10,8 @@
             .lead-contact-toolbar {
                 display: flex !important;
                 align-items: center;
-                gap: 0.35rem;
-                overflow-x: hidden;
+                min-height: 46px;
+                overflow: visible;
                 white-space: nowrap;
                 flex-wrap: nowrap !important;
                 justify-content: flex-start;
@@ -32,22 +32,30 @@
                 display: flex;
                 align-items: center;
                 flex-wrap: nowrap !important;
-                gap: 0.35rem;
-                margin-right: auto;
+                flex: 0 0 auto;
+                gap: 6px;
+                min-width: 0;
+                padding-left: 10px;
+                padding-right: 10px !important;
+                border-right: 1px solid #e8eef3;
             }
 
             .lead-contact-toolbar #table-actions .btn {
                 margin-bottom: 0 !important;
                 white-space: nowrap;
-                padding: 0.28rem 0.55rem;
+                min-height: 32px;
+                height: 32px;
+                padding: 0.35rem 0.65rem;
+                border-radius: 5px;
                 font-size: 12px;
-                line-height: 1.1;
+                line-height: 1.2;
             }
 
             .lead-contact-toolbar .task-search {
-                width: 185px;
-                min-width: 150px;
-                max-width: 200px;
+                flex: 1 1 240px;
+                width: auto;
+                min-width: 180px;
+                max-width: none;
             }
 
             .lead-contact-toolbar .select-box p,
@@ -59,15 +67,14 @@
             .lead-contact-toolbar .select-box .form-control,
             .lead-contact-toolbar .task-search .form-control,
             .lead-contact-toolbar .select-picker {
-                min-height: 30px;
-                height: 30px;
+                min-height: 32px;
+                height: 32px;
                 font-size: 12px;
-                padding-top: 0.18rem;
-                padding-bottom: 0.18rem;
             }
 
             .lead-contact-toolbar .select-box {
-                padding-right: 0.35rem !important;
+                flex: 0 0 auto;
+                padding: 0 10px !important;
             }
 
             .lead-contact-toolbar .select-box .input-group-text {
@@ -76,6 +83,74 @@
 
             .lead-contact-toolbar .select-box .form-control {
                 min-width: 95px;
+            }
+
+            .lead-contact-toolbar .more-filters {
+                flex: 0 0 auto;
+                padding-right: 12px;
+            }
+        }
+
+        .lead-contact-actions-toggle {
+            min-width: 104px;
+            box-shadow: 0 2px 5px rgba(29, 130, 245, 0.18);
+            font-weight: 500;
+            letter-spacing: 0.01em;
+        }
+
+        .lead-contact-actions .dropdown-menu {
+            min-width: 210px;
+            margin-top: 6px;
+            border-radius: 7px !important;
+            box-shadow: 0 10px 28px rgba(40, 49, 60, 0.14);
+        }
+
+        .lead-contact-actions .dropdown-item {
+            display: flex;
+            align-items: center;
+            min-height: 36px;
+            padding: 0.45rem 0.85rem;
+            font-size: 12px;
+        }
+
+        .lead-contact-actions .dropdown-item i {
+            width: 20px;
+            color: #616e80;
+            text-align: center;
+        }
+
+        .lead-contact-actions .dropdown-item.disabled {
+            cursor: not-allowed;
+            opacity: 0.55;
+        }
+
+        .lead-contact-bulk-bar {
+            align-items: center;
+            min-height: 46px;
+        }
+
+        .lead-contact-bulk-bar.is-visible {
+            display: flex !important;
+        }
+
+        .lead-contact-bulk-bar #quick-action-form {
+            display: block;
+        }
+
+        @media (max-width: 991.98px) {
+            .lead-contact-toolbar #table-actions {
+                padding: 10px 12px;
+            }
+
+            .lead-contact-toolbar .select-box,
+            .lead-contact-toolbar .task-search,
+            .lead-contact-toolbar .more-filters {
+                width: 100%;
+            }
+
+            .lead-contact-actions .dropdown-menu {
+                left: 0;
+                right: auto;
             }
         }
 
@@ -140,6 +215,77 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
     <script>
         const leadShowRouteTemplate = "{{ route('lead-contact.show', ':id') }}";
         const leadContactTableId = "lead-contact-table";
+        const leadContactPageStateKey = "lead-contact-table:last-page";
+
+        function getLeadContactDataTable() {
+            return window.LaravelDataTables ? window.LaravelDataTables[leadContactTableId] : null;
+        }
+
+        function getLeadContactSavedPage() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const pageFromQuery = urlParams.get('dt_page');
+
+            if (pageFromQuery !== null && pageFromQuery !== '' && Number.isFinite(Number(pageFromQuery))) {
+                return Math.max(0, parseInt(pageFromQuery, 10));
+            }
+
+            const rawState = sessionStorage.getItem(leadContactPageStateKey);
+
+            if (!rawState) {
+                return null;
+            }
+
+            try {
+                const state = JSON.parse(rawState);
+                const page = Number(state.page);
+
+                return Number.isFinite(page) && page >= 0 ? page : null;
+            } catch (error) {
+                return null;
+            }
+        }
+
+        function storeLeadContactPageState() {
+            const table = getLeadContactDataTable();
+
+            if (!table || typeof table.page !== 'function') {
+                return;
+            }
+
+            const info = table.page.info();
+            sessionStorage.setItem(leadContactPageStateKey, JSON.stringify({
+                page: info.page || 0,
+                length: info.length || 0,
+                updatedAt: Date.now()
+            }));
+        }
+
+        function restoreLeadContactPageState(attempt = 0) {
+            const table = getLeadContactDataTable();
+            const page = getLeadContactSavedPage();
+
+            if (!table || typeof table.page !== 'function') {
+                if (attempt < 20) {
+                    window.setTimeout(function() {
+                        restoreLeadContactPageState(attempt + 1);
+                    }, 100);
+                }
+
+                return false;
+            }
+
+            if (page === null) {
+                return false;
+            }
+
+            const currentPage = table.page.info().page || 0;
+
+            if (currentPage !== page) {
+                table.page(page).draw('page');
+            }
+
+            return true;
+        }
 
         function getLeadContactFilters() {
             var dateRangePicker = $('#datatableRange').data('daterangepicker');
@@ -173,6 +319,14 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
 
         $('#' + leadContactTableId).on('preXhr.dt', function(e, settings, data) {
             Object.assign(data, getLeadContactFilters());
+        });
+
+        $('#' + leadContactTableId).on('page.dt length.dt', function() {
+            window.setTimeout(storeLeadContactPageState, 0);
+        });
+
+        $('#' + leadContactTableId).on('draw.dt', function() {
+            leadContactSyncBulkActionState();
         });
 
         const showTable = () => {
@@ -357,10 +511,6 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
             })
         };
 
-        $('body').on('click', '#add-lead', function() {
-            window.location.href = "{{ route('lead-form.index') }}";
-        });
-
         $('body').on('click', '#lead-contact-table tbody tr.lead-table-row', function(e) {
             if ($(e.target).closest('a,button,input,select,option,label,.select-picker,.bootstrap-select,.bootstrap-select *,.js-lead-table-inline-select,.dropdown,.dropdown-menu,.swal2-container').length) {
                 return;
@@ -371,7 +521,12 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
                 return;
             }
 
+            storeLeadContactPageState();
             window.location.href = leadShowRouteTemplate.replace(':id', rowId);
+        });
+
+        $('body').on('click', '#lead-contact-table a.js-lead-contact-open', function() {
+            storeLeadContactPageState();
         });
 
         $('body').on('change', '.js-lead-table-inline-select', function() {
@@ -419,6 +574,17 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
         });
 
         $( document ).ready(function() {
+            leadContactHideBulkActions();
+
+            const savedPage = getLeadContactSavedPage();
+            if (savedPage !== null) {
+                storeLeadContactPageState();
+            }
+
+            window.setTimeout(function() {
+                restoreLeadContactPageState();
+            }, 0);
+
             @if (!is_null(request('start')) && !is_null(request('end')))
             $('#datatableRange').val('{{ request('start') }}' +
             ' @lang("app.to") ' + '{{ request('end') }}');
@@ -450,7 +616,15 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
 
         const leadContactShowBulkActions = () => {
             const form = document.getElementById('quick-action-form');
+            const bulkBar = document.getElementById('lead-contact-bulk-bar');
+
+            if (bulkBar) {
+                bulkBar.classList.add('is-visible');
+                bulkBar.classList.remove('d-none');
+            }
+
             if (form) {
+                form.classList.remove('d-none');
                 form.style.display = '';
             }
 
@@ -473,7 +647,15 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
 
         const leadContactHideBulkActions = () => {
             const form = document.getElementById('quick-action-form');
+            const bulkBar = document.getElementById('lead-contact-bulk-bar');
+
+            if (bulkBar) {
+                bulkBar.classList.remove('is-visible');
+                bulkBar.classList.add('d-none');
+            }
+
             if (form) {
+                form.classList.add('d-none');
                 form.style.display = 'none';
             }
 
@@ -492,6 +674,8 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
             const $selectedRows = $(".select-table-row:checked");
             const selectedCount = $selectedRows.length;
             const $selectAll = $("#select-all-table");
+
+            $('#lead-contact-selected-count').text(selectedCount + ' selected');
 
             if (selectedCount > 0) {
                 leadContactShowBulkActions();
@@ -568,7 +752,12 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
         };
 
         window.resetActionButtons = () => {
-            $("#quick-action-form")[0].reset();
+            const form = document.getElementById('quick-action-form');
+
+            if (form && typeof form.reset === 'function') {
+                form.reset();
+            }
+
             leadContactHideBulkActions();
         };
 

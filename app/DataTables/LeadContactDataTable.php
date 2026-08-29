@@ -54,7 +54,7 @@ class LeadContactDataTable extends BaseDataTable
         $datatables->addColumn('check', fn($row) => $this->checkBox($row));
         $datatables->addColumn('action', function ($row) {
             $action = '<div class="d-flex align-items-center justify-content-end lead-table-actions">';
-            $action .= '<a href="' . route('lead-contact.show', [$row->id]) . '" class="btn btn-sm btn-outline-secondary mr-1" title="' . __('app.view') . '"><i class="fa fa-eye"></i></a>';
+            $action .= '<a href="' . route('lead-contact.show', [$row->id]) . '" class="btn btn-sm btn-outline-secondary mr-1 js-lead-contact-open" title="' . __('app.view') . '"><i class="fa fa-eye"></i></a>';
 
             if (
                 $this->editLeadPermission == 'all'
@@ -109,7 +109,7 @@ class LeadContactDataTable extends BaseDataTable
 
             return '
                         <div class="media-body">
-                    <h5 class="mb-0 f-13 "><a href="' . route('lead-contact.show', [$row->id]) . '">' . $client_name . '</a></h5>
+                    <h5 class="mb-0 f-13 "><a href="' . route('lead-contact.show', [$row->id]) . '" class="js-lead-contact-open">' . $client_name . '</a></h5>
                     <p class="mb-0">' . $label . '</p>
                     <p class="mb-0 f-12 text-dark-grey">
                     '.$row->company_name.'
@@ -222,6 +222,22 @@ class LeadContactDataTable extends BaseDataTable
             $leadContact = $leadContact->where('leads.interest_level', $this->request()->interest_level);
         }
 
+        $productsServices = $this->request()->input('products_services', []);
+        $productsServices = is_array($productsServices) ? $productsServices : [$productsServices];
+        $productsServices = collect($productsServices)
+            ->map(fn ($product) => trim((string) $product))
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($productsServices->isNotEmpty()) {
+            $leadContact = $leadContact->where(function ($query) use ($productsServices) {
+                foreach ($productsServices as $product) {
+                    $query->orWhere('leads.products_services', 'like', '%' . $product . '%');
+                }
+            });
+        }
+
         if ($this->viewLeadPermission == 'all' && $this->request()->filter_addedBy != 'all' && $this->request()->filter_addedBy != '') {
             $leadContact = $leadContact->where('leads.added_by', $this->request()->filter_addedBy);
         }
@@ -250,6 +266,7 @@ class LeadContactDataTable extends BaseDataTable
     {
         $dataTable = $this->setBuilder('lead-contact-table', 2)
             ->parameters([
+                'stateSave' => true,
                 'initComplete' => 'function () {
                    window.LaravelDataTables["lead-contact-table"].buttons().container()
                     .appendTo("#table-actions")

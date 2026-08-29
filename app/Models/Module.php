@@ -1226,6 +1226,18 @@ class Module extends BaseModel
                     'is_custom' => 1,
                     'name' => 'delete_deal_note',
                 ],
+                [
+                    'allowed_permissions' => Permission::ALL_NONE,
+                    'display_name' => 'View Bulk WhatsApp',
+                    'is_custom' => 1,
+                    'name' => 'view_bulk_whatsapp',
+                ],
+                [
+                    'allowed_permissions' => Permission::ALL_NONE,
+                    'display_name' => 'Send Bulk WhatsApp Campaign',
+                    'is_custom' => 1,
+                    'name' => 'send_bulk_whatsapp',
+                ],
             ]
         ],
         [

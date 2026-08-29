@@ -20,6 +20,12 @@ class BulkWhatsAppCampaign extends BaseModel
         'name',
         'session_key',
         'message_body',
+        'attachment_path',
+        'attachment_name',
+        'attachment_mime',
+        'attachment_size',
+        'delay_min_seconds',
+        'delay_max_seconds',
         'lead_filters',
         'recipient_count',
         'sent_count',
@@ -35,6 +41,9 @@ class BulkWhatsAppCampaign extends BaseModel
         'lead_filters' => 'array',
         'started_at' => 'datetime',
         'completed_at' => 'datetime',
+        'attachment_size' => 'integer',
+        'delay_min_seconds' => 'integer',
+        'delay_max_seconds' => 'integer',
     ];
 
     public function template(): BelongsTo
@@ -65,8 +74,10 @@ class BulkWhatsAppCampaign extends BaseModel
         $progress = $total > 0 ? (int) round(($processed / $total) * 100) : 0;
 
         if ($total > 0 && $processed >= $total) {
-            $this->status = $counts['sent'] > 0 ? 'completed' : 'failed';
-            $this->completed_at = now();
+            if (!in_array($this->status, ['paused', 'stopped'], true)) {
+                $this->status = $counts['sent'] > 0 ? 'completed' : 'failed';
+                $this->completed_at = now();
+            }
         } elseif (in_array($this->status, ['queued', 'draft'], true)) {
             $this->status = 'running';
         }

@@ -1,4 +1,4 @@
-<form action="" {{ $attributes->merge(['class' => 'align-self-center']) }} id="quick-action-form" style="display: none">
+<form action="" {{ $attributes->merge(['class' => 'align-self-center d-none']) }} id="quick-action-form">
     @csrf
     <div class="d-flex align-items-center" id="quick-actions">
         {{ $slot }}

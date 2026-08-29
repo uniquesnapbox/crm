@@ -1,44 +1,35 @@
 <x-filters.filter-box class="lead-contact-toolbar">
     <div id="table-actions" class="d-flex align-items-center flex-nowrap pr-lg-2">
-        @if ($addLeadPermission == 'all' || $addLeadPermission == 'added')
-            <x-forms.link-primary :link="route('lead-contact.create')" class="mr-2 openRightModal" icon="plus">
-                @lang('modules.leadContact.addLeadContact')
-            </x-forms.link-primary>
-        @endif
+        @php
+            $canAddLeadContact = in_array($addLeadPermission ?? null, ['all', 'added'], true);
+            $canManageLeadForms = ($addLeadCustomFormPermission ?? null) === 'all';
+        @endphp
+        <div class="dropdown lead-contact-actions">
+            <button class="btn btn-primary dropdown-toggle lead-contact-actions-toggle" type="button"
+                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <i class="fa fa-plus mr-1"></i> Add Lead
+            </button>
 
-        @if ($addLeadCustomFormPermission == 'all')
-            <x-forms.button-secondary icon="pencil-alt" class="mr-2" id="add-lead">
-                @lang('modules.lead.leadForm')
-            </x-forms.button-secondary>
-        @endif
+            <div class="dropdown-menu border-grey rounded b-shadow-4 py-2">
+                <a class="dropdown-item openRightModal {{ $canAddLeadContact ? '' : 'disabled' }}"
+                    href="{{ $canAddLeadContact ? route('lead-contact.create') : 'javascript:;' }}"
+                    @if (! $canAddLeadContact) aria-disabled="true" tabindex="-1" @endif>
+                    <i class="fa fa-user-plus mr-2"></i> @lang('modules.leadContact.addLeadContact')
+                </a>
 
-        @if ($addLeadPermission == 'all' || $addLeadPermission == 'added')
-            <x-forms.link-secondary :link="route('lead-contact.import')" class="mr-2 openRightModal d-none d-lg-block" icon="file-upload">
-                @lang('app.importExcel')
-            </x-forms.link-secondary>
-        @endif
+                <a class="dropdown-item {{ $canManageLeadForms ? '' : 'disabled' }}"
+                    href="{{ $canManageLeadForms ? route('lead-form.index') : 'javascript:;' }}"
+                    @if (! $canManageLeadForms) aria-disabled="true" tabindex="-1" @endif>
+                    <i class="fa fa-pencil-alt mr-2"></i> @lang('modules.lead.leadForm')
+                </a>
 
-        <x-datatable.actions>
-            <div class="select-status mr-2 pl-2">
-                <select name="action_type" class="form-control select-picker" id="quick-action-type" disabled>
-                    <option value="">@lang('app.selectAction')</option>
-                    @if ($canBulkAssignLead)
-                        <option value="assign-to">@lang('modules.tasks.assignTo')</option>
-                    @endif
-                    <option value="delete">@lang('app.delete')</option>
-                </select>
+                <a class="dropdown-item openRightModal {{ $canAddLeadContact ? '' : 'disabled' }}"
+                    href="{{ $canAddLeadContact ? route('lead-contact.import') : 'javascript:;' }}"
+                    @if (! $canAddLeadContact) aria-disabled="true" tabindex="-1" @endif>
+                    <i class="fa fa-file-upload mr-2"></i> @lang('app.importExcel')
+                </a>
             </div>
-            @if ($canBulkAssignLead)
-                <div class="select-status mr-2 d-none quick-action-field" id="change-agent-action">
-                    <select name="assigned_to" id="assigned_to" class="form-control select-picker" data-live-search="true" data-size="8">
-                        <option value="">@lang('modules.tasks.assignTo')</option>
-                        @foreach ($assignableEmployees ?? $employees as $employee)
-                            <x-user-option :user="$employee" />
-                        @endforeach
-                    </select>
-                </div>
-            @endif
-        </x-datatable.actions>
+        </div>
     </div>
 
     <!-- DATE START -->
@@ -71,7 +62,7 @@
 
     <!-- SEARCH BY TASK START -->
     <div class="task-search d-flex py-1 px-lg-2 px-0 border-right-grey align-items-center">
-        <form class="w-100 mr-1 mr-lg-0 mr-md-1 ml-md-1 ml-0 ml-lg-0">
+        <div class="w-100 mr-1 mr-lg-0 mr-md-1 ml-md-1 ml-0 ml-lg-0">
             <div class="input-group bg-grey rounded">
                 <div class="input-group-prepend">
                     <span class="input-group-text border-0 bg-additional-grey">
@@ -81,7 +72,7 @@
                 <input type="text" class="form-control f-14 p-1 border-additional-grey" id="search-text-field"
                     placeholder="@lang('app.startTyping')">
             </div>
-        </form>
+        </div>
     </div>
     <!-- SEARCH BY TASK END -->
 
@@ -194,6 +185,31 @@
 
     </x-filters.more-filter-box>
 </x-filters.filter-box>
+
+<div class="lead-contact-bulk-bar bg-white border-top-grey px-3 py-2 d-none" id="lead-contact-bulk-bar">
+    <span class="text-dark-grey f-13 mr-3" id="lead-contact-selected-count"></span>
+    <x-datatable.actions>
+        <div class="select-status mr-2">
+            <select name="action_type" class="form-control select-picker" id="quick-action-type" disabled>
+                <option value="">@lang('app.selectAction')</option>
+                @if ($canBulkAssignLead)
+                    <option value="assign-to">@lang('modules.tasks.assignTo')</option>
+                @endif
+                <option value="delete">@lang('app.delete')</option>
+            </select>
+        </div>
+        @if ($canBulkAssignLead)
+            <div class="select-status mr-2 d-none quick-action-field" id="change-agent-action">
+                <select name="assigned_to" id="assigned_to" class="form-control select-picker" data-live-search="true" data-size="8">
+                    <option value="">@lang('modules.tasks.assignTo')</option>
+                    @foreach ($assignableEmployees ?? $employees as $employee)
+                        <x-user-option :user="$employee" />
+                    @endforeach
+                </select>
+            </div>
+        @endif
+    </x-datatable.actions>
+</div>
 
 @push('scripts')
     <script>

@@ -4,6 +4,8 @@
 
     if ($modulesData->module_name === 'leads') {
         $visiblePermissionNames = [
+            'view_bulk_whatsapp',
+            'send_bulk_whatsapp',
             'view_lead_follow_up',
             'add_lead_follow_up',
             'edit_lead_follow_up',
@@ -30,6 +32,8 @@
         }
 
         $permissionLabelOverrides = [
+            'view_bulk_whatsapp' => 'View Bulk WhatsApp',
+            'send_bulk_whatsapp' => 'Send Bulk WhatsApp Campaign',
             'view_lead_follow_up' => 'View Follow-up',
             'add_lead_follow_up' => 'Add Follow-up',
             'edit_lead_follow_up' => 'Edit Follow-up',

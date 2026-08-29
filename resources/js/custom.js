@@ -158,7 +158,10 @@ const selectAllTable = (source) => {
 
 //reset table action form elements
 const resetActionButtons = () => {
-    $("#quick-action-form")[0].reset();
+    const form = document.getElementById("quick-action-form");
+    if (form && typeof form.reset === "function") {
+        form.reset();
+    }
     hideBulkActions();
 };
 

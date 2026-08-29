@@ -4,10 +4,12 @@
     $isDashboardMenuActive = $routeMatches(['dashboard', 'dashboard.advanced']);
     $isLeadMenuActive = $routeMatches(['lead-contact.*', 'calendar.*']);
     $isWhatsAppMenuActive = $routeMatches(['whatsapp.*']);
+    $canViewBulkWhatsApp = in_array(user()->permission('view_lead'), ['all', 'added', 'owned', 'both'], true)
+        && user()->permission('view_bulk_whatsapp') === 'all';
     $isHrMenuActive = $routeMatches(['employees.*', 'leaves.*', 'shifts.*', 'attendances.*', 'account.live-tracking', 'holidays.*', 'designations.*', 'departments.*', 'appreciations.*', 'awards.*']);
     $isWorkMenuActive = $routeMatches(['contracts.*', 'documents.*', 'document-templates.*', 'projects.*', 'tasks.*', 'timelogs.*']);
     $isFinanceMenuActive = $routeMatches(['proposals.*', 'estimates.*', 'invoices.*', 'payments.*', 'creditnotes.*', 'expenses.*', 'bankaccounts.*']);
-    $isReportsMenuActive = $routeMatches(['task-report.*', 'time-log-report.*', 'finance-report.*', 'income-expense-report.*', 'leave-report.*', 'attendance-report.*', 'expense-report.*', 'sales-report.*']);
+    $isReportsMenuActive = $routeMatches(['task-report.*', 'time-log-report.*', 'finance-report.*', 'income-expense-report.*', 'leave-report.*', 'attendance-report.*', 'expense-report.*', 'lead-performance-report.*', 'sales-report.*']);
 @endphp
 
 <ul>
@@ -66,13 +68,15 @@
 
 
     <!-- NAV ITEM - WHATSAPP -->
-    @if (in_array('leads', user_modules()) && ($sidebarUserPermissions['view_lead'] != 5 && $sidebarUserPermissions['view_lead'] != 'none'))
+    @if (in_array('leads', user_modules()) && $canViewBulkWhatsApp)
         <x-menu-item icon="chat-left-text" :text="'WhatsApp'" :active="$isWhatsAppMenuActive">
             <x-slot name="iconPath">
                 <path d="M10.5 0a9.5 9.5 0 0 0-8.26 14.23L.5 16l1.86-1.72A9.5 9.5 0 1 0 10.5 0zm0 17a7.45 7.45 0 0 1-3.9-1.1l-.28-.17-2.32.58.62-2.25-.18-.29A7.5 7.5 0 1 1 10.5 17zm4.18-5.87c-.23-.12-1.37-.68-1.58-.76-.21-.08-.36-.12-.51.12-.15.23-.59.76-.72.92-.13.15-.27.17-.5.06-.23-.12-.97-.36-1.84-1.16-.67-.6-1.12-1.35-1.25-1.58-.13-.23-.01-.36.1-.48.1-.1.23-.27.35-.4.12-.13.16-.23.24-.39.08-.15.04-.29-.02-.4-.06-.12-.51-1.24-.7-1.7-.18-.44-.36-.38-.5-.39h-.43c-.15 0-.4.06-.61.29-.21.23-.8.79-.8 1.92s.82 2.22.93 2.37c.12.15 1.62 2.47 3.93 3.46.55.24.98.38 1.31.49.55.17 1.06.14 1.46.09.45-.07 1.37-.56 1.56-1.1.19-.54.19-1 .13-1.1-.05-.1-.19-.17-.42-.29z"/>
             </x-slot>
             <div class="accordionItemContent">
-                <x-sub-menu-item :link="route('whatsapp.bulk.index')" :text="'Bulk WhatsApp'" />
+                <x-sub-menu-item :link="route('whatsapp.bulk.index')" :text="'📤 Bulk WhatsApp'" />
+                <x-sub-menu-item :link="route('whatsapp.bulk.history')" :text="'📋 Campaign History'" />
+                <x-sub-menu-item :link="route('whatsapp.bulk.reports')" :text="'📊 Campaign Reports'" />
             </div>
         </x-menu-item>
     @endif
@@ -378,6 +382,12 @@
                 @if ($sidebarUserPermissions['view_attendance_report'] == 4 && $sidebarUserPermissions['view_attendance_report'] != 'none' && in_array('attendance', user_modules()))
                     <x-sub-menu-item :link="route('attendance-report.index')"
                                      :text="__('app.menu.attendanceReport')" />
+                @endif
+                @if ($sidebarUserPermissions['view_lead_report'] == 4 && $sidebarUserPermissions['view_lead_report'] != 'none' && in_array('leads', user_modules()))
+                    <x-sub-menu-item :link="route('lead-performance-report.employee')"
+                                     :text="'Employee Lead Report'" />
+                    <x-sub-menu-item :link="route('lead-performance-report.conversion')"
+                                     :text="'Lead Conversion Report'" />
                 @endif
                 @if (isset($sidebarUserPermissions['view_expense_report']) && $sidebarUserPermissions['view_expense_report'] == 4 && $sidebarUserPermissions['view_expense_report'] != 'none' && in_array('expenses', user_modules()))
                     <x-sub-menu-item :link="route('expense-report.index')"

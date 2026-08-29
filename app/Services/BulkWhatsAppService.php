@@ -7,7 +7,9 @@ use App\Models\BulkWhatsAppCampaignRecipient;
 use App\Models\BulkWhatsAppTemplate;
 use App\Models\Lead;
 use App\Models\WhatsappNotificationSetting;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class BulkWhatsAppService
@@ -22,6 +24,8 @@ class BulkWhatsAppService
      */
     public function previewRecipients(Collection $leads, string $message, ?BulkWhatsAppTemplate $template = null): array
     {
+        $attachment = $this->templateAttachmentPayload($template);
+
         return $leads->map(function (Lead $lead) use ($message, $template) {
             $phone = $this->normalizePhone((string) ($lead->mobile ?: $lead->cell ?: $lead->office));
             $renderedMessage = $this->renderMessage($message, $lead, $template);
@@ -33,6 +37,10 @@ class BulkWhatsAppService
                 'phone' => $phone ?: null,
                 'status' => $phone === '' ? 'missing_phone' : 'ready',
                 'preview_message' => $renderedMessage,
+                'has_attachment' => !empty($attachment),
+                'attachment_url' => $attachment['url'] ?? null,
+                'attachment_name' => $attachment['fileName'] ?? null,
+                'attachment_mime' => $attachment['mimeType'] ?? null,
             ];
         })->values()->all();
     }
@@ -59,9 +67,14 @@ class BulkWhatsAppService
         string $message,
         Collection $leads,
         ?BulkWhatsAppTemplate $template = null,
-        array $filters = []
+        array $filters = [],
+        ?array $attachment = null,
+        int $delayMinSeconds = 8,
+        int $delayMaxSeconds = 20
     ): BulkWhatsAppCampaign {
         $meta = $this->resolveCampaignMeta($template, $message, $leads->count());
+        $attachmentMeta = $this->normalizeAttachmentMeta($attachment ?: $this->templateAttachmentMeta($template));
+        [$delayMinSeconds, $delayMaxSeconds] = $this->normalizeDelayWindow($delayMinSeconds, $delayMaxSeconds);
 
         $campaign = BulkWhatsAppCampaign::create([
             'company_id' => company()->id,
@@ -70,6 +83,12 @@ class BulkWhatsAppService
             'name' => trim($name) !== '' ? trim($name) : 'Bulk WhatsApp Campaign',
             'session_key' => $meta['session_key'] !== '' ? $meta['session_key'] : null,
             'message_body' => $meta['message'],
+            'attachment_path' => $attachmentMeta['path'] ?? null,
+            'attachment_name' => $attachmentMeta['name'] ?? null,
+            'attachment_mime' => $attachmentMeta['mime'] ?? null,
+            'attachment_size' => $attachmentMeta['size'] ?? null,
+            'delay_min_seconds' => $delayMinSeconds,
+            'delay_max_seconds' => $delayMaxSeconds,
             'lead_filters' => $filters,
             'recipient_count' => $meta['recipient_count'],
             'sent_count' => 0,
@@ -122,6 +141,105 @@ class BulkWhatsAppService
         ];
 
         return trim(strtr($templateSource, $placeholders));
+    }
+
+    public function storeUploadedAttachment(UploadedFile $file, string $directory): array
+    {
+        $directory = trim($directory, '/');
+        $extension = strtolower($file->getClientOriginalExtension() ?: $file->guessExtension() ?: 'jpg');
+        $fileName = Str::uuid()->toString() . '.' . $extension;
+        $path = Storage::disk('public')->putFileAs($directory, $file, $fileName);
+
+        return [
+            'path' => $path,
+            'name' => $file->getClientOriginalName(),
+            'mime' => $file->getMimeType() ?: 'application/octet-stream',
+            'size' => (int) $file->getSize(),
+            'url' => Storage::disk('public')->url($path),
+        ];
+    }
+
+    public function templateAttachmentMeta(?BulkWhatsAppTemplate $template): array
+    {
+        if (!$template || blank($template->attachment_path)) {
+            return [];
+        }
+
+        return [
+            'path' => $template->attachment_path,
+            'name' => $template->attachment_name ?: basename($template->attachment_path),
+            'mime' => $template->attachment_mime ?: 'application/octet-stream',
+            'size' => (int) ($template->attachment_size ?: 0),
+            'url' => $template->attachment_url,
+        ];
+    }
+
+    public function buildGatewayAttachmentFromCampaign(BulkWhatsAppCampaign $campaign): ?array
+    {
+        if (blank($campaign->attachment_path)) {
+            return null;
+        }
+
+        if (!Storage::disk('public')->exists($campaign->attachment_path)) {
+            return null;
+        }
+
+        $binary = Storage::disk('public')->get($campaign->attachment_path);
+
+        return [
+            'data' => base64_encode($binary),
+            'mimeType' => $campaign->attachment_mime ?: 'image/jpeg',
+            'fileName' => $campaign->attachment_name ?: basename($campaign->attachment_path),
+            'sendAsDocument' => false,
+        ];
+    }
+
+    public function normalizeDelayForCampaign(BulkWhatsAppCampaign $campaign): int
+    {
+        $minSeconds = (int) ($campaign->delay_min_seconds ?: 8);
+        $maxSeconds = (int) ($campaign->delay_max_seconds ?: 20);
+        [$minSeconds, $maxSeconds] = $this->normalizeDelayWindow($minSeconds, $maxSeconds);
+
+        return random_int($minSeconds, $maxSeconds);
+    }
+
+    private function normalizeAttachmentMeta(array $attachment = []): array
+    {
+        $path = trim((string) ($attachment['path'] ?? ''));
+        if ($path === '') {
+            return [];
+        }
+
+        return [
+            'path' => $path,
+            'name' => trim((string) ($attachment['name'] ?? '')) ?: basename($path),
+            'mime' => trim((string) ($attachment['mime'] ?? '')) ?: 'application/octet-stream',
+            'size' => max(0, (int) ($attachment['size'] ?? 0)),
+            'url' => trim((string) ($attachment['url'] ?? '')) ?: Storage::disk('public')->url($path),
+        ];
+    }
+
+    private function templateAttachmentPayload(?BulkWhatsAppTemplate $template): ?array
+    {
+        $meta = $this->templateAttachmentMeta($template);
+
+        if ($meta === []) {
+            return null;
+        }
+
+        return [
+            'url' => $meta['url'],
+            'fileName' => $meta['name'],
+            'mimeType' => $meta['mime'],
+        ];
+    }
+
+    private function normalizeDelayWindow(int $minSeconds, int $maxSeconds): array
+    {
+        $minSeconds = max(1, min(300, $minSeconds));
+        $maxSeconds = max($minSeconds, min(600, $maxSeconds));
+
+        return [$minSeconds, $maxSeconds];
     }
 
     public function normalizePhone(string $mobile): string

@@ -225,6 +225,8 @@ return array (
     'view_lead' => 'View Lead',
     'edit_lead' => 'Edit Lead',
     'delete_lead' => 'Delete Lead',
+    'view_bulk_whatsapp' => 'View Bulk WhatsApp',
+    'send_bulk_whatsapp' => 'Send Bulk WhatsApp Campaign',
     'view_lead_agents' => 'View Lead Agents',
     'add_lead_agent' => 'Add Lead Agent',
     'edit_lead_agent' => 'Edit Lead Agent',

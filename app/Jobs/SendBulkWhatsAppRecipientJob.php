@@ -44,6 +44,10 @@ class SendBulkWhatsAppRecipientJob implements ShouldQueue
 
         $campaign = $recipient->campaign;
 
+        if (in_array($campaign->status, ['paused', 'stopped'], true)) {
+            return;
+        }
+
         if ($recipient->status === 'sent') {
             $campaign->refreshProgress();
             return;
@@ -64,10 +68,12 @@ class SendBulkWhatsAppRecipientJob implements ShouldQueue
 
         try {
             $sessionKey = $campaign->session_key ?: $bulkService->resolveSessionKey();
+            $attachment = $bulkService->buildGatewayAttachmentFromCampaign($campaign);
             $sent = $gatewayService->sendMessage(
                 (string) $recipient->phone,
                 (string) $recipient->rendered_message,
-                $sessionKey
+                $sessionKey,
+                $attachment
             );
 
             $responseData = (array) ($gatewayService->getLastResponseData() ?? []);
@@ -86,8 +92,16 @@ class SendBulkWhatsAppRecipientJob implements ShouldQueue
             }
 
             $responseData['id'] = $providerMessageId;
+            if ($attachment) {
+                $responseData['attachment'] = [
+                    'name' => $campaign->attachment_name,
+                    'mime' => $campaign->attachment_mime,
+                    'size' => $campaign->attachment_size,
+                    'path' => $campaign->attachment_path,
+                ];
+            }
             $bulkService->markRecipientSent($recipient, $responseData);
-            $this->storeLeadLog($recipient, $providerMessageId, 'sent', null, $responseData);
+            $this->storeLeadLog($recipient, $providerMessageId, 'sent', null, $responseData, $attachment ? 'image' : 'text');
 
             $campaign->refreshProgress();
         } catch (Throwable $exception) {
@@ -103,7 +117,8 @@ class SendBulkWhatsAppRecipientJob implements ShouldQueue
         ?string $providerMessageId,
         string $status,
         ?string $error,
-        array $responseData = []
+        array $responseData = [],
+        string $contentType = 'text'
     ): void {
         $messageId = $providerMessageId ?: 'crm:bulk:' . $recipient->campaign_id . ':' . $recipient->id;
 
@@ -114,7 +129,7 @@ class SendBulkWhatsAppRecipientJob implements ShouldQueue
             'lead_id' => $recipient->lead_id,
             'direction' => 'outbound',
             'phone' => (string) $recipient->phone,
-            'content_type' => 'text',
+            'content_type' => $contentType,
             'message' => (string) $recipient->rendered_message,
             'status' => $status,
             'metadata' => array_filter([
@@ -123,6 +138,7 @@ class SendBulkWhatsAppRecipientJob implements ShouldQueue
                 'session_key' => $recipient->campaign?->session_key,
                 'response' => $responseData ?: null,
                 'error' => $error,
+                'content_type' => $contentType,
             ], fn ($value) => $value !== null && $value !== ''),
             'message_at' => now(),
         ]);
