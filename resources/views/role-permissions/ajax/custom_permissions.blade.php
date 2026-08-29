@@ -8,10 +8,21 @@
             'add_lead_follow_up',
             'edit_lead_follow_up',
             'delete_lead_follow_up',
+            'view_lead_sources',
+            'add_lead_sources',
+            'edit_lead_sources',
+            'delete_lead_sources',
+            'view_lead_category',
+            'add_lead_category',
+            'edit_lead_category',
+            'delete_lead_category',
         ];
 
         $customPermissions = $customPermissions
             ->whereIn('name', $visiblePermissionNames)
+            ->sortBy(function ($permission) use ($visiblePermissionNames) {
+                return array_search($permission->name, $visiblePermissionNames, true);
+            })
             ->values();
 
         if (!empty($leadConvertPermission)) {
@@ -23,6 +34,14 @@
             'add_lead_follow_up' => 'Add Follow-up',
             'edit_lead_follow_up' => 'Edit Follow-up',
             'delete_lead_follow_up' => 'Delete Follow-up',
+            'view_lead_sources' => 'View Lead Sources',
+            'add_lead_sources' => 'Add Lead Sources',
+            'edit_lead_sources' => 'Edit Lead Sources',
+            'delete_lead_sources' => 'Delete Lead Sources',
+            'view_lead_category' => 'View Lead Category',
+            'add_lead_category' => 'Add Lead Category',
+            'edit_lead_category' => 'Edit Lead Category',
+            'delete_lead_category' => 'Delete Lead Category',
             'add_clients' => 'Convert to Client',
         ];
     }
