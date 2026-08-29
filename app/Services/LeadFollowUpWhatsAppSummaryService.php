@@ -310,7 +310,7 @@ class LeadFollowUpWhatsAppSummaryService
      */
     private function resolveSessionCandidates(WhatsappNotificationSetting $setting): array
     {
-        $preferred = preg_replace('/\D+/', '', (string) $setting->lead_created_sender_number);
+        $preferred = preg_replace('/\D+/', '', (string) $setting->resolved_lead_created_sender_number);
         $fallback = trim((string) config('services.whatsapp_service.session', 'default'));
         $fallback = $fallback !== '' ? $fallback : 'default';
 

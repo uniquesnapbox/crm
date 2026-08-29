@@ -472,7 +472,9 @@
         @php
             $contactNumber = $leadContact->mobile ?: ($leadContact->cell ?: $leadContact->office);
             $sanitizedPhone = $contactNumber ? preg_replace('/\D+/', '', $contactNumber) : null;
-            $whatsAppUrl = $sanitizedPhone ? 'https://wa.me/' . $sanitizedPhone : null;
+            $whatsAppChatUrl = $sanitizedPhone
+                ? route('lead-contact.show', $leadContact->id) . '?tab=chat'
+                : null;
             $mailUrl = $leadContact->client_email ? 'mailto:' . $leadContact->client_email : null;
             $callUrl = $contactNumber ? 'tel:' . $contactNumber : null;
             $directMessageUrl = (!is_null($leadContact->client_id) && in_array('messages', user_modules()))
@@ -564,8 +566,8 @@
                     </span>
                 @endif
 
-                @if ($whatsAppUrl)
-                    <a class="lead-action-tile" href="{{ $whatsAppUrl }}" target="_blank">
+                @if ($whatsAppChatUrl)
+                    <a class="lead-action-tile" href="{{ $whatsAppChatUrl }}" title="Open CRM WhatsApp chat">
                         <span class="lead-action-icon" style="background:#1faa59;"><i class="fa fa-whatsapp"></i></span>
                         <div class="lead-action-label">WhatsApp</div>
                     </a>

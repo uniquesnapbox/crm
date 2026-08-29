@@ -26,9 +26,26 @@ class WhatsappNotificationSetting extends BaseModel
         'last_sent_at' => 'datetime',
     ];
 
+    public function getResolvedWhatsAppSessionKeyAttribute(): string
+    {
+        $preferred = preg_replace('/\D+/', '', (string) $this->lead_created_sender_number);
+        if ($preferred !== '') {
+            return $preferred;
+        }
+
+        $serviceSession = preg_replace('/\D+/', '', (string) config('services.whatsapp_service.session', ''));
+        if ($serviceSession !== '') {
+            return $serviceSession;
+        }
+
+        $legacyAdminWhatsapp = preg_replace('/\D+/', '', (string) config('app.admin_whatsapp', ''));
+
+        return $legacyAdminWhatsapp !== '' ? $legacyAdminWhatsapp : '';
+    }
+
     public function getResolvedLeadCreatedSenderNumberAttribute(): string
     {
-        return (string) ($this->lead_created_sender_number ?: config('app.admin_whatsapp', ''));
+        return $this->resolved_whatsapp_session_key;
     }
 
     public function getDeliveryStatusLabelAttribute(): string

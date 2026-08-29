@@ -443,6 +443,7 @@ app.get("/qr", requireApiKey, async (req, res) => {
   );
 
   try {
+    await manager.ensureClient(sessionKey);
     const qrInfo = forceRefresh
       ? await manager.refreshQr(sessionKey)
       : manager.getQrInfo(sessionKey);
@@ -625,50 +626,40 @@ async function bootstrap() {
   pruneIdempotencyStore();
   setInterval(pruneIdempotencyStore, 10 * 60 * 1000).unref();
 
-  const initSessions = async () => {
-    try {
-      await manager.initAll();
-      return true;
-    } catch (error) {
-      logger.error("Failed to initialize one or more sessions", {
-        error: error.message
-      });
-      return false;
-    }
-  };
+  await manager.initAll();
 
-  const initialReady = await initSessions();
-  if (!initialReady) {
-    const retryTimer = setInterval(async () => {
-      const sessions = manager.sessionsSummary();
-      if (sessions.some((session) => session.status === "ready")) {
-        clearInterval(retryTimer);
-        return;
-      }
+  await new Promise((resolve, reject) => {
+    const onError = (error) => {
+      server.off("error", onError);
+      reject(error);
+    };
 
-      const retrySucceeded = await initSessions();
-      if (retrySucceeded) {
-        clearInterval(retryTimer);
-      }
-    }, 30000);
-
-    retryTimer.unref();
-  }
-
-  server.listen(config.port, () => {
-    logger.info("WhatsApp service started", {
-      port: config.port,
-      nodeEnv: config.nodeEnv,
-      sessions: config.sessions,
-      socketPath: config.socketPath
+    server.once("error", onError);
+    server.listen(config.port, () => {
+      server.off("error", onError);
+      resolve();
     });
+  });
+
+  logger.info("WhatsApp service started", {
+    port: config.port,
+    nodeEnv: config.nodeEnv,
+    sessions: config.sessions,
+    socketPath: config.socketPath
   });
 }
 
-bootstrap().catch((error) => {
+bootstrap().catch(async (error) => {
   logger.error("Fatal bootstrap error", {
     error: error.message,
     stack: error.stack
   });
+  try {
+    await manager.shutdown();
+  } catch (shutdownError) {
+    logger.warn("WhatsApp manager shutdown during bootstrap failure failed", {
+      error: shutdownError.message
+    });
+  }
   process.exit(1);
 });

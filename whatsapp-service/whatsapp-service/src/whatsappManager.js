@@ -1,16 +1,18 @@
 const fs = require("fs");
 const path = require("path");
 const { EventEmitter } = require("events");
-const { Client, LocalAuth, MessageMedia } = require("whatsapp-web.js");
+const { Client, LocalAuth, MessageMedia } = require("./whatsappWebPatch");
 const logger = require("./logger");
 
 class WhatsAppManager extends EventEmitter {
   constructor(config) {
     super();
     this.config = config;
+    this.shuttingDown = false;
     this.clients = new Map();
     this.initializingClients = new Map();
     this.recoveringClients = new Map();
+    this.readyReconcileTimers = new Map();
     this.status = new Map();
     this.qrCode = new Map();
     this.qrGeneratedAt = new Map();
@@ -20,12 +22,20 @@ class WhatsAppManager extends EventEmitter {
   }
 
   async initAll() {
+    if (this.shuttingDown) {
+      throw new Error("WhatsApp manager is shutting down");
+    }
+
     for (const sessionKey of this.config.sessions) {
       await this.initClient(sessionKey);
     }
   }
 
   async initClient(sessionKey) {
+    if (this.shuttingDown) {
+      throw new Error("WhatsApp manager is shutting down");
+    }
+
     const key = sessionKey || this.config.defaultSession;
 
     if (this.clients.has(key)) {
@@ -59,6 +69,10 @@ class WhatsAppManager extends EventEmitter {
     let lastError = null;
 
     for (let attempt = 1; attempt <= attempts; attempt++) {
+      if (this.shuttingDown) {
+        throw new Error("WhatsApp manager is shutting down");
+      }
+
       this.manualDisconnectedSessions.delete(key);
       this.status.set(key, "initializing");
       this.emit("whatsapp-status", {
@@ -75,6 +89,8 @@ class WhatsAppManager extends EventEmitter {
           initialization,
           this.waitForBootstrapState(key, 90000)
         ]);
+
+        this.scheduleReadyReconciliation(key, client, "bootstrap");
 
         initialization.catch((error) => {
           if (this.clients.get(key) !== client) {
@@ -118,8 +134,14 @@ class WhatsAppManager extends EventEmitter {
         clientId: key,
         dataPath: this.config.dataPath
       }),
+      webVersion: this.config.webVersion,
+      webVersionCache: this.config.webVersionCache,
+      userAgent: this.config.browserUserAgent,
+      deviceName: this.config.deviceName,
+      browserName: this.config.browserName,
       puppeteer: {
-        headless: "new",
+        headless: this.config.headless ? "new" : false,
+        executablePath: this.config.browserExecutablePath || undefined,
         args: [
           "--no-sandbox",
           "--disable-setuid-sandbox",
@@ -134,6 +156,10 @@ class WhatsAppManager extends EventEmitter {
     });
 
     client.on("qr", (qr) => {
+      if (this.shuttingDown) {
+        return;
+      }
+
       this.qrCode.set(key, qr);
       this.qrGeneratedAt.set(key, new Date().toISOString());
       this.status.set(key, "qr_required");
@@ -149,9 +175,14 @@ class WhatsAppManager extends EventEmitter {
         qr
       });
       this.emit("whatsapp-status", payload);
+      this.scheduleReadyReconciliation(key, client, "qr");
     });
 
     client.on("authenticated", () => {
+      if (this.shuttingDown) {
+        return;
+      }
+
       this.status.set(key, "authenticated");
       logger.info("WhatsApp authenticated", { sessionKey: key });
       this.emit("whatsapp-authenticated", {
@@ -162,13 +193,19 @@ class WhatsAppManager extends EventEmitter {
         sessionKey: key,
         status: "authenticated"
       });
+      this.scheduleReadyReconciliation(key, client, "authenticated");
     });
 
     client.on("ready", () => {
+      if (this.shuttingDown) {
+        return;
+      }
+
       this.status.set(key, "ready");
       this.qrCode.delete(key);
       this.qrGeneratedAt.delete(key);
       this.clearReconnectState(key);
+      this.clearReadyReconciliation(key);
       logger.info("WhatsApp client ready", { sessionKey: key });
 
       const payload = {
@@ -180,7 +217,12 @@ class WhatsAppManager extends EventEmitter {
     });
 
     client.on("auth_failure", (message) => {
+      if (this.shuttingDown) {
+        return;
+      }
+
       this.status.set(key, "failed");
+      this.clearReadyReconciliation(key);
       logger.error("WhatsApp auth failure", { sessionKey: key, message });
       this.emit("whatsapp-auth-failure", {
         sessionKey: key,
@@ -191,8 +233,13 @@ class WhatsAppManager extends EventEmitter {
     });
 
     client.on("disconnected", (reason) => {
+      if (this.shuttingDown) {
+        return;
+      }
+
       this.qrCode.delete(key);
       this.qrGeneratedAt.delete(key);
+      this.clearReadyReconciliation(key);
 
       if (this.manualDisconnectedSessions.has(key)) {
         this.status.set(key, "disconnected");
@@ -210,15 +257,27 @@ class WhatsAppManager extends EventEmitter {
     });
 
     client.on("change_state", (state) => {
+      if (this.shuttingDown) {
+        return;
+      }
+
       if (state && typeof state === "string") {
         logger.info("WhatsApp client state changed", {
           sessionKey: key,
           state
         });
+
+        if (String(state).toUpperCase() === "CONNECTED") {
+          this.scheduleReadyReconciliation(key, client, "state_connected");
+        }
       }
     });
 
     client.on("message", async (message) => {
+      if (this.shuttingDown) {
+        return;
+      }
+
       try {
         this.emit("whatsapp-message", await this.serializeMessage(message, key, true));
       } catch (error) {
@@ -232,6 +291,10 @@ class WhatsAppManager extends EventEmitter {
     // `message` only covers incoming traffic. Capture messages sent from another
     // linked WhatsApp device as well so CRM stays in sync with the real chat.
     client.on("message_create", async (message) => {
+      if (this.shuttingDown) {
+        return;
+      }
+
       try {
         const payload = await this.serializeMessage(message, key, true);
         if (payload.fromMe) {
@@ -250,25 +313,45 @@ class WhatsAppManager extends EventEmitter {
 
   async cleanupSessionArtifacts(sessionKey) {
     const sessionDir = path.join(this.config.dataPath, `session-${sessionKey}`);
-    const targets = [
-      path.join(sessionDir, "DevToolsActivePort"),
-      path.join(sessionDir, "SingletonCookie"),
-      path.join(sessionDir, "SingletonLock"),
-      path.join(sessionDir, "SingletonSocket"),
-      path.join(sessionDir, "LOCK"),
-      path.join(sessionDir, "Default", "LOCK"),
-      path.join(sessionDir, "Default", "DevToolsActivePort")
-    ];
+    const lockNames = new Set([
+      "devtoolsactiveport",
+      "singletoncookie",
+      "singletonlock",
+      "singletonsocket",
+      "lock"
+    ]);
 
-    for (const filePath of targets) {
+    const removeLockFiles = async (currentDir) => {
+      let entries = [];
+
       try {
-        if (fs.existsSync(filePath)) {
-          fs.rmSync(filePath, { force: true, recursive: false });
-        }
+        entries = await fs.promises.readdir(currentDir, { withFileTypes: true });
       } catch (_) {
-        // no-op
+        return;
       }
-    }
+
+      for (const entry of entries) {
+        const filePath = path.join(currentDir, entry.name);
+
+        if (entry.isDirectory()) {
+          await removeLockFiles(filePath);
+          continue;
+        }
+
+        const normalizedName = String(entry.name || "").toLowerCase();
+        if (!lockNames.has(normalizedName)) {
+          continue;
+        }
+
+        try {
+          await fs.promises.rm(filePath, { force: true });
+        } catch (_) {
+          // no-op
+        }
+      }
+    };
+
+    await removeLockFiles(sessionDir);
   }
 
   isRetryableBootstrapError(error) {
@@ -281,7 +364,17 @@ class WhatsAppManager extends EventEmitter {
       "detached frame",
       "protocol error",
       "navigation",
-      "session closed"
+      "session closed",
+      "browser is already running",
+      "already running for profile",
+      "singletonlock",
+      "singletoncookie",
+      "singletonsocket",
+      "devtoolsactiveport",
+      "profile in use",
+      "failed to launch the browser process",
+      "cannot acquire lock",
+      "chrome not reachable"
     ].some((needle) => message.includes(needle));
   }
 
@@ -308,6 +401,10 @@ class WhatsAppManager extends EventEmitter {
     const startedAt = Date.now();
 
     while (Date.now() - startedAt < timeoutMs) {
+      if (this.shuttingDown) {
+        throw new Error("WhatsApp manager is shutting down");
+      }
+
       const status = this.getStatus(key);
       if (["qr_required", "authenticated", "ready"].includes(status)) {
         return true;
@@ -323,6 +420,10 @@ class WhatsAppManager extends EventEmitter {
   }
 
   scheduleReconnect(sessionKey, reason = "unknown") {
+    if (this.shuttingDown) {
+      return;
+    }
+
     const key = sessionKey || this.config.defaultSession;
 
     if (this.reconnectTimers.has(key)) {
@@ -371,6 +472,210 @@ class WhatsAppManager extends EventEmitter {
     this.reconnectAttempts.set(key, 0);
   }
 
+  clearReadyReconciliation(sessionKey) {
+    const key = sessionKey || this.config.defaultSession;
+
+    if (this.readyReconcileTimers.has(key)) {
+      clearTimeout(this.readyReconcileTimers.get(key));
+      this.readyReconcileTimers.delete(key);
+    }
+  }
+
+  hasPersistedSessionArtifacts(sessionKey) {
+    const key = sessionKey || this.config.defaultSession;
+    const sessionDir = path.join(this.config.dataPath, `session-${key}`, "Default");
+    const candidateFiles = [
+      "Cookies",
+      "Cookies-journal",
+      "Login Data",
+      "Login Data-journal",
+      "Network Persistent State",
+      "Preferences",
+      "Secure Preferences"
+    ];
+
+    try {
+      return candidateFiles.some((fileName) => {
+        const filePath = path.join(sessionDir, fileName);
+        if (!fs.existsSync(filePath)) {
+          return false;
+        }
+        const stats = fs.statSync(filePath);
+        return stats.isFile() && stats.size > 0;
+      });
+    } catch (_) {
+      return false;
+    }
+  }
+
+  async inspectClientReadiness(client) {
+    const result = {
+      waState: null,
+      page: null,
+      ready: false
+    };
+
+    if (!client || !client.pupPage) {
+      return result;
+    }
+
+    try {
+      if (typeof client.pupPage.isClosed === "function" && client.pupPage.isClosed()) {
+        return result;
+      }
+    } catch (_) {
+      return result;
+    }
+
+    try {
+      const state = await client.getState();
+      result.waState = String(state || "").toUpperCase();
+    } catch (error) {
+      result.waState = `ERROR:${String(error?.message || error || "")}`;
+    }
+
+    try {
+      result.page = await client.pupPage.evaluate(() => ({
+        url: String(location.href || ""),
+        title: String(document.title || ""),
+        readyState: String(document.readyState || ""),
+        hasWWebJS: Boolean(window.WWebJS),
+        hasStore: Boolean(window.Store),
+        bodyText: String(document.body?.innerText || "").slice(0, 1000)
+      }));
+    } catch (error) {
+      result.page = {
+        error: String(error?.message || error || "")
+      };
+    }
+
+    const connectedStates = new Set(["CONNECTED", "OPEN", "PAIRING"]);
+    const stateLooksConnected = connectedStates.has(result.waState);
+    const page = result.page || {};
+    const pageLooksLoaded = page.readyState === "complete" && (page.hasWWebJS || page.hasStore);
+    const pageText = `${page.title || ""}\n${page.bodyText || ""}`.toLowerCase();
+    const pageLooksLoggedOut = /scan|qr code|link with phone|log in|sign in/.test(pageText);
+
+    result.ready = Boolean(stateLooksConnected && pageLooksLoaded && !pageLooksLoggedOut);
+    return result;
+  }
+
+  markSessionReady(sessionKey, source, inspection = null) {
+    const key = sessionKey || this.config.defaultSession;
+    const previousStatus = this.getStatus(key);
+
+    this.status.set(key, "ready");
+    this.qrCode.delete(key);
+    this.qrGeneratedAt.delete(key);
+    this.clearReconnectState(key);
+    this.clearReadyReconciliation(key);
+
+    logger.info("WhatsApp session marked ready", {
+      sessionKey: key,
+      source,
+      previousStatus,
+      waState: inspection?.waState || null
+    });
+
+    const payload = {
+      sessionKey: key,
+      status: "ready",
+      source,
+      waState: inspection?.waState || null
+    };
+
+    this.emit("whatsapp-ready", payload);
+    this.emit("whatsapp-status", payload);
+  }
+
+  scheduleReadyReconciliation(sessionKey, client, reason = "unknown") {
+    if (this.shuttingDown) {
+      return;
+    }
+
+    const key = sessionKey || this.config.defaultSession;
+
+    if (this.readyReconcileTimers.has(key) || this.manualDisconnectedSessions.has(key)) {
+      return;
+    }
+
+    let attempt = 0;
+    const maxAttempts = 24;
+    let detachedFrameHits = 0;
+
+    const probe = async () => {
+      this.readyReconcileTimers.delete(key);
+
+      if (this.manualDisconnectedSessions.has(key) || this.getStatus(key) === "ready") {
+        return;
+      }
+
+      const activeClient = client || this.clients.get(key);
+      if (!activeClient) {
+        return;
+      }
+
+      try {
+        const inspection = await this.inspectClientReadiness(activeClient);
+        logger.info("WhatsApp readiness probe", {
+          sessionKey: key,
+          reason,
+          attempt: attempt + 1,
+          waState: inspection.waState,
+          ready: inspection.ready
+        });
+
+        if (inspection.ready) {
+          this.markSessionReady(key, `probe:${reason}`, inspection);
+          return;
+        }
+
+        const inspectionText = `${inspection.waState || ""}\n${inspection?.page?.error || ""}`.toLowerCase();
+        if (inspectionText.includes("detached frame")) {
+          detachedFrameHits += 1;
+        }
+
+        if (
+          detachedFrameHits >= 2 &&
+          this.hasPersistedSessionArtifacts(key) &&
+          !this.manualDisconnectedSessions.has(key) &&
+          this.getStatus(key) !== "ready"
+        ) {
+          logger.warn("WhatsApp readiness probe falling back to persisted auth artifacts", {
+            sessionKey: key,
+            reason,
+            attempt: attempt + 1,
+            detachedFrameHits
+          });
+          this.markSessionReady(key, `probe:${reason}:persisted_auth`, inspection);
+          return;
+        }
+      } catch (error) {
+        logger.debug("WhatsApp readiness probe failed", {
+          sessionKey: key,
+          reason,
+          attempt: attempt + 1,
+          error: error.message
+        });
+      }
+
+      attempt += 1;
+      if (attempt >= maxAttempts || this.manualDisconnectedSessions.has(key) || this.getStatus(key) === "ready") {
+        return;
+      }
+
+      const nextDelay = Math.min(15000, 2000 * Math.pow(1.4, attempt));
+      const timer = setTimeout(probe, nextDelay);
+      timer.unref?.();
+      this.readyReconcileTimers.set(key, timer);
+    };
+
+    const initialDelay = reason === "qr" ? 4000 : 2000;
+    const timer = setTimeout(probe, initialDelay);
+    timer.unref?.();
+    this.readyReconcileTimers.set(key, timer);
+  }
+
   computeReconnectDelay(attemptNumber) {
     const baseDelay = Math.max(1000, Number(this.config.reconnectBaseDelayMs || 5000));
     const maxDelay = Math.max(baseDelay, Number(this.config.reconnectMaxDelayMs || 60000));
@@ -386,6 +691,7 @@ class WhatsAppManager extends EventEmitter {
 
     this.manualDisconnectedSessions.add(key);
     this.clearReconnectState(key);
+    this.clearReadyReconciliation(key);
     this.qrCode.delete(key);
     this.qrGeneratedAt.delete(key);
 
@@ -435,6 +741,10 @@ class WhatsAppManager extends EventEmitter {
   }
 
   async reconnect(sessionKey, reason = "unknown") {
+    if (this.shuttingDown) {
+      return null;
+    }
+
     const key = sessionKey || this.config.defaultSession;
     const currentStatus = this.getStatus(key);
 
@@ -452,6 +762,10 @@ class WhatsAppManager extends EventEmitter {
   }
 
   async refreshQr(sessionKey) {
+    if (this.shuttingDown) {
+      throw new Error("WhatsApp manager is shutting down");
+    }
+
     const key = sessionKey || this.config.defaultSession;
     const currentStatus = this.getStatus(key);
     const currentQr = this.getQr(key);
@@ -462,13 +776,30 @@ class WhatsAppManager extends EventEmitter {
       return this.getQrInfo(key);
     }
 
+    const existingClient = this.getClient(key);
+    if (existingClient) {
+      try {
+        const inspection = await this.inspectClientReadiness(existingClient);
+        if (inspection.ready) {
+          this.markSessionReady(key, "refresh_qr_probe", inspection);
+          return this.getQrInfo(key);
+        }
+      } catch (error) {
+        logger.debug("WhatsApp QR refresh readiness probe failed", {
+          sessionKey: key,
+          error: error.message
+        });
+      }
+    }
+
     // Old dashboard tabs may still poll with refresh=1. Never recycle a fresh QR mid-scan.
     if (currentStatus === "qr_required" && currentQr && qrAgeMs < 60000) {
       return this.getQrInfo(key);
     }
 
     await this.destroyClient(key, { emitDestroyedStatus: false });
-    await this.removeUnauthenticatedSession(key);
+    await this.cleanupSessionArtifacts(key);
+
     this.manualDisconnectedSessions.delete(key);
     this.status.set(key, "initializing");
 
@@ -487,6 +818,10 @@ class WhatsAppManager extends EventEmitter {
     const startedAt = Date.now();
 
     while (Date.now() - startedAt < timeoutMs) {
+      if (this.shuttingDown) {
+        throw new Error("WhatsApp manager is shutting down");
+      }
+
       const status = this.getStatus(key);
       if (status === "ready" || status === "authenticated" || this.getQr(key)) {
         return true;
@@ -529,6 +864,8 @@ class WhatsAppManager extends EventEmitter {
       this.reconnectTimers.delete(key);
     }
 
+    this.clearReadyReconciliation(key);
+
     const client = this.clients.get(key);
     if (!client) {
       return;
@@ -559,6 +896,10 @@ class WhatsAppManager extends EventEmitter {
   }
 
   async ensureClient(sessionKey) {
+    if (this.shuttingDown) {
+      throw new Error("WhatsApp manager is shutting down");
+    }
+
     const key = sessionKey || this.config.defaultSession;
     this.manualDisconnectedSessions.delete(key);
 
@@ -725,6 +1066,10 @@ class WhatsAppManager extends EventEmitter {
   }
 
   async recoverClient(sessionKey, reason) {
+    if (this.shuttingDown) {
+      throw new Error("WhatsApp manager is shutting down");
+    }
+
     const key = sessionKey || this.config.defaultSession;
     if (this.recoveringClients.has(key)) {
       return this.recoveringClients.get(key);
@@ -1083,6 +1428,40 @@ class WhatsAppManager extends EventEmitter {
       qrAvailable: Boolean(this.getQr(sessionKey)),
       qrGeneratedAt: this.qrGeneratedAt.get(sessionKey) || null
     }));
+  }
+
+  async shutdown() {
+    if (this.shuttingDown) {
+      return;
+    }
+
+    this.shuttingDown = true;
+
+    for (const timer of this.reconnectTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.reconnectTimers.clear();
+
+    for (const timer of this.readyReconcileTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.readyReconcileTimers.clear();
+
+    const clients = Array.from(this.clients.keys());
+    for (const sessionKey of clients) {
+      try {
+        await this.destroyClient(sessionKey, { emitDestroyedStatus: false });
+      } catch (_) {
+        // no-op
+      }
+    }
+
+    this.initializingClients.clear();
+    this.recoveringClients.clear();
+    this.manualDisconnectedSessions.clear();
+    this.qrCode.clear();
+    this.qrGeneratedAt.clear();
+    this.status.clear();
   }
 }
 

@@ -42,7 +42,7 @@ class WhatsAppGatewayService
         $session = $this->resolveSessionKey($sessionKey);
         $timeout = (int) config('services.whatsapp_service.timeout', 30);
         $timeout = max(10, min(60, $timeout));
-        $phone = preg_replace('/\D+/', '', $mobile);
+        $phone = $this->normalizePhone($mobile);
         $payload = [
             'to' => $phone,
             'message' => trim($message),
@@ -133,7 +133,7 @@ class WhatsAppGatewayService
         $baseUrl = rtrim((string) config('services.whatsapp_service.base_url'), '/');
         $apiKey = (string) config('services.whatsapp_service.api_key');
         $session = $this->resolveSessionKey($sessionKey);
-        $phone = preg_replace('/\D+/', '', $mobile);
+        $phone = $this->normalizePhone($mobile);
         $timeout = max(10, min(60, (int) config('services.whatsapp_service.timeout', 30)));
 
         if ($baseUrl === '' || $apiKey === '' || $phone === '') {
@@ -307,6 +307,31 @@ class WhatsAppGatewayService
         $fallback = trim((string) config('services.whatsapp_service.session', 'default'));
 
         return $fallback !== '' ? $fallback : 'default';
+    }
+
+    private function normalizePhone(string $mobile): string
+    {
+        $phone = preg_replace('/\D+/', '', $mobile);
+
+        if (str_starts_with($phone, '00')) {
+            $phone = substr($phone, 2);
+        }
+
+        if (strlen($phone) === 11 && str_starts_with($phone, '0')) {
+            $phone = substr($phone, 1);
+        }
+
+        $defaultCountryCode = preg_replace(
+            '/\D+/',
+            '',
+            (string) config('services.whatsapp_service.default_country_code', '91')
+        );
+
+        if (strlen($phone) === 10 && $defaultCountryCode !== '') {
+            $phone = $defaultCountryCode . $phone;
+        }
+
+        return $phone;
     }
 
     private function createIdempotencyKey(

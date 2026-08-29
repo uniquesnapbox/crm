@@ -60,7 +60,7 @@ class NotificationSettingController extends AccountBaseController
             'lead_created_template' => WhatsappNotificationSetting::DEFAULT_LEAD_CREATED_TEMPLATE,
             'lead_interest_template' => WhatsappNotificationSetting::DEFAULT_LEAD_INTEREST_TEMPLATE,
             'lead_followup_template' => WhatsappNotificationSetting::DEFAULT_LEAD_FOLLOWUP_TEMPLATE,
-            'lead_created_sender_number' => config('app.admin_whatsapp', ''),
+            'lead_created_sender_number' => config('services.whatsapp_service.session', config('app.admin_whatsapp', '')),
             'ticket_assigned_staff_template' => WhatsappNotificationSetting::DEFAULT_TICKET_ASSIGNED_STAFF_TEMPLATE,
             'ticket_assigned_client_template' => WhatsappNotificationSetting::DEFAULT_TICKET_ASSIGNED_CLIENT_TEMPLATE,
             'ticket_resolved_client_template' => WhatsappNotificationSetting::DEFAULT_TICKET_RESOLVED_CLIENT_TEMPLATE,

@@ -20,6 +20,10 @@ function parseSessions(raw) {
     .filter(Boolean);
 }
 
+function uniqueSessions(sessions) {
+  return Array.from(new Set((sessions || []).map((session) => String(session).trim()).filter(Boolean)));
+}
+
 function parseBoolean(rawValue, defaultValue = false) {
   if (rawValue === undefined || rawValue === null || rawValue === "") {
     return defaultValue;
@@ -99,7 +103,36 @@ module.exports = {
   reconnectBaseDelayMs: parseNumber(process.env.WHATSAPP_RECONNECT_BASE_DELAY_MS, 5000),
   reconnectMaxDelayMs: parseNumber(process.env.WHATSAPP_RECONNECT_MAX_DELAY_MS, 60000),
   dataPath: path.resolve(process.cwd(), process.env.WHATSAPP_DATA_PATH || "./.wwebjs_auth"),
+  browserExecutablePath:
+    process.env.PUPPETEER_EXECUTABLE_PATH ||
+    process.env.CHROME_EXECUTABLE_PATH ||
+    process.env.WHATSAPP_BROWSER_EXECUTABLE_PATH ||
+    "",
   headless: String(process.env.WHATSAPP_HEADLESS || "true").toLowerCase() === "true",
-  defaultSession: process.env.WHATSAPP_DEFAULT_SESSION || "default",
-  sessions: parseSessions(process.env.WHATSAPP_SESSIONS || '["default"]')
+  browserUserAgent: process.env.WHATSAPP_BROWSER_USER_AGENT ||
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+  deviceName: process.env.WHATSAPP_DEVICE_NAME || "USB CRM Server",
+  browserName: process.env.WHATSAPP_BROWSER_NAME || "Chrome",
+  webVersion: process.env.WHATSAPP_WEB_VERSION || "2.3000.1045732124",
+  webVersionCache: {
+    type: "local",
+    path: process.env.WHATSAPP_WEB_CACHE_PATH || "./.wwebjs_cache",
+    strict: parseBoolean(process.env.WHATSAPP_WEB_VERSION_CACHE_STRICT, false)
+  },
+  defaultSession:
+    process.env.WHATSAPP_DEFAULT_SESSION ||
+    process.env.WHATSAPP_SERVICE_SESSION ||
+    "default",
+  sessions: uniqueSessions([
+    ...parseSessions(
+      process.env.WHATSAPP_SESSIONS ||
+      process.env.WHATSAPP_SESSION_KEYS ||
+      process.env.WHATSAPP_DEFAULT_SESSION ||
+      process.env.WHATSAPP_SERVICE_SESSION ||
+      "default"
+    ),
+    process.env.WHATSAPP_DEFAULT_SESSION ||
+    process.env.WHATSAPP_SERVICE_SESSION ||
+    "default"
+  ])
 };

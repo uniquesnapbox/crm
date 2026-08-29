@@ -68,6 +68,9 @@
                                     <div class="text-muted f-12">
                                         Scan this QR from the WhatsApp account you want to connect with the microservice.
                                     </div>
+                                    <div class="text-muted f-12 mt-1">
+                                        If the QR is missing, this panel will re-check the bridge automatically and keep your existing WhatsApp login intact.
+                                    </div>
                                 </div>
                                 <button type="button" class="btn btn-outline-secondary btn-sm mt-2 mt-lg-0" id="refresh-whatsapp-connection">
                                     Refresh QR
@@ -278,76 +281,123 @@
 </div>
 
 <script>
-    let whatsappQrPoller = null;
-    let whatsappQrPollTick = 0;
-    let whatsappQrRefreshInFlight = false;
-    let whatsappQrLastRefreshAt = 0;
+    (function initialiseWhatsAppConnectionPanel() {
+        const previousState = window.whatsappConnectionPanelState;
 
-    function loadWhatsAppConnectionStatus(forceRefresh = false) {
-        const $serviceStatus = $('#whatsapp-service-status');
-        const $sessionStatus = $('#whatsapp-session-status');
-        const $meta = $('#whatsapp-connection-meta');
-        const $error = $('#whatsapp-connection-error');
-        const $image = $('#whatsapp-qr-image');
-        const $placeholder = $('#whatsapp-qr-placeholder');
+        if (previousState && previousState.poller) {
+            window.clearInterval(previousState.poller);
+        }
 
-        if (forceRefresh) {
-            if (whatsappQrRefreshInFlight) {
+        const state = {
+            poller: null,
+            requestInFlight: false,
+            refreshInFlight: false,
+            lastRefreshAt: 0,
+            initialRefreshTriggered: false
+        };
+
+        window.whatsappConnectionPanelState = state;
+
+        function stopPollingWhenPanelIsMissing() {
+            if ($('#whatsapp-service-status').length) {
+                return false;
+            }
+
+            if (state.poller) {
+                window.clearInterval(state.poller);
+                state.poller = null;
+            }
+
+            return true;
+        }
+
+        function loadWhatsAppConnectionStatus(forceRefresh) {
+            forceRefresh = Boolean(forceRefresh);
+
+            if (stopPollingWhenPanelIsMissing() || state.requestInFlight || (forceRefresh && state.refreshInFlight)) {
                 return;
             }
 
-            whatsappQrRefreshInFlight = true;
-            whatsappQrLastRefreshAt = Date.now();
-        }
+            const $serviceStatus = $('#whatsapp-service-status');
+            const $sessionStatus = $('#whatsapp-session-status');
+            const $meta = $('#whatsapp-connection-meta');
+            const $error = $('#whatsapp-connection-error');
+            const $image = $('#whatsapp-qr-image');
+            const $placeholder = $('#whatsapp-qr-placeholder');
+            const $wrapper = $('#whatsapp-qr-wrapper');
 
-        $serviceStatus.removeClass('badge-success badge-danger badge-warning').addClass('badge-secondary').text('Checking service...');
-        $sessionStatus.removeClass('badge-success badge-danger badge-warning').addClass('badge-secondary').text('Checking session...');
-        $error.addClass('d-none').text('');
+            state.requestInFlight = true;
 
-        const statusUrl = "{{ route('whatsapp-settings.connection-status') }}" + (forceRefresh ? "?refresh=1" : "");
+            if (forceRefresh) {
+                state.refreshInFlight = true;
+                state.lastRefreshAt = Date.now();
+            }
 
-        $.easyAjax({
-            url: statusUrl,
-            type: "GET",
-            container: "#editSettings",
-            success: function (response) {
-                const health = response.health || {};
-                const qr = response.qr || {};
+            $serviceStatus.removeClass('badge-success badge-danger badge-warning').addClass('badge-secondary').text('Checking service...');
+            $sessionStatus.removeClass('badge-success badge-danger badge-warning').addClass('badge-secondary').text('Checking session...');
+            $error.addClass('d-none').text('');
+
+            $.ajax({
+                url: "{{ route('whatsapp-settings.connection-status') }}",
+                type: 'GET',
+                dataType: 'json',
+                cache: false,
+                data: forceRefresh ? { refresh: 1 } : {}
+            }).done(function (response) {
+                const health = response && response.health ? response.health : {};
+                const healthData = health.data || {};
+                const qr = response && response.qr ? response.qr : {};
                 const qrData = qr.data || {};
-                const sessionKey = response.sessionKey || qrData.sessionKey || 'default';
-                const sessionStatus = qrData.status || 'unknown';
-                const isReady = Boolean(health.data && health.data.ready);
+                const healthSessions = Array.isArray(healthData.sessions) ? healthData.sessions : [];
+                const requestedSessionKey = String((response && response.sessionKey) || qrData.sessionKey || '');
+                const healthSession = healthSessions.find(function (session) {
+                    return String(session.sessionKey || '') === requestedSessionKey;
+                }) || healthSessions[0] || {};
+                const sessionKey = requestedSessionKey || String(healthSession.sessionKey || '');
+                const connectionStatus = String(qrData.status || healthSession.status || 'unknown').toLowerCase();
+                const isConnected = Boolean(healthData.ready) || connectionStatus === 'ready';
                 const generatedAt = qrData.generatedAt ? new Date(qrData.generatedAt) : null;
 
-                if (forceRefresh) {
-                    whatsappQrRefreshInFlight = false;
+                $serviceStatus
+                    .removeClass('badge-secondary badge-success badge-danger badge-warning')
+                    .addClass(health.success ? (isConnected ? 'badge-success' : 'badge-warning') : 'badge-danger')
+                    .text(health.success ? (isConnected ? 'Connected / Running' : 'Running / Waiting') : 'Service Error');
+
+                $sessionStatus
+                    .removeClass('badge-secondary badge-success badge-danger badge-warning')
+                    .addClass(isConnected ? 'badge-success' : (connectionStatus === 'qr_required' ? 'badge-warning' : 'badge-danger'))
+                    .text(sessionKey ? 'Session: ' + sessionKey : 'Session unavailable');
+
+                let metaHtml = 'Session: <code>' + (sessionKey || '--') + '</code>';
+                metaHtml += ' | Status: <strong>' + (isConnected ? 'Connected' : connectionStatus.replace(/_/g, ' ')) + '</strong>';
+
+                if (response.baseUrl) {
+                    metaHtml += ' | URL: <code>' + response.baseUrl + '</code>';
                 }
 
-                $serviceStatus.removeClass('badge-secondary').addClass(health.success ? (isReady ? 'badge-success' : 'badge-warning') : 'badge-danger');
-                $serviceStatus.text(health.success ? (isReady ? 'Service Ready' : 'Service Online') : 'Service Error');
-
-                $sessionStatus.removeClass('badge-secondary').addClass(
-                    sessionStatus === 'ready' ? 'badge-success' :
-                    (sessionStatus === 'qr_required' ? 'badge-warning' : 'badge-danger')
-                );
-                $sessionStatus.text('Session: ' + sessionStatus.replace(/_/g, ' '));
-
-                let metaHtml = 'Session: <code>' + sessionKey + '</code>' + (response.baseUrl ? ' | URL: <code>' + response.baseUrl + '</code>' : '');
                 if (generatedAt && !Number.isNaN(generatedAt.getTime())) {
                     metaHtml += ' | Fresh QR: <strong>' + generatedAt.toLocaleTimeString() + '</strong>';
                 }
-                $meta.html(metaHtml);
 
-                if (qr.image) {
+                $meta.html(metaHtml);
+                $wrapper.toggleClass('border-success', isConnected);
+                $placeholder.removeClass('text-success text-muted');
+
+                if (isConnected) {
+                    $image.attr('src', '').addClass('d-none');
+                    $placeholder
+                        .removeClass('d-none')
+                        .addClass('text-success')
+                        .text('WhatsApp is connected. QR is hidden for this active session.');
+                } else if (qr.image) {
                     $image.attr('src', qr.image).removeClass('d-none');
                     $placeholder.addClass('d-none');
                 } else {
                     $image.attr('src', '').addClass('d-none');
-                    $placeholder.removeClass('d-none').text(
-                        sessionStatus === 'ready'
-                            ? 'WhatsApp is already connected for this session.'
-                            : 'QR is not available yet. If this stays empty, make sure the Node WhatsApp service is running and requesting login.'
-                    );
+                    $placeholder
+                        .removeClass('d-none')
+                        .addClass('text-muted')
+                        .text('QR is not available yet. The panel will retry once automatically and you can also use Refresh QR.');
                 }
 
                 const errors = [health.error, qr.error].filter(Boolean).join(' ');
@@ -358,50 +408,62 @@
                 const qrAge = generatedAt && !Number.isNaN(generatedAt.getTime())
                     ? Date.now() - generatedAt.getTime()
                     : 0;
-                const refreshCooldownElapsed = Date.now() - whatsappQrLastRefreshAt > 45000;
+                const refreshCooldownElapsed = Date.now() - state.lastRefreshAt > 45000;
 
-                if (!forceRefresh && sessionStatus === 'qr_required' && qrAge > 45000 &&
-                    refreshCooldownElapsed && !whatsappQrRefreshInFlight) {
-                    loadWhatsAppConnectionStatus(true);
+                if (!forceRefresh && connectionStatus === 'qr_required' && qrAge > 45000 &&
+                    refreshCooldownElapsed && !state.refreshInFlight) {
+                    window.setTimeout(function () {
+                        loadWhatsAppConnectionStatus(true);
+                    }, 0);
                 }
-            },
-            error: function () {
+
+                if (!forceRefresh && !state.initialRefreshTriggered && !isConnected && !qr.image) {
+                    state.initialRefreshTriggered = true;
+                    window.setTimeout(function () {
+                        loadWhatsAppConnectionStatus(true);
+                    }, 1200);
+                }
+            }).fail(function (jqXHR) {
+                const message = jqXHR && jqXHR.status === 401
+                    ? 'Your login session expired. Reload the page and sign in again.'
+                    : 'Unable to fetch WhatsApp connection details from CRM.';
+
+                $serviceStatus.removeClass('badge-secondary badge-success badge-warning').addClass('badge-danger').text('Service Error');
+                $sessionStatus.removeClass('badge-secondary badge-success badge-warning').addClass('badge-danger').text('Session unavailable');
+                $error.removeClass('d-none').text(message);
+            }).always(function () {
+                state.requestInFlight = false;
+
                 if (forceRefresh) {
-                    whatsappQrRefreshInFlight = false;
+                    state.refreshInFlight = false;
                 }
+            });
+        }
 
-                $serviceStatus.removeClass('badge-secondary').addClass('badge-danger').text('Service Error');
-                $sessionStatus.removeClass('badge-secondary').addClass('badge-danger').text('Session Error');
-                $('#whatsapp-connection-error').removeClass('d-none').text('Unable to fetch WhatsApp connection details from CRM.');
-            }
-        });
-    }
+        $('body')
+            .off('click.whatsappConnection', '#refresh-whatsapp-connection')
+            .on('click.whatsappConnection', '#refresh-whatsapp-connection', function () {
+                loadWhatsAppConnectionStatus(true);
+            });
 
-    $('body').on('click', '#refresh-whatsapp-connection', function() {
-        loadWhatsAppConnectionStatus(true);
-    });
+        $('body')
+            .off('click.whatsappConnection', '#save-whatsapp-form')
+            .on('click.whatsappConnection', '#save-whatsapp-form', function () {
+                $.easyAjax({
+                    url: "{{ route('whatsapp-settings.update', $whatsappSettings->id ?: 1) }}",
+                    type: 'POST',
+                    container: '#editSettings',
+                    blockUI: true,
+                    data: $('#editSettings').serialize(),
+                    success: function () {
+                        window.location.reload();
+                    }
+                });
+            });
 
-    $('body').on('click', '#save-whatsapp-form', function() {
-        $.easyAjax({
-            url: "{{ route('whatsapp-settings.update', $whatsappSettings->id ?: 1) }}",
-            type: "POST",
-            container: "#editSettings",
-            blockUI: true,
-            data: $('#editSettings').serialize(),
-            success: function () {
-                window.location.reload();
-            }
-        })
-    });
-
-    loadWhatsAppConnectionStatus(false);
-
-    if (whatsappQrPoller) {
-        clearInterval(whatsappQrPoller);
-    }
-
-    whatsappQrPoller = setInterval(function () {
-        whatsappQrPollTick++;
         loadWhatsAppConnectionStatus(false);
-    }, 15000);
+        state.poller = window.setInterval(function () {
+            loadWhatsAppConnectionStatus(false);
+        }, 15000);
+    })();
 </script>

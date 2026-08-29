@@ -18,6 +18,7 @@ class WhatsAppGatewayServiceTest extends TestCase
             'api_key' => 'test-key',
             'session' => '7000000000',
             'timeout' => 10,
+            'default_country_code' => '91',
         ]);
     }
 
@@ -64,6 +65,32 @@ class WhatsAppGatewayServiceTest extends TestCase
 
         $this->assertTrue($service->sendMessage('917035624149', 'Hello', '7099481497'));
         $this->assertSame('provider-message-id', data_get($service->getLastResponseData(), 'id'));
+    }
+
+    public function test_it_adds_the_default_country_code_to_a_local_number(): void
+    {
+        Http::fake([
+            'http://whatsapp.test/messages/send' => Http::response(['success' => true]),
+        ]);
+
+        $this->assertTrue(
+            app(WhatsAppGatewayService::class)->sendMessage('8638824726', 'Hello', '7099481497')
+        );
+
+        Http::assertSent(fn (Request $request) => $request['to'] === '918638824726');
+    }
+
+    public function test_it_does_not_prefix_an_existing_international_number(): void
+    {
+        Http::fake([
+            'http://whatsapp.test/messages/send' => Http::response(['success' => true]),
+        ]);
+
+        $this->assertTrue(
+            app(WhatsAppGatewayService::class)->sendMessage('+91 86388 24726', 'Hello', '7099481497')
+        );
+
+        Http::assertSent(fn (Request $request) => $request['to'] === '918638824726');
     }
 
     public function test_it_detects_a_ready_configured_session(): void

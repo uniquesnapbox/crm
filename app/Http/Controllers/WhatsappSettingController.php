@@ -46,7 +46,11 @@ class WhatsappSettingController extends AccountBaseController
         $setting->lead_created_template = trim((string) ($request->lead_created_template ?: WhatsappNotificationSetting::DEFAULT_LEAD_CREATED_TEMPLATE));
         $setting->lead_interest_template = trim((string) ($request->lead_interest_template ?: WhatsappNotificationSetting::DEFAULT_LEAD_INTEREST_TEMPLATE));
         $setting->lead_followup_template = trim((string) ($request->lead_followup_template ?: WhatsappNotificationSetting::DEFAULT_LEAD_FOLLOWUP_TEMPLATE));
-        $setting->lead_created_sender_number = preg_replace('/\D+/', '', (string) $request->lead_created_sender_number);
+        $resolvedSession = preg_replace('/\D+/', '', (string) $request->lead_created_sender_number);
+        if ($resolvedSession === '') {
+            $resolvedSession = preg_replace('/\D+/', '', (string) config('services.whatsapp_service.session', config('app.admin_whatsapp', '')));
+        }
+        $setting->lead_created_sender_number = $resolvedSession;
         $setting->ticket_assigned_staff_template = trim((string) ($request->ticket_assigned_staff_template ?: WhatsappNotificationSetting::DEFAULT_TICKET_ASSIGNED_STAFF_TEMPLATE));
         $setting->ticket_assigned_client_template = trim((string) ($request->ticket_assigned_client_template ?: WhatsappNotificationSetting::DEFAULT_TICKET_ASSIGNED_CLIENT_TEMPLATE));
         $setting->ticket_resolved_client_template = trim((string) ($request->ticket_resolved_client_template ?: WhatsappNotificationSetting::DEFAULT_TICKET_RESOLVED_CLIENT_TEMPLATE));
@@ -67,31 +71,12 @@ class WhatsappSettingController extends AccountBaseController
             'company_id' => company()->id,
         ]);
 
-        $preferredSessionKey = preg_replace('/\D+/', '', (string) $setting->lead_created_sender_number);
-        $fallbackSessionKey = trim((string) config('services.whatsapp_service.session', 'default'));
-        $fallbackSessionKey = $fallbackSessionKey !== '' ? $fallbackSessionKey : 'default';
-        $sessionKey = $preferredSessionKey !== '' ? $preferredSessionKey : $fallbackSessionKey;
+        $sessionKey = $setting->resolved_whatsapp_session_key;
 
         $forceRefresh = request()->boolean('refresh');
 
         $health = $gatewayService->getHealth();
         $qr = $gatewayService->getQr($sessionKey, $forceRefresh);
-
-        // If sender-number-based session has no QR/status, fall back to configured default session.
-        $qrStatus = (string) ($qr['data']['status'] ?? '');
-        $qrValue = (string) ($qr['data']['qr'] ?? '');
-        $needsFallback = $preferredSessionKey !== ''
-            && $preferredSessionKey !== $fallbackSessionKey
-            && (
-                !($qr['success'] ?? false)
-                || $qrValue === ''
-                || in_array($qrStatus, ['unknown', 'disconnected'], true)
-            );
-
-        if ($needsFallback) {
-            $sessionKey = $fallbackSessionKey;
-            $qr = $gatewayService->getQr($sessionKey, $forceRefresh);
-        }
 
         $qrData = $qr['data']['qr'] ?? null;
         $qrImage = null;
@@ -135,8 +120,7 @@ class WhatsappSettingController extends AccountBaseController
             return Reply::error('Please set a test number first.');
         }
 
-        $sessionKey = preg_replace('/\D+/', '', (string) $setting->lead_created_sender_number);
-        $sessionKey = $sessionKey !== '' ? $sessionKey : trim((string) config('services.whatsapp_service.session', 'default'));
+        $sessionKey = $setting->resolved_whatsapp_session_key;
 
         $sent = $gatewayService->sendMessage(
             $mobile,
