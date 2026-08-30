@@ -46,14 +46,6 @@
 
 @section('content')
     <div class="content-wrapper">
-        <div class="d-flex align-items-center justify-content-between flex-wrap mb-4">
-            <div>
-                <h3 class="mb-1">Campaign Reports</h3>
-                <p class="text-muted mb-0">Choose a campaign to view delivery progress and recipient-wise results.</p>
-            </div>
-            <a href="{{ route('whatsapp.bulk.history') }}" class="btn btn-outline-secondary mt-2 mt-md-0"><i class="fa fa-history mr-1"></i> Campaign History</a>
-        </div>
-
         <div class="campaign-report-panel p-4 mb-4">
             <form method="GET" action="{{ route('whatsapp.bulk.reports') }}" class="row align-items-end">
                 <div class="col-lg-8 col-md-9">
