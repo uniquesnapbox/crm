@@ -8,7 +8,7 @@
     <style>
         .bulk-whatsapp-shell {
             display: grid;
-            grid-template-columns: minmax(0, 1.9fr) minmax(320px, 0.95fr);
+            grid-template-columns: minmax(0, 1fr);
             gap: 1.25rem;
             align-items: start;
         }
@@ -28,18 +28,18 @@
         .bulk-stepper {
             display: grid;
             grid-template-columns: repeat(5, minmax(0, 1fr));
-            gap: 0.75rem;
+            gap: 0.45rem;
         }
 
         .bulk-step {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
-            padding: 0.9rem 1rem;
-            border-radius: 14px;
+            gap: 0.55rem;
+            padding: 0.55rem 0.65rem;
+            border-radius: 12px;
             border: 1px solid #e5e7eb;
             background: #fff;
-            min-height: 70px;
+            min-height: 58px;
         }
 
         .bulk-step.is-active {
@@ -48,12 +48,13 @@
         }
 
         .bulk-step-number {
-            width: 34px;
-            height: 34px;
+            width: 28px;
+            height: 28px;
             border-radius: 999px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
+            font-size: 12px;
             font-weight: 700;
             color: #fff;
             background: #94a3b8;
@@ -120,6 +121,70 @@
             gap: 0.85rem;
         }
 
+        .bulk-summary-strip {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 0.45rem;
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        .bulk-summary-header {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+            margin-bottom: 0.45rem;
+        }
+
+        .bulk-connection-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.45rem 0.8rem;
+            border-radius: 999px;
+            background: #16a34a;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 0;
+            white-space: nowrap;
+        }
+
+        .bulk-connection-badge .bulk-connection-key {
+            font-weight: 700;
+            letter-spacing: 0.02em;
+        }
+
+        .bulk-summary-strip .bulk-metric {
+            min-height: 56px;
+            padding: 0.55rem 0.7rem;
+        }
+
+        .bulk-summary-strip .bulk-metric-value {
+            font-size: 1.1rem;
+        }
+
+        .bulk-top-strip {
+            display: grid;
+            grid-template-columns: minmax(320px, 0.86fr) minmax(0, 1.14fr);
+            gap: 0.75rem;
+            align-items: start;
+        }
+
+        .bulk-top-strip-frame {
+            background: transparent;
+            border: 0;
+            box-shadow: none;
+        }
+
+        .bulk-whatsapp-page {
+            width: 100%;
+            max-width: none;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+        }
+
         .bulk-metric {
             border: 1px solid #e5e7eb;
             border-radius: 14px;
@@ -170,11 +235,6 @@
             flex: 0 0 auto;
         }
 
-        .bulk-sidebar {
-            position: sticky;
-            top: 1rem;
-        }
-
         .bulk-preview-table td,
         .bulk-preview-table th,
         .bulk-log-table td,
@@ -191,8 +251,52 @@
         }
 
         .bulk-toolbar {
+            width: 100%;
             gap: 0.75rem;
             flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .bulk-toolbar > .select-box {
+            flex: 0 0 auto;
+        }
+
+        .bulk-toolbar > .task-search {
+            flex: 1 1 260px;
+            min-width: 260px;
+        }
+
+        .bulk-toolbar > .task-search form,
+        .bulk-toolbar > .task-search .input-group {
+            width: 100%;
+        }
+
+        .bulk-toolbar > .ml-auto {
+            margin-left: 0 !important;
+        }
+
+        .bulk-toolbar .more-filters {
+            padding-left: 0 !important;
+        }
+
+        .bulk-filter-connection {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.3rem 0.65rem;
+            border-radius: 999px;
+            background: #16a34a;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 600;
+            line-height: 1;
+            white-space: nowrap;
+            flex: 0 0 auto;
+        }
+
+        .bulk-filter-connection-key {
+            font-weight: 700;
+            letter-spacing: 0.02em;
         }
 
         .bulk-preview-panel {
@@ -208,12 +312,12 @@
                 grid-template-columns: 1fr;
             }
 
-            .bulk-sidebar {
-                position: static;
-            }
-
             .bulk-stepper {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .bulk-top-strip {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -224,6 +328,10 @@
 
             .bulk-summary-grid {
                 grid-template-columns: 1fr;
+            }
+
+            .bulk-summary-strip {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
             }
         }
     </style>
@@ -262,6 +370,11 @@
                            placeholder="@lang('app.startTyping')">
                 </div>
             </form>
+        </div>
+
+        <div class="bulk-filter-connection">
+            <span>WhatsApp Connected:</span>
+            <span class="bulk-filter-connection-key">{{ $sessionKey ?? '--' }}</span>
         </div>
 
         <div class="select-box d-flex py-1 px-lg-2 px-md-2 px-0">
@@ -369,84 +482,77 @@
 @endsection
 
 @section('content')
-    <div class="content-wrapper">
-        <div class="bulk-whatsapp-shell">
-            <div class="bulk-main">
-                <div class="bulk-section-card mb-3">
-                    <div class="card-body p-4">
-                        <div class="d-flex flex-wrap align-items-start justify-content-between mb-3">
-                            <div>
-                                <h4 class="mb-1 f-20 f-w-600">Bulk WhatsApp</h4>
-                                <div class="bulk-muted">Select filtered leads, preview personalized messages, then send in bulk.</div>
+    <div class="content-wrapper bulk-whatsapp-page px-0">
+        <div class="bulk-top-strip-frame mb-3">
+            <div class="p-0">
+                <div class="bulk-top-strip">
+                    <div>
+                        <div class="bulk-summary-strip">
+                            <div class="bulk-metric">
+                                <div class="bulk-metric-value" id="summary-total">0</div>
+                                <div class="bulk-metric-label">Selected</div>
                             </div>
-                            <div class="text-right">
-                                <div class="badge badge-success px-3 py-2" style="font-size: 13px;">
-                                    WhatsApp Connected: {{ $sessionKey ?: 'Not configured' }}
-                                </div>
-                                <div class="bulk-muted mt-2">Session {{ $sessionKey ?: '--' }}</div>
+                            <div class="bulk-metric">
+                                <div class="bulk-metric-value" id="summary-ready">0</div>
+                                <div class="bulk-metric-label">Ready</div>
+                            </div>
+                            <div class="bulk-metric">
+                                <div class="bulk-metric-value" id="summary-sent">0</div>
+                                <div class="bulk-metric-label">Sent</div>
+                            </div>
+                            <div class="bulk-metric">
+                                <div class="bulk-metric-value" id="summary-failed">0</div>
+                                <div class="bulk-metric-label">Failed</div>
                             </div>
                         </div>
+                    </div>
 
+                    <div>
                         <div class="bulk-stepper" aria-label="Bulk WhatsApp steps">
                             <div class="bulk-step is-active" data-step="1">
                                 <div class="bulk-step-number">1</div>
                                 <div>
                                     <div class="f-w-600">Select Leads</div>
-                                    <div class="bulk-muted f-12">Filter and multi-select contacts.</div>
                                 </div>
                             </div>
                             <div class="bulk-step is-locked" data-step="2">
                                 <div class="bulk-step-number">2</div>
                                 <div>
                                     <div class="f-w-600">Message</div>
-                                    <div class="bulk-muted f-12">Template or manual message.</div>
                                 </div>
                             </div>
                             <div class="bulk-step is-locked" data-step="3">
                                 <div class="bulk-step-number">3</div>
                                 <div>
                                     <div class="f-w-600">Preview</div>
-                                    <div class="bulk-muted f-12">Check personalized output.</div>
                                 </div>
                             </div>
                             <div class="bulk-step is-locked" data-step="4">
                                 <div class="bulk-step-number">4</div>
                                 <div>
                                     <div class="f-w-600">Confirm &amp; Send</div>
-                                    <div class="bulk-muted f-12">Confirm recipients and message.</div>
                                 </div>
                             </div>
                             <div class="bulk-step is-locked" data-step="5">
                                 <div class="bulk-step-number">5</div>
                                 <div>
                                     <div class="f-w-600">Results</div>
-                                    <div class="bulk-muted f-12">Progress and sent/failed logs.</div>
-                                </div>
-                            </div>
-                        </div>
                     </div>
+                </div>
+            </div>
+        </div>
                 </div>
 
                 <div id="bulk-step-1" class="bulk-section-card mb-3 bulk-wizard-step is-active">
-                    <div class="card-header bg-white py-3 px-4 d-flex align-items-center justify-content-between">
+                    <div class="card-header bg-white py-3 px-3 d-flex align-items-center justify-content-between">
                         <div>
                             <h5 class="mb-1 f-w-600">Select Leads</h5>
-                            <div class="bulk-muted f-12">Choose the filtered leads/contacts you want to message.</div>
                         </div>
                         <div class="badge badge-light px-3 py-2">
                             Selected: <span id="selected-count">0</span>
                         </div>
                     </div>
-                    <div class="card-body p-4">
-                        <div class="d-flex align-items-center justify-content-between flex-wrap mb-3">
-                            <div class="bulk-muted f-12">
-                                Use the table checkboxes to pick individual leads, or the header checkbox to select all filtered leads.
-                            </div>
-                            <div class="bulk-muted f-12">
-                                Use filters above to narrow the lead list before selecting recipients.
-                            </div>
-                        </div>
-
+                    <div class="card-body p-2 p-md-3">
                         <div class="d-flex flex-column w-100 rounded bg-white table-responsive">
                             {!! $dataTable->table(['class' => 'table table-hover border-0 w-100', 'id' => 'lead-contact-table']) !!}
                         </div>
@@ -721,95 +827,6 @@
                 </div>
             </div>
 
-            <div class="bulk-sidebar">
-                <div class="bulk-section-card mb-3">
-                    <div class="card-header bg-white py-3 px-4">
-                        <h5 class="mb-1 f-w-600">FLOW: Bulk WhatsApp Sending</h5>
-                    </div>
-                    <div class="card-body px-4 py-2">
-                        <ul class="bulk-flow-list">
-                            <li>
-                                <div class="bulk-flow-dot" style="background:#16a34a;color:#fff;">1</div>
-                                <div>
-                                    <div class="f-w-600">Select Leads</div>
-                                    <div class="bulk-muted f-12">Filter and select multiple leads/contacts.</div>
-                                </div>
-                            </li>
-                            <li>
-                                <div class="bulk-flow-dot" style="background:#16a34a;color:#fff;">2</div>
-                                <div>
-                                    <div class="f-w-600">Compose Message</div>
-                                    <div class="bulk-muted f-12">Write a message or load a template with variables.</div>
-                                </div>
-                            </li>
-                            <li>
-                                <div class="bulk-flow-dot" style="background:#16a34a;color:#fff;">3</div>
-                                <div>
-                                    <div class="f-w-600">Preview</div>
-                                    <div class="bulk-muted f-12">Review each recipient before sending.</div>
-                                </div>
-                            </li>
-                            <li>
-                                <div class="bulk-flow-dot" style="background:#16a34a;color:#fff;">4</div>
-                                <div>
-                                    <div class="f-w-600">Send</div>
-                                    <div class="bulk-muted f-12">Dispatch in bulk through the WhatsApp bridge.</div>
-                                </div>
-                            </li>
-                            <li>
-                                <div class="bulk-flow-dot" style="background:#16a34a;color:#fff;">5</div>
-                                <div>
-                                    <div class="f-w-600">Progress / Logs</div>
-                                    <div class="bulk-muted f-12">Track sent, failed, and message logs.</div>
-                                </div>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div class="bulk-section-card mb-3">
-                    <div class="card-header bg-white py-3 px-4">
-                        <h5 class="mb-1 f-w-600">Summary</h5>
-                    </div>
-                    <div class="card-body px-4 py-3">
-                        <div class="bulk-summary-grid">
-                            <div class="bulk-metric">
-                                <div class="bulk-metric-value" id="summary-total">0</div>
-                                <div class="bulk-metric-label">Selected</div>
-                            </div>
-                            <div class="bulk-metric">
-                                <div class="bulk-metric-value" id="summary-ready">0</div>
-                                <div class="bulk-metric-label">Ready</div>
-                            </div>
-                            <div class="bulk-metric">
-                                <div class="bulk-metric-value" id="summary-sent">0</div>
-                                <div class="bulk-metric-label">Sent</div>
-                            </div>
-                            <div class="bulk-metric">
-                                <div class="bulk-metric-value" id="summary-failed">0</div>
-                                <div class="bulk-metric-label">Failed</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bulk-section-card">
-                    <div class="card-header bg-white py-3 px-4">
-                        <h5 class="mb-1 f-w-600">Functions</h5>
-                    </div>
-                    <div class="card-body px-4 py-3">
-                        <div class="bulk-muted f-13 mb-2">What this page does:</div>
-                        <ul class="mb-0 pl-3">
-                            <li>Filter leads by status, source, category, and more.</li>
-                            <li>Select individual rows or all filtered leads.</li>
-                            <li>Use templates with variables for fast messaging.</li>
-                            <li>Preview before sending.</li>
-                            <li>Send in bulk via the WhatsApp bridge.</li>
-                            <li>Track success and failure logs.</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 

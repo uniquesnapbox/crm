@@ -16,6 +16,7 @@ class WhatsappNotificationSetting extends BaseModel
     public const DEFAULT_TICKET_ASSIGNED_STAFF_TEMPLATE = 'A new ticket has been assigned to you. Ticket #{{ticket_number}}: {{subject}}';
     public const DEFAULT_TICKET_ASSIGNED_CLIENT_TEMPLATE = 'Your ticket #{{ticket_number}} has been forwarded to our team. We will get back to you soon.';
     public const DEFAULT_TICKET_RESOLVED_CLIENT_TEMPLATE = 'Your ticket #{{ticket_number}} has been resolved. If you need anything else, please let us know.';
+    public const DEFAULT_TASK_CREATED_TEMPLATE = 'Hello {{user_name}}, your task "{{task_heading}}" has been created.';
     public const DEFAULT_TASK_ASSIGNED_TEMPLATE = 'A new task has been assigned to you. Task: {{task_heading}}';
     public const DEFAULT_TASK_DAILY_PENDING_TEMPLATE = "Good morning {{user_name}}, you have {{pending_count}} pending task(s):\n{{task_list}}";
     public const DEFAULT_TASK_COMPLETED_TEMPLATE = "Task completed: {{task_heading}}\nProject: {{project_name}}\nCompleted on: {{completed_on}}";
@@ -101,6 +102,11 @@ class WhatsappNotificationSetting extends BaseModel
     public function isTaskMessageEnabled(): bool
     {
         return ($this->send_task_assigned_message ?? self::YES) === self::YES;
+    }
+
+    public function isTaskCreatedMessageEnabled(): bool
+    {
+        return ($this->send_task_created_message ?? self::YES) === self::YES;
     }
 
     public function isTaskAssignedMessageEnabled(): bool

@@ -400,12 +400,6 @@ class TaskController extends AccountBaseController
 
         $task->save();
 
-        // A newly-created task must be linked to its selected assignees.
-        // Without this sync the task is saved, but employees cannot see it in
-        // their assigned-task list and it appears as if creation failed.
-        $assignedUserIds = array_values(array_unique(array_filter((array) $request->input('user_id', []))));
-        $task->users()->sync($assignedUserIds);
-
         // Save labels
 
         $task->labels()->sync(array_filter((array) $request->input('task_labels', [])));
@@ -510,13 +504,6 @@ class TaskController extends AccountBaseController
 
 
         DB::commit();
-
-        if (!empty($assignedUserIds)) {
-            $this->taskWhatsAppNotificationService->sendAssignedNotifications(
-                $task->fresh(['boardColumn', 'project', 'addedByUser']),
-                $assignedUserIds
-            );
-        }
 
         if (request()->add_more == 'true') {
             unset($request->project_id);

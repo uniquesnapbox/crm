@@ -171,6 +171,22 @@
                     <div class="row wa-grid-gap">
                         <div class="col-xl-4 col-md-6">
                             <div class="wa-msg-card">
+                                <div class="wa-msg-title">Task Created Message for Creator</div>
+                                <x-forms.toggle-switch class="mb-2 mt-0"
+                                    :checked="($whatsappSettings->send_task_created_message ?? 'yes') === 'yes'"
+                                    :fieldLabel="'Enable'" fieldName="send_task_created_message"
+                                    fieldId="send_task_created_message" />
+                                <x-forms.textarea :fieldLabel="'Template'" fieldName="task_created_staff_template"
+                                    fieldId="task_created_staff_template" fieldRequired="true"
+                                    :fieldValue="$whatsappSettings->task_created_staff_template ?: \App\Models\WhatsappNotificationSetting::DEFAULT_TASK_CREATED_TEMPLATE"
+                                    fieldPlaceholder="Hello @{{user_name}}, your task &quot;@{{task_heading}}&quot; has been created." />
+                                <div class="wa-placeholder">
+                                    Placeholders: <code>@{{user_name}}</code>, <code>@{{task_heading}}</code>, <code>@{{task_id}}</code>, <code>@{{project_name}}</code>, <code>@{{due_date}}</code>, <code>@{{assigned_by}}</code>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xl-4 col-md-6">
+                            <div class="wa-msg-card">
                                 <div class="wa-msg-title">Assigned Message for Staff</div>
                                 <x-forms.toggle-switch class="mb-2 mt-0"
                                     :checked="($whatsappSettings->send_ticket_assigned_staff_message ?? 'yes') === 'yes'"

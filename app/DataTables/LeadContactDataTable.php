@@ -52,39 +52,6 @@ class LeadContactDataTable extends BaseDataTable
         $datatables = datatables()->eloquent($query);
         $datatables->addIndexColumn();
         $datatables->addColumn('check', fn($row) => $this->checkBox($row));
-        $datatables->addColumn('action', function ($row) {
-            $action = '<div class="d-flex align-items-center justify-content-end lead-table-actions">';
-            $action .= '<a href="' . route('lead-contact.show', [$row->id]) . '" class="btn btn-sm btn-outline-secondary mr-1 js-lead-contact-open" title="' . __('app.view') . '"><i class="fa fa-eye"></i></a>';
-
-            if (
-                $this->editLeadPermission == 'all'
-                || ($this->editLeadPermission == 'added' && user()->id == $row->added_by)
-                || ($this->editLeadPermission == 'owned' && user()->id == $row->assigned_to)
-                || ($this->editLeadPermission == 'both' && (user()->id == $row->added_by || user()->id == $row->assigned_to))
-                || user()->id == $row->added_by
-                || user()->id == $row->assigned_to)
-
-            {
-                $action .= '<a class="btn btn-sm btn-outline-primary mr-1 openRightModal" href="' . route('lead-contact.edit', [$row->id]) . '" title="' . __('app.edit') . '">
-                                <i class="fa fa-edit"></i>
-                            </a>';
-            }
-
-            if (
-                $this->deleteLeadPermission == 'all'
-                || ($this->deleteLeadPermission == 'added' && user()->id == $row->added_by)
-                || ($this->deleteLeadPermission == 'owned' && user()->id == $row->assigned_to)
-                || ($this->deleteLeadPermission == 'both' && (user()->id == $row->assigned_to || user()->id == $row->added_by))
-            ) {
-                $action .= '<a class="btn btn-sm btn-outline-danger delete-table-row" href="javascript:;" data-id="' . $row->id . '" title="' . __('app.delete') . '">
-                        <i class="fa fa-trash"></i>
-                    </a>';
-            }
-
-            $action .= '</div>';
-
-            return $action;
-        });
 
         $datatables->addColumn('export_email', fn($row) => $row->client_email);
         $datatables->addColumn('lead_value', fn($row) => currency_format($row->value, $row->currency_id));
@@ -127,7 +94,7 @@ class LeadContactDataTable extends BaseDataTable
 
         $customFieldColumns = CustomField::customFieldData($datatables, Lead::CUSTOM_FIELD_MODEL);
 
-        $datatables->rawColumns(array_merge(['action', 'client_name', 'check', 'lead_status', 'interest_level', 'assigned_to'], $customFieldColumns));
+        $datatables->rawColumns(array_merge(['client_name', 'check', 'lead_status', 'interest_level', 'assigned_to'], $customFieldColumns));
 
         return $datatables;
     }
@@ -293,6 +260,7 @@ class LeadContactDataTable extends BaseDataTable
      */
     protected function getColumns()
     {
+        $isBulkWhatsAppPage = request()->routeIs('whatsapp.bulk.index') || request()->is('account/whatsapp/bulk');
 
         $data = [
 
@@ -317,17 +285,11 @@ class LeadContactDataTable extends BaseDataTable
             __('app.createdOn') => ['data' => 'created_at', 'name' => 'leads.created_at', 'title' => __('app.createdOn')],
         ];
 
-        $action = [
-            Column::computed('action', __('app.action'))
-                ->exportable(false)
-                ->printable(false)
-                ->orderable(false)
-                ->searchable(false)
-                ->addClass('text-right pr-20')
-        ];
+        if ($isBulkWhatsAppPage) {
+            unset($data[__('app.addedBy')], $data[__('modules.tasks.assignTo')]);
+        }
 
-
-        return array_merge($data, CustomFieldGroup::customFieldsDataMerge(new Lead()), $action);
+        return array_merge($data, CustomFieldGroup::customFieldsDataMerge(new Lead()));
 
     }
 

@@ -171,15 +171,23 @@ class TaskObserver
             // Log search
             $log->logSearchEntry($task->id, $task->heading, 'tasks.edit', 'task');
 
-            // Sync task users
-            if (!empty(request()->user_id) && request()->template_id == '') {
+            if (request()->template_id == '') {
+                $createdTask = $task->fresh(['boardColumn', 'project', 'addedByUser', 'createBy']);
+                $assignedUserIds = $this->requestIds(request()->user_id);
 
-                $task->users()->sync(request()->user_id);
-                app(TaskWhatsAppNotificationService::class)->sendAssignedNotifications(
-                    $task->fresh(['boardColumn', 'project', 'addedByUser']),
-                    request()->user_id
-                );
+                if (!empty($assignedUserIds)) {
+                    $task->users()->sync($assignedUserIds);
+                }
 
+                app(TaskWhatsAppNotificationService::class)->sendCreatedNotifications($createdTask);
+
+                if (!empty($assignedUserIds)) {
+                    app(TaskWhatsAppNotificationService::class)->sendAssignedNotifications(
+                        $createdTask,
+                        $assignedUserIds,
+                        [$createdTask->created_by]
+                    );
+                }
             }
 
         }

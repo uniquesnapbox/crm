@@ -4,19 +4,23 @@
             $canAddLeadContact = in_array($addLeadPermission ?? null, ['all', 'added'], true);
             $canManageLeadForms = ($addLeadCustomFormPermission ?? null) === 'all';
         @endphp
-        <div class="dropdown lead-contact-actions">
-            <button class="btn btn-primary dropdown-toggle lead-contact-actions-toggle" type="button"
-                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+        @if ($canAddLeadContact)
+            <a class="btn btn-primary openRightModal lead-contact-actions-toggle"
+                href="{{ route('lead-contact.create') }}">
+                <i class="fa fa-plus mr-1"></i> Add Lead
+            </a>
+        @else
+            <button class="btn btn-primary lead-contact-actions-toggle" type="button" disabled>
                 <i class="fa fa-plus mr-1"></i> Add Lead
             </button>
+        @endif
 
+        <div class="dropdown lead-contact-actions ml-2">
+            <button class="btn btn-outline-secondary dropdown-toggle" type="button"
+                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" aria-label="More lead actions">
+                <i class="fa fa-ellipsis-h"></i>
+            </button>
             <div class="dropdown-menu border-grey rounded b-shadow-4 py-2">
-                <a class="dropdown-item openRightModal {{ $canAddLeadContact ? '' : 'disabled' }}"
-                    href="{{ $canAddLeadContact ? route('lead-contact.create') : 'javascript:;' }}"
-                    @if (! $canAddLeadContact) aria-disabled="true" tabindex="-1" @endif>
-                    <i class="fa fa-user-plus mr-2"></i> @lang('modules.leadContact.addLeadContact')
-                </a>
-
                 <a class="dropdown-item {{ $canManageLeadForms ? '' : 'disabled' }}"
                     href="{{ $canManageLeadForms ? route('lead-form.index') : 'javascript:;' }}"
                     @if (! $canManageLeadForms) aria-disabled="true" tabindex="-1" @endif>

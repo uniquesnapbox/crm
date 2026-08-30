@@ -15,9 +15,68 @@ class TaskWhatsAppNotificationService
     {
     }
 
-    public function sendAssignedNotifications(Task $task, array $userIds): void
+    public function sendCreatedNotifications(Task $task): void
+    {
+        $setting = WhatsappNotificationSetting::where('company_id', $task->company_id)->first();
+
+        if (!$setting || $setting->status !== 'active' || !$setting->isTaskCreatedMessageEnabled()) {
+            return;
+        }
+
+        $creator = $task->createBy ?: $task->addedByUser;
+
+        if (!$creator) {
+            return;
+        }
+
+        $message = $this->renderTemplate(
+            $setting->task_created_staff_template ?: WhatsappNotificationSetting::DEFAULT_TASK_CREATED_TEMPLATE,
+            $task,
+            $creator
+        );
+
+        if ($message === '') {
+            return;
+        }
+
+        $mobile = $this->userMobile($creator);
+
+        if ($mobile === '') {
+            Log::warning('Task creator WhatsApp notification skipped due to missing user mobile.', [
+                'task_id' => $task->id,
+                'user_id' => $creator->id,
+            ]);
+
+            return;
+        }
+
+        $sent = $this->gatewayService->sendMessage(
+            $mobile,
+            $message,
+            $setting->resolved_lead_created_sender_number,
+            null,
+            'task-created|' . $task->id . '|' . $creator->id
+        );
+
+        if (!$sent) {
+            Log::warning('Task creator WhatsApp notification failed.', [
+                'task_id' => $task->id,
+                'user_id' => $creator->id,
+                'mobile' => $mobile,
+                'sender_number' => $setting->resolved_lead_created_sender_number,
+                'error' => $this->gatewayService->getLastError(),
+            ]);
+        }
+    }
+
+    public function sendAssignedNotifications(Task $task, array $userIds, array $excludeUserIds = []): void
     {
         $userIds = array_values(array_unique(array_filter($userIds)));
+        $excludeUserIds = array_values(array_unique(array_filter($excludeUserIds)));
+
+        if (!empty($excludeUserIds)) {
+            $userIds = array_values(array_diff($userIds, $excludeUserIds));
+        }
 
         if (empty($userIds)) {
             return;
