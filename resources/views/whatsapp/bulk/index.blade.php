@@ -544,14 +544,6 @@
                 </div>
 
                 <div id="bulk-step-1" class="bulk-section-card mb-3 bulk-wizard-step is-active">
-                    <div class="card-header bg-white py-3 px-3 d-flex align-items-center justify-content-between">
-                        <div>
-                            <h5 class="mb-1 f-w-600">Select Leads</h5>
-                        </div>
-                        <div class="badge badge-light px-3 py-2">
-                            Selected: <span id="selected-count">0</span>
-                        </div>
-                    </div>
                     <div class="card-body p-2 p-md-3">
                         <div class="d-flex flex-column w-100 rounded bg-white table-responsive">
                             {!! $dataTable->table(['class' => 'table table-hover border-0 w-100', 'id' => 'lead-contact-table']) !!}
