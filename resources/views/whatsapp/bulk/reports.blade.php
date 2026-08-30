@@ -148,7 +148,7 @@
             </div>
         @endif
         </div>
-
+        @if ($campaign)
             <div class="campaign-report-panel overflow-hidden">
                 <div class="p-4 border-bottom"><h5 class="mb-0">Recipient Delivery Status</h5></div>
                 <div class="table-responsive">
@@ -191,5 +191,6 @@
                     <div class="px-4 py-3 border-top">{{ $recipients->links() }}</div>
                 @endif
             </div>
+        @endif
     </div>
 @endsection
