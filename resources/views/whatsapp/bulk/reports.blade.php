@@ -9,12 +9,38 @@
             box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
         }
 
-        .campaign-metric {
-            min-height: 108px;
+        .report-strip {
+            display: grid;
+            grid-template-columns: 1.35fr 1.35fr repeat(5, minmax(130px, 1fr));
+            gap: 12px;
+            align-items: stretch;
+        }
+
+        .report-strip-card {
             border: 1px solid #e5e7eb;
-            border-radius: 13px;
-            padding: 1rem;
-            background: linear-gradient(145deg, #fff 0%, #f8fafc 100%);
+            border-radius: 14px;
+            background: #fff;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+            padding: 0.85rem 0.95rem;
+            min-height: 104px;
+        }
+
+        .report-strip-card.tight {
+            min-height: 104px;
+        }
+
+        .report-strip-card .f-12,
+        .report-strip-card .metric-label,
+        .report-strip-card .text-muted {
+            white-space: nowrap;
+        }
+
+        .campaign-metric {
+            min-height: 78px;
+            border: 0;
+            border-radius: 0;
+            padding: 0;
+            background: transparent;
         }
 
         .campaign-metric .metric-label {
@@ -28,15 +54,12 @@
         .campaign-metric.pending .metric-value { color: #a16207; }
 
         .campaign-metrics-row {
-            flex-wrap: nowrap;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
+            margin: 0;
+            gap: 0;
         }
 
         .campaign-metric-col {
-            flex: 0 0 20%;
-            max-width: 20%;
-            min-width: 180px;
+            padding: 0;
         }
 
         .report-status {
@@ -62,64 +85,69 @@
 
 @section('content')
     <div class="content-wrapper">
-        <div class="campaign-report-panel p-4 mb-4">
-            <form method="GET" action="{{ route('whatsapp.bulk.reports') }}" class="row align-items-end">
-                <div class="col-lg-8 col-md-9">
-                    <label for="campaign" class="f-14 text-dark-grey">Select Campaign</label>
-                    <select name="campaign" id="campaign" class="form-control select-picker" data-live-search="true">
-                        <option value="">Select a bulk WhatsApp campaign</option>
-                        @foreach ($campaignOptions as $option)
-                            @php $optionDate = $option->started_at ?: $option->created_at; @endphp
-                            <option value="{{ $option->id }}" @selected($campaign?->id === $option->id)>
-                                {{ $option->name }} - {{ $optionDate?->format('d M Y, h:i A') }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-lg-4 col-md-3 mt-3 mt-md-0">
-                    <button type="submit" class="btn btn-primary w-100"><i class="fa fa-bar-chart mr-1"></i> View Report</button>
-                </div>
-            </form>
-        </div>
+        <div class="report-strip mb-4">
+            <div class="report-strip-card tight">
+                <form method="GET" action="{{ route('whatsapp.bulk.reports') }}">
+                    <label for="campaign" class="f-14 text-dark-grey mb-2">Select Campaign</label>
+                    <div class="d-flex align-items-center" style="gap: 10px;">
+                        <select name="campaign" id="campaign" class="form-control select-picker flex-grow-1" data-live-search="true">
+                            <option value="">Select a bulk WhatsApp campaign</option>
+                            @foreach ($campaignOptions as $option)
+                                @php $optionDate = $option->started_at ?: $option->created_at; @endphp
+                                <option value="{{ $option->id }}" @selected($campaign?->id === $option->id)>
+                                    {{ $option->name }} - {{ $optionDate?->format('d M Y, h:i A') }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <button type="submit" class="btn btn-primary" style="white-space: nowrap;"><i class="fa fa-bar-chart mr-1"></i> View</button>
+                    </div>
+                </form>
+            </div>
 
         @if (!$campaign)
-            <div class="campaign-report-panel text-center py-5 text-muted">
-                <i class="fa fa-bar-chart fa-3x d-block mb-3 text-light"></i>
-                Select a campaign above to view its detailed delivery report.
+            <div class="report-strip-card text-center text-muted d-flex align-items-center justify-content-center">
+                <div>
+                    <i class="fa fa-bar-chart fa-2x d-block mb-2 text-light"></i>
+                    Select a campaign to view report.
+                </div>
             </div>
         @else
             @php
                 $campaignStatus = strtolower((string) $campaign->status);
                 $startedAt = $campaign->started_at ?: $campaign->created_at;
             @endphp
-            <div class="campaign-report-panel p-4 mb-4">
-                <div class="d-flex align-items-start justify-content-between flex-wrap">
-                    <div>
-                        <div class="d-flex align-items-center flex-wrap">
-                            <h4 class="mb-1 mr-2">{{ $campaign->name }}</h4>
+            <div class="report-strip-card tight d-flex flex-column justify-content-between">
+                <div class="d-flex align-items-center justify-content-between" style="gap: 10px;">
+                    <div class="text-truncate">
+                        <div class="d-flex align-items-center flex-wrap" style="gap: 8px;">
+                            <h5 class="mb-0 text-truncate">{{ $campaign->name }}</h5>
                             <span class="report-status {{ $campaignStatus }}">{{ $campaignStatus }}</span>
                         </div>
-                        <p class="mb-0 text-muted">Started {{ $startedAt?->format('d M Y, h:i A') }} by {{ $campaign->creator?->name ?: 'System' }}</p>
+                        <div class="f-12 text-muted mt-1 text-truncate">Started {{ $startedAt?->format('d M Y, h:i A') }}</div>
                     </div>
-                    <div class="text-md-right mt-3 mt-md-0">
-                        <div class="f-12 text-muted mb-1">Campaign progress</div>
+                    <div class="text-right flex-shrink-0">
+                        <div class="f-12 text-muted">Progress</div>
                         <div class="f-20 f-w-600 text-primary">{{ $summary['progress'] }}%</div>
                     </div>
                 </div>
-                <div class="progress mt-3" style="height: 8px; border-radius: 999px; background: #e2e8f0;"><div class="progress-bar bg-primary" style="width: {{ $summary['progress'] }}%"></div></div>
-                <div class="row mt-3">
-                    <div class="col-lg-6"><div class="report-detail-row"><span class="text-muted">Campaign end time</span><span class="float-right text-dark">{{ $campaign->completed_at?->format('d M Y, h:i A') ?: 'In progress' }}</span></div></div>
-                    <div class="col-lg-6"><div class="report-detail-row"><span class="text-muted">Recipient delay</span><span class="float-right text-dark">{{ $campaign->delay_min_seconds ?: 8 }}-{{ $campaign->delay_max_seconds ?: 20 }} sec</span></div></div>
+                <div class="progress mt-2" style="height: 6px; border-radius: 999px; background: #e2e8f0;">
+                    <div class="progress-bar bg-primary" style="width: {{ $summary['progress'] }}%"></div>
+                </div>
+                <div class="d-flex align-items-center justify-content-between mt-2 f-12 text-muted" style="gap: 12px;">
+                    <span class="text-truncate">End: {{ $campaign->completed_at?->format('d M Y, h:i A') ?: 'In progress' }}</span>
+                    <span class="text-truncate">Delay: {{ $campaign->delay_min_seconds ?: 8 }}-{{ $campaign->delay_max_seconds ?: 20 }} sec</span>
                 </div>
             </div>
 
             <div class="row mb-4 campaign-metrics-row flex-nowrap">
-                <div class="campaign-metric-col mb-3"><div class="campaign-metric"><div class="metric-label">Total Messages</div><div class="metric-value">{{ $summary['total'] }}</div></div></div>
-                <div class="campaign-metric-col mb-3"><div class="campaign-metric sent"><div class="metric-label">Sent</div><div class="metric-value">{{ $summary['sent'] }}</div></div></div>
-                <div class="campaign-metric-col mb-3"><div class="campaign-metric failed"><div class="metric-label">Failed</div><div class="metric-value">{{ $summary['failed'] }}</div></div></div>
-                <div class="campaign-metric-col mb-3"><div class="campaign-metric pending"><div class="metric-label">Pending / Remaining</div><div class="metric-value">{{ $summary['pending'] }}</div></div></div>
-                <div class="campaign-metric-col mb-3"><div class="campaign-metric"><div class="metric-label">Progress</div><div class="metric-value">{{ $summary['progress'] }}%</div></div></div>
+                <div class="campaign-metric-col"><div class="report-strip-card"><div class="campaign-metric"><div class="metric-label">Total Messages</div><div class="metric-value">{{ $summary['total'] }}</div></div></div></div>
+                <div class="campaign-metric-col"><div class="report-strip-card"><div class="campaign-metric sent"><div class="metric-label">Sent</div><div class="metric-value">{{ $summary['sent'] }}</div></div></div></div>
+                <div class="campaign-metric-col"><div class="report-strip-card"><div class="campaign-metric failed"><div class="metric-label">Failed</div><div class="metric-value">{{ $summary['failed'] }}</div></div></div></div>
+                <div class="campaign-metric-col"><div class="report-strip-card"><div class="campaign-metric pending"><div class="metric-label">Pending / Remaining</div><div class="metric-value">{{ $summary['pending'] }}</div></div></div></div>
+                <div class="campaign-metric-col"><div class="report-strip-card"><div class="campaign-metric"><div class="metric-label">Progress</div><div class="metric-value">{{ $summary['progress'] }}%</div></div></div></div>
             </div>
+        @endif
+        </div>
 
             <div class="campaign-report-panel overflow-hidden">
                 <div class="p-4 border-bottom"><h5 class="mb-0">Recipient Delivery Status</h5></div>
@@ -163,6 +191,5 @@
                     <div class="px-4 py-3 border-top">{{ $recipients->links() }}</div>
                 @endif
             </div>
-        @endif
     </div>
 @endsection
