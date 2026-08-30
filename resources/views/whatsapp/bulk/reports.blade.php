@@ -17,11 +17,27 @@
             background: linear-gradient(145deg, #fff 0%, #f8fafc 100%);
         }
 
-        .campaign-metric .metric-label { color: #64748b; font-size: 0.8rem; }
+        .campaign-metric .metric-label {
+            color: #64748b;
+            font-size: 0.8rem;
+            white-space: nowrap;
+        }
         .campaign-metric .metric-value { color: #0f172a; font-size: 1.7rem; font-weight: 700; line-height: 1.2; }
         .campaign-metric.sent .metric-value { color: #15803d; }
         .campaign-metric.failed .metric-value { color: #b91c1c; }
         .campaign-metric.pending .metric-value { color: #a16207; }
+
+        .campaign-metrics-row {
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .campaign-metric-col {
+            flex: 0 0 20%;
+            max-width: 20%;
+            min-width: 180px;
+        }
 
         .report-status {
             display: inline-flex;
@@ -97,12 +113,12 @@
                 </div>
             </div>
 
-            <div class="row mb-4">
-                <div class="col-xl col-md-4 col-sm-6 mb-3"><div class="campaign-metric"><div class="metric-label">Total Messages</div><div class="metric-value">{{ $summary['total'] }}</div></div></div>
-                <div class="col-xl col-md-4 col-sm-6 mb-3"><div class="campaign-metric sent"><div class="metric-label">Sent</div><div class="metric-value">{{ $summary['sent'] }}</div></div></div>
-                <div class="col-xl col-md-4 col-sm-6 mb-3"><div class="campaign-metric failed"><div class="metric-label">Failed</div><div class="metric-value">{{ $summary['failed'] }}</div></div></div>
-                <div class="col-xl col-md-4 col-sm-6 mb-3"><div class="campaign-metric pending"><div class="metric-label">Pending / Remaining</div><div class="metric-value">{{ $summary['pending'] }}</div></div></div>
-                <div class="col-xl col-md-4 col-sm-6 mb-3"><div class="campaign-metric"><div class="metric-label">Progress</div><div class="metric-value">{{ $summary['progress'] }}%</div></div></div>
+            <div class="row mb-4 campaign-metrics-row flex-nowrap">
+                <div class="campaign-metric-col mb-3"><div class="campaign-metric"><div class="metric-label">Total Messages</div><div class="metric-value">{{ $summary['total'] }}</div></div></div>
+                <div class="campaign-metric-col mb-3"><div class="campaign-metric sent"><div class="metric-label">Sent</div><div class="metric-value">{{ $summary['sent'] }}</div></div></div>
+                <div class="campaign-metric-col mb-3"><div class="campaign-metric failed"><div class="metric-label">Failed</div><div class="metric-value">{{ $summary['failed'] }}</div></div></div>
+                <div class="campaign-metric-col mb-3"><div class="campaign-metric pending"><div class="metric-label">Pending / Remaining</div><div class="metric-value">{{ $summary['pending'] }}</div></div></div>
+                <div class="campaign-metric-col mb-3"><div class="campaign-metric"><div class="metric-label">Progress</div><div class="metric-value">{{ $summary['progress'] }}%</div></div></div>
             </div>
 
             <div class="campaign-report-panel overflow-hidden">
