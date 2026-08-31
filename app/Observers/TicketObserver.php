@@ -125,6 +125,8 @@ class TicketObserver
                 $this->dispatchEventSafely(new TicketRequesterEvent($model, null, $model->requester), 'Ticket requester notification failed.', [
                     'ticket_id' => $model->id,
                 ]);
+
+                app(TicketWhatsAppNotificationService::class)->sendAssignedClientNotification($model->fresh(['requester']));
             }
 
         }

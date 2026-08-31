@@ -316,15 +316,20 @@ class WhatsAppGatewayService
             $phone = substr($phone, 2);
         }
 
-        if (strlen($phone) === 11 && str_starts_with($phone, '0')) {
-            $phone = substr($phone, 1);
-        }
-
         $defaultCountryCode = preg_replace(
             '/\D+/',
             '',
             (string) config('services.whatsapp_service.default_country_code', '91')
         );
+
+        while ($defaultCountryCode !== '' && strlen($phone) > 10 && str_starts_with($phone, $defaultCountryCode)) {
+            $phone = substr($phone, strlen($defaultCountryCode));
+            $phone = ltrim($phone, '0');
+        }
+
+        if (strlen($phone) === 11 && str_starts_with($phone, '0')) {
+            $phone = substr($phone, 1);
+        }
 
         if (strlen($phone) === 10 && $defaultCountryCode !== '') {
             $phone = $defaultCountryCode . $phone;

@@ -37,6 +37,7 @@ class   TicketDataTable extends BaseDataTable
         $datatables->addColumn('action', function ($row) {
 
             $action = '<div class="task_view">';
+            $addTaskPermission = user()->permission('add_tasks');
 
             $action .= '<div class="dropdown">
                     <a class="task_view_more d-flex align-items-center justify-content-center dropdown-toggle" type="link"
@@ -47,6 +48,20 @@ class   TicketDataTable extends BaseDataTable
 
             if ($row->canViewTicket()) {
                 $action .= '<a href="' . route('tickets.show', [$row->ticket_number]) . '" class="dropdown-item"><i class="fa fa-eye mr-2"></i>' . __('app.view') . '</a>';
+            }
+
+            if (in_array($addTaskPermission, ['all', 'added'])) {
+                $taskUrl = route('tasks.create') . '?ticket_id=' . $row->id;
+
+                if (!is_null($row->project_id)) {
+                    $taskUrl .= '&task_project_id=' . $row->project_id;
+                }
+
+                if (!is_null($row->agent_id)) {
+                    $taskUrl .= '&default_assign=' . $row->agent_id;
+                }
+
+                $action .= '<a href="' . $taskUrl . '" class="dropdown-item openRightModal"><i class="fa fa-tasks mr-2"></i>' . __('app.addTask') . '</a>';
             }
 
             if ($row->canDeleteTicket()) {

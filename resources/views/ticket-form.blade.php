@@ -182,6 +182,9 @@
         <x-form id="createTicket" method="POST">
             <div class="form-body">
                 <div class="row">
+                    @php
+                        $hasEmailField = $ticketFormFields->contains('field_name', 'email');
+                    @endphp
                     @foreach ($ticketFormFields as $item)
                         @php
                             $defaultLabelKey = 'modules.tickets.' . $item->field_name;
@@ -239,17 +242,36 @@
                             @else
                                 <div class="col-md-12">
                                     @if ($item->field_name === 'mobile')
-                                        <x-forms.tel :fieldId="$item->field_name"
-                                                     :fieldLabel="$fieldLabel"
-                                                     :fieldName="$item->field_name" fieldPlaceholder=""
-                                                     :fieldRequired="$item->required == 1">
-                                        </x-forms.tel>
+                                        <div class="form-group my-3">
+                                            <x-forms.label :fieldId="$item->field_name"
+                                                           :fieldLabel="$fieldLabel"
+                                                           :fieldRequired="$item->required == 1"></x-forms.label>
+                                            <input type="hidden" name="country_phonecode" value="91">
+                                            <div class="input-group">
+                                                <div class="input-group-prepend">
+                                                    <span class="input-group-text">+91</span>
+                                                </div>
+                                                <input type="tel"
+                                                       class="form-control"
+                                                       name="mobile"
+                                                       id="{{ $item->field_name }}"
+                                                       value="{{ old('mobile') }}"
+                                                       placeholder="WhatsApp number"
+                                                       @if ($item->required == 1) required @endif>
+                                            </div>
+                                        </div>
                                     @else
                                         <x-forms.text :fieldId="$item->field_name"
                                                       :fieldLabel="$fieldLabel"
                                                       :fieldName="$item->field_name" fieldPlaceholder=""
                                                       :fieldRequired="$item->required == 1">
                                         </x-forms.text>
+                                    @endif
+
+                                    @if ($item->field_name === 'name' && ! $hasEmailField)
+                                        <x-forms.email fieldId="email" :fieldLabel="__('app.email')"
+                                                       fieldName="email" fieldRequired="true"
+                                                       :fieldPlaceholder="__('placeholders.email')"></x-forms.email>
                                     @endif
                                 </div>
                             @endif

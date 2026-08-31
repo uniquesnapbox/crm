@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Scopes\ActiveScope;
 use App\Traits\CustomFieldsTrait;
 use App\Traits\HasCompany;
+use App\Models\Ticket;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -168,6 +169,11 @@ class Task extends BaseModel
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class, 'project_id')->withTrashed();
+    }
+
+    public function ticket(): BelongsTo
+    {
+        return $this->belongsTo(Ticket::class, 'ticket_id');
     }
 
     public function activeProject(): BelongsTo

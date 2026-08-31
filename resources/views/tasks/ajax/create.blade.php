@@ -7,6 +7,8 @@
     $viewMilestonePermission = user()->permission('view_project_milestones');
     $viewProjectPermission = user()->permission('view_projects');
     $checked = request()->has('duplicate_task') ? ($projectId = $task->project_id) : ($projectId = '');
+    $ticketTaskHeading = $ticketTaskHeading ?? '';
+    $ticketTaskDescription = $ticketTaskDescription ?? '';
 @endphp
 
 <link rel="stylesheet" href="{{ asset('vendor/css/dropzone.min.css') }}">
@@ -14,15 +16,23 @@
 <div class="row">
     <div class="col-sm-12">
         <x-form id="save-task-data-form">
+            @if (!empty($ticket))
+                <input type="hidden" name="ticket_id" value="{{ $ticket->id }}">
+            @endif
             <div class="add-client bg-white rounded">
                 <h4 class="mb-0 p-20 f-21 font-weight-normal text-capitalize border-bottom-grey">
                     @lang('modules.tasks.taskInfo')</h4>
+                @if (!empty($ticket))
+                    <div class="px-20 pt-3 text-muted f-13">
+                        Linked from ticket #{{ $ticket->ticket_number }}: {{ $ticket->subject }}
+                    </div>
+                @endif
                 <div class="row p-20">
 
                     <div class="col-lg-6 col-md-6">
                         <x-forms.text :fieldLabel="__('app.title')" fieldName="heading" fieldRequired="true"
                                       fieldId="heading" :fieldPlaceholder="__('placeholders.task')"
-                                      :fieldValue="$task ? $task->heading : ''"/>
+                                      :fieldValue="$task ? $task->heading : ($ticketTaskHeading ?: '')"/>
                     </div>
 
                     <div class="col-md-6 col-lg-6">
@@ -154,7 +164,7 @@
                         <div class="form-group my-3">
                             <x-forms.label fieldId="description" :fieldLabel="__('app.description')">
                             </x-forms.label>
-                            <div id="description">{!! $task ? $task->description : '' !!}</div>
+                            <div id="description">{!! $task ? $task->description : $ticketTaskDescription !!}</div>
                             <textarea name="description" id="description-text" class="d-none"></textarea>
                         </div>
                     </div>

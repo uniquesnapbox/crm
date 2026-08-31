@@ -137,7 +137,7 @@ class LeadContactDataTable extends BaseDataTable
             ->leftJoin('lead_status', 'lead_status.id', 'leads.status_id');
         $leadContact = $leadContact->whereNull('leads.archived_at');
 
-        if (!in_array('admin', user_roles())) {
+        if (!in_array('admin', user_roles()) && $this->viewLeadPermission !== 'all') {
             $leadContact = $leadContact->where(function ($query) {
                 $query->where('leads.added_by', user()->id)
                     ->orWhere('leads.assigned_to', user()->id);

@@ -26,6 +26,7 @@ use App\Traits\ProjectProgress;
 use App\Models\ProjectMilestone;
 use App\Events\TaskReminderEvent;
 use App\DataTables\TasksDataTable;
+use App\Models\Ticket;
 use App\Services\TaskWhatsAppNotificationService;
 use Illuminate\Support\Facades\DB;
 use App\Models\ProjectTimeLogBreak;
@@ -231,6 +232,7 @@ class TaskController extends AccountBaseController
         $this->addPermission = user()->permission('add_tasks');
         $this->projectShortCode = '';
         $this->project = request('task_project_id') ? Project::with('projectMembers')->findOrFail(request('task_project_id')) : null;
+        $this->ticket = request('ticket_id') ? Ticket::with(['requester', 'agent', 'project', 'latestReply'])->findOrFail(request('ticket_id')) : null;
 
         if (is_null($this->project) || ($this->project->project_admin != user()->id)) {
             abort_403(!in_array($this->addPermission, ['all', 'added']));
@@ -268,6 +270,12 @@ class TaskController extends AccountBaseController
         if (request()->has('default_assign') && request('default_assign') != '') {
             $this->defaultAssignee = request('default_assign');
         }
+        elseif ($this->ticket && $this->ticket->agent_id) {
+            $this->defaultAssignee = $this->ticket->agent_id;
+        }
+
+        $this->ticketTaskHeading = $this->ticket?->subject ?? '';
+        $this->ticketTaskDescription = trim((string) ($this->ticket?->latestReply?->message ?? ''));
 
         $this->dependantTasks = $completedTaskColumn ? Task::where('board_column_id', '<>', $completedTaskColumn->id)
             ->where('project_id', $this->projectID)
@@ -356,6 +364,7 @@ class TaskController extends AccountBaseController
         $task->start_date = companyToYmd($request->start_date);
         $task->due_date = $dueDate;
         $task->project_id = $request->project_id;
+        $task->ticket_id = $request->ticket_id ?: null;
         $task->task_category_id = $request->category_id;
         $task->priority = $request->priority;
         $task->board_column_id = $taskBoardColumn->id;

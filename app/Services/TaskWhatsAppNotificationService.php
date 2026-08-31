@@ -135,15 +135,19 @@ class TaskWhatsAppNotificationService
             return;
         }
 
-        $userIds = $task->users()->pluck('users.id')->toArray();
-        $userIds = array_values(array_unique(array_filter($userIds)));
+        $senderNumber = $setting->resolved_lead_created_sender_number;
 
-        if (empty($userIds)) {
+        $recipientIds = collect($task->users()->pluck('users.id')->toArray())
+            ->merge($this->completedClientRecipients($task)->pluck('id')->toArray())
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($recipientIds->isEmpty()) {
             return;
         }
 
-        $senderNumber = $setting->resolved_lead_created_sender_number;
-        $users = User::withoutGlobalScopes()->whereIn('id', $userIds)->get();
+        $users = User::withoutGlobalScopes()->whereIn('id', $recipientIds->all())->get();
 
         foreach ($users as $user) {
             $message = $this->renderTemplate(
@@ -261,6 +265,24 @@ class TaskWhatsAppNotificationService
         return trim(strtr($template, $placeholders));
     }
 
+    private function completedClientRecipients(Task $task): Collection
+    {
+        $recipients = collect();
+
+        if ($task->ticket?->requester) {
+            $recipients->push($task->ticket->requester);
+        }
+
+        if ($task->project?->client) {
+            $recipients->push($task->project->client);
+        }
+
+        return $recipients
+            ->filter(fn ($user) => $user instanceof User)
+            ->unique('id')
+            ->values();
+    }
+
     private function renderDailyPendingTemplate(
         WhatsappNotificationSetting $setting,
         User $user,
@@ -286,10 +308,19 @@ class TaskWhatsAppNotificationService
 
     private function userMobile(User $user): string
     {
-        if (!empty($user->mobile) && !empty($user->country_phonecode)) {
-            return preg_replace('/\D+/', '', $user->country_phonecode . $user->mobile);
+        $mobile = preg_replace('/\D+/', '', (string) $user->mobile);
+        $countryPhoneCode = preg_replace('/\D+/', '', (string) $user->country_phonecode);
+
+        while ($countryPhoneCode !== '' && strlen($mobile) > 10 && str_starts_with($mobile, $countryPhoneCode)) {
+            $mobile = substr($mobile, strlen($countryPhoneCode));
         }
 
-        return preg_replace('/\D+/', '', (string) $user->mobile);
+        $mobile = ltrim($mobile, '0');
+
+        if ($mobile !== '' && !empty($user->country_phonecode)) {
+            return preg_replace('/\D+/', '', $user->country_phonecode . $mobile);
+        }
+
+        return $mobile;
     }
 }

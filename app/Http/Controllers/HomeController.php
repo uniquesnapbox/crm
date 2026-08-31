@@ -825,12 +825,26 @@ class HomeController extends Controller
 
         /* $rules['g-recaptcha-response'] = 'required'; */
         $existing_user = User::withoutGlobalScope(ActiveScope::class)
-            ->select('id', 'email', 'mobile')
+            ->select('id', 'email', 'mobile', 'country_phonecode')
             ->where('email', $request->email)
             ->first();
         $newUser = $existing_user;
         $mobileNumber = trim((string) ($request->mobile ?? ''));
-        $mobileNumber = $mobileNumber === '' ? null : preg_replace('/[^\d+]/', '', $mobileNumber);
+        $mobileNumber = $mobileNumber === '' ? null : preg_replace('/\D+/', '', $mobileNumber);
+        if ($mobileNumber !== null && $mobileNumber !== '') {
+            $countryPhoneCode = trim((string) ($request->country_phonecode ?? '91'));
+            $countryPhoneCode = $countryPhoneCode === '' ? '91' : preg_replace('/\D+/', '', $countryPhoneCode);
+
+            while ($countryPhoneCode !== '' && strlen($mobileNumber) > 10 && str_starts_with($mobileNumber, $countryPhoneCode)) {
+                $mobileNumber = substr($mobileNumber, strlen($countryPhoneCode));
+                $mobileNumber = ltrim($mobileNumber, '0');
+            }
+        }
+
+        $mobileNumber = $mobileNumber !== null ? ltrim($mobileNumber, '0') : null;
+        $mobileNumber = $mobileNumber === '' ? null : $mobileNumber;
+        $countryPhoneCode = trim((string) ($request->country_phonecode ?? '91'));
+        $countryPhoneCode = $countryPhoneCode === '' ? '91' : preg_replace('/\D+/', '', $countryPhoneCode);
 
         if (!$existing_user) {
             $password = str_random(8);
@@ -840,6 +854,7 @@ class HomeController extends Controller
             $client->name = $request->name;
             $client->email = $request->email;
             $client->mobile = $mobileNumber;
+            $client->country_phonecode = $countryPhoneCode;
             $client->password = Hash::make($password);
             $client->save();
 
@@ -865,6 +880,13 @@ class HomeController extends Controller
         }
         elseif (!empty($mobileNumber) && empty($newUser->mobile)) {
             $newUser->mobile = $mobileNumber;
+        }
+
+        if (empty($newUser->country_phonecode)) {
+            $newUser->country_phonecode = $countryPhoneCode;
+        }
+
+        if ($newUser->isDirty(['mobile', 'country_phonecode'])) {
             $newUser->save();
         }
 
@@ -890,6 +912,10 @@ class HomeController extends Controller
         if ($request->custom_fields_data) {
             $ticket->updateCustomFieldData($request->custom_fields_data);
         }
+
+        app(\App\Services\TicketWhatsAppNotificationService::class)->sendAssignedClientNotification(
+            $ticket->fresh(['requester'])
+        );
 
         return Reply::success(__('messages.ticketCreateSuccess'));
     }

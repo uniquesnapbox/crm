@@ -487,7 +487,7 @@ $canEditTicket = ($editTicketPermission == 'all' || ($editTicketPermission == 'o
                             @foreach ($ticketWhatsappStatuses as $ticketWhatsappStatus)
                                 @php
                                     $status = $ticketWhatsappStatus['status'] ?: 'pending';
-                                    $statusText = $status === 'sent' ? 'Sent' : ($status === 'failed' ? 'Failed' : 'Pending');
+                                    $statusText = $status === 'sent' ? 'Sent' : ($status === 'failed' ? 'Failed' : ($status === 'partial' ? 'Partial' : 'Pending'));
                                     $statusClass = $status === 'sent' ? 'text-success' : ($status === 'failed' ? 'text-danger' : 'text-warning');
                                     $sentAt = $ticketWhatsappStatus['sent_at']
                                         ? $ticketWhatsappStatus['sent_at']->timezone(company()->timezone)->format(company()->date_format . ' ' . company()->time_format)

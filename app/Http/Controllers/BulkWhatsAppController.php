@@ -606,7 +606,7 @@ class BulkWhatsAppController extends AccountBaseController
             return false;
         }
 
-        if ($this->isAdminUser()) {
+        if ($this->isAdminUser() || user()->permission('view_lead') === 'all') {
             return true;
         }
 
