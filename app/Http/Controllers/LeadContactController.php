@@ -562,7 +562,7 @@ class LeadContactController extends AccountBaseController
             $viewLeadNotePermission = user()->permission('view_lead_note');
             $actionableFollowUpIds = [];
 
-            $historyItems = $historyRows->map(function (LeadHistory $row) use ($followUps, $notes, &$actionableFollowUpIds) {
+            $historyItems = $historyRows->map(function (LeadHistory $row) use ($followUps, $notes, $viewLeadNotePermission, &$actionableFollowUpIds) {
                 $meta = is_array($row->meta) ? $row->meta : [];
                 $followUpId = $meta['followup_id'] ?? null;
                 $followUp = $followUpId ? $followUps->get((int) $followUpId) : null;
