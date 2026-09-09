@@ -57,6 +57,7 @@ class ModuleSetting extends BaseModel
             'expenses',
             'leaves',
             'leads',
+            'partners',
             'holidays',
             'products',
             'reports',

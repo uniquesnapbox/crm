@@ -9,6 +9,7 @@ use App\Http\Controllers\ImageController;
 use App\Http\Controllers\LeaveController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ClientController;
+use App\Http\Controllers\PartnerController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\NoticeController;
 use App\Http\Controllers\SearchController;
@@ -172,6 +173,13 @@ Route::group(['middleware' => 'auth:sanctum,web', 'prefix' => 'account'], functi
     Route::post('clients/import/process', [ClientController::class, 'importProcess'])->name('clients.import.process');
     Route::get('clients/finance-count/{id}', [ClientController::class, 'financeCount'])->name('clients.finance_count');
     Route::resource('clients', ClientController::class);
+
+    Route::get('partners/reports', [PartnerController::class, 'reports'])->name('partners.reports');
+    Route::post('partners/{partner}/toggle-status', [PartnerController::class, 'toggleStatus'])->name('partners.toggle_status');
+    Route::post('partners/{partner}/sales', [PartnerController::class, 'storeSale'])->name('partners.sales.store');
+    Route::post('partners/{partner}/commission-payments', [PartnerController::class, 'storePayment'])->name('partners.commission_payments.store');
+    Route::post('partners/{partner}/commission-configs', [PartnerController::class, 'saveCommission'])->name('partners.commission_configs.store');
+    Route::resource('partners', PartnerController::class);
 
     Route::post('client-contacts/apply-quick-action', [ClientContactController::class, 'applyQuickAction'])->name('client-contacts.apply_quick_action');
     Route::resource('client-contacts', ClientContactController::class);
@@ -509,6 +517,7 @@ Route::group(['middleware' => 'auth:sanctum,web', 'prefix' => 'account'], functi
         Route::post('{lead}/quick-update', [LeadContactController::class, 'quickUpdate'])->name('lead-contact.quick_update');
         Route::get('{lead}/follow-up/create', [LeadContactController::class, 'followUpCreate'])->name('lead-contact.follow_up');
         Route::post('follow-up-store', [LeadContactController::class, 'followUpStore'])->name('lead-contact.follow_up_store');
+        Route::get('follow-up-show/{id}', [LeadContactController::class, 'showFollowUp'])->name('lead-contact.follow_up_show');
         Route::get('follow-up-edit/{id}', [LeadContactController::class, 'editFollow'])->name('lead-contact.follow_up_edit');
         Route::post('follow-up-update', [LeadContactController::class, 'updateFollow'])->name('lead-contact.follow_up_update');
         Route::post('follow-up-delete/{id}', [LeadContactController::class, 'deleteFollow'])->name('lead-contact.follow_up_delete');

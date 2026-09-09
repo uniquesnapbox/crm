@@ -18,6 +18,7 @@ class ProductionReadinessSmokeTest extends TestCase
             '/account/tasks',
             '/account/invoices',
             '/account/payments',
+            '/account/partners',
         ] as $uri) {
             $this->get($uri)->assertRedirect('/login');
         }
@@ -55,6 +56,8 @@ class ProductionReadinessSmokeTest extends TestCase
             'tasks.index',
             'invoices.index',
             'payments.index',
+            'partners.index',
+            'partners.reports',
             'whatsapp.send-message',
             'api.login',
         ] as $routeName) {

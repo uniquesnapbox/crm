@@ -23,6 +23,7 @@ use App\Models\LeadCustomForm;
 use App\Models\LeadFollowUp;
 use App\Models\LeadFollowUpAttachment;
 use App\Models\LeadHistory;
+use App\Models\LeadNote;
 use App\Models\LeadSource;
 use App\Models\LeadStatus;
 use App\Models\LeadWhatsAppMessage;
@@ -87,6 +88,13 @@ class LeadContactController extends AccountBaseController
         $this->leadContact = Lead::with($leadRelations)->findOrFail($id);
 
         if ($isProfileTab) {
+            // Fetch the latest note for this lead only. The ID is used as a
+            // deterministic tie-breaker when notes share the same timestamp.
+            $this->leadContact->setRelation('latestNote', LeadNote::query()
+                ->where('lead_id', $this->leadContact->id)
+                ->orderByDesc('created_at')
+                ->orderByDesc('id')
+                ->first());
             $this->leadContact->withCustomFields();
         }
 
@@ -539,15 +547,34 @@ class LeadContactController extends AccountBaseController
                 ->map(fn ($meta) => (int) $meta['followup_id'])
                 ->unique()
                 ->values();
+            $noteIds = $historyRows
+                ->pluck('meta')
+                ->filter(fn ($meta) => is_array($meta) && !empty($meta['note_id']))
+                ->map(fn ($meta) => (int) $meta['note_id'])
+                ->unique()
+                ->values();
             $followUps = $followUpIds->isEmpty()
                 ? collect()
                 : LeadFollowUp::with('lead')->whereIn('id', $followUpIds)->get()->keyBy('id');
+            $notes = $noteIds->isEmpty()
+                ? collect()
+                : LeadNote::with('members')->whereIn('id', $noteIds)->get()->keyBy('id');
+            $viewLeadNotePermission = user()->permission('view_lead_note');
             $actionableFollowUpIds = [];
 
-            $historyItems = $historyRows->map(function (LeadHistory $row) use ($followUps, &$actionableFollowUpIds) {
+            $historyItems = $historyRows->map(function (LeadHistory $row) use ($followUps, $notes, &$actionableFollowUpIds) {
                 $meta = is_array($row->meta) ? $row->meta : [];
                 $followUpId = $meta['followup_id'] ?? null;
                 $followUp = $followUpId ? $followUps->get((int) $followUpId) : null;
+                $noteId = $meta['note_id'] ?? null;
+                $note = $noteId ? $notes->get((int) $noteId) : null;
+                $noteMemberIds = $note ? $note->members->pluck('user_id')->toArray() : [];
+                $canEditNote = $note && (
+                    $viewLeadNotePermission === 'all'
+                    || ($viewLeadNotePermission === 'added' && (int) $note->added_by === (int) user()->id)
+                    || ($viewLeadNotePermission === 'owned' && in_array(user()->id, $noteMemberIds) && in_array('employee', user_roles()))
+                    || ($viewLeadNotePermission === 'both' && ((int) $note->added_by === (int) user()->id || in_array(user()->id, $noteMemberIds)))
+                );
                 // History metadata is an immutable snapshot. For actionable
                 // rows always render the live status from lead_follow_up;
                 // otherwise an old "Follow-up Added" event keeps showing
@@ -581,8 +608,11 @@ class LeadContactController extends AccountBaseController
                     'description' => $row->description ?: '--',
                     'meta' => 'By ' . (optional($row->createdBy)->name ?: 'System'),
                     'timestamp' => $row->event_at ?: $row->created_at,
+                    'note_view_url' => $note ? route('lead-notes.show', $note->id) : null,
+                    'note_edit_url' => $canEditNote ? route('lead-notes.edit', $note->id) : null,
                     'followup_id' => $followUpId,
                     'followup_status' => $followUpStatus,
+                    'followup_view_url' => $followUp ? route('lead-contact.follow_up_show', $followUp->id) : null,
                     'followup_edit_url' => $followUpId ? route('lead-contact.follow_up_edit', $followUpId) : null,
                     'can_update_followup_status' => $canEditFollowUp && $isLatestFollowUpEntry,
                     'can_edit_followup' => $canEditFollowUp && $isLatestFollowUpEntry,
@@ -638,6 +668,7 @@ class LeadContactController extends AccountBaseController
                 'timestamp' => $followUp->updated_at ?: $followUp->created_at ?: $followUp->next_follow_up_date,
                 'followup_id' => $followUp->id,
                 'followup_status' => $followUp->status ?: 'pending',
+                'followup_view_url' => route('lead-contact.follow_up_show', $followUp->id),
                 'followup_edit_url' => route('lead-contact.follow_up_edit', $followUp->id),
                 'can_update_followup_status' => $canEditFollowUp,
                 'can_edit_followup' => $canEditFollowUp,
@@ -1278,24 +1309,31 @@ class LeadContactController extends AccountBaseController
         if ($actionType === 'assign-to') {
             abort_403(!$this->canManageLeadAssignment());
 
+            $assignedToInput = $request->input('assigned_to', []);
+            $assignedToIds = collect(is_array($assignedToInput) ? $assignedToInput : [$assignedToInput])
+                ->map(fn ($id) => (int) $id)
+                ->filter()
+                ->unique()
+                ->values();
+
             $request->validate([
-                'assigned_to' => 'required|exists:users,id',
+                'assigned_to' => 'required|array|min:1',
+                'assigned_to.*' => 'integer',
             ]);
 
-            $assignedTo = (int) $request->input('assigned_to');
             $employeeIds = User::allEmployees(null, true, null, company()->id)
                 ->pluck('id')
                 ->map(fn ($id) => (int) $id)
                 ->all();
 
-            if (!in_array($assignedTo, $employeeIds, true)) {
-                return Reply::error('Invalid assignee selected.');
+            if ($assignedToIds->isEmpty() || $assignedToIds->diff($employeeIds)->isNotEmpty()) {
+                return Reply::error('One or more selected assignees are invalid.');
             }
 
             $currentUserId = user()->id ?? null;
             $now = now();
 
-            $result = DB::transaction(function () use ($leadIds, $assignedTo, $currentUserId, $now) {
+            $result = DB::transaction(function () use ($leadIds, $assignedToIds, $currentUserId, $now) {
                 $leadRows = Lead::query()
                     ->select('id', 'company_id', 'added_by', 'assigned_to')
                     ->whereIn('id', $leadIds->all())
@@ -1305,22 +1343,26 @@ class LeadContactController extends AccountBaseController
                     return $this->canAccessLead($lead);
                 })->values();
 
-                $eligibleLeads = $accessibleLeads->reject(function (Lead $lead) use ($assignedTo) {
-                    return (int) $lead->assigned_to === $assignedTo;
-                })->values();
-
                 $skippedCount = $leadRows->count() - $accessibleLeads->count();
 
-                if ($eligibleLeads->isEmpty()) {
+                if ($accessibleLeads->isEmpty()) {
                     return null;
                 }
 
+                $existingAssignments = DB::table('lead_assignees')
+                    ->whereIn('lead_id', $accessibleLeads->pluck('id')->all())
+                    ->get(['lead_id', 'user_id'])
+                    ->groupBy('lead_id')
+                    ->map(fn ($rows) => $rows->pluck('user_id')->map(fn ($id) => (int) $id)->all());
+
+                $newAssignments = [];
+                $primaryUpdates = [];
                 $historyRows = [];
-                $historyUserIds = $eligibleLeads
+                $historyUserIds = $accessibleLeads
                     ->pluck('assigned_to')
                     ->filter()
                     ->map(fn ($id) => (int) $id)
-                    ->push($assignedTo)
+                    ->merge($assignedToIds)
                     ->filter()
                     ->unique()
                     ->values()
@@ -1330,25 +1372,48 @@ class LeadContactController extends AccountBaseController
                     ->whereIn('id', $historyUserIds)
                     ->pluck('name', 'id');
 
-                $newAssigneeName = $userNameMap->get($assignedTo) ?: '--';
+                foreach ($accessibleLeads as $lead) {
+                    $existingUserIds = collect($existingAssignments->get($lead->id, []));
+                    $newUserIds = $assignedToIds->diff($existingUserIds)->values();
 
-                foreach ($eligibleLeads as $lead) {
+                    foreach ($newUserIds as $assignedTo) {
+                        $newAssignments[] = [
+                            'lead_id' => $lead->id,
+                            'user_id' => $assignedTo,
+                            'assigned_by' => $currentUserId,
+                            'created_at' => $now,
+                            'updated_at' => $now,
+                        ];
+                    }
+
+                    // Keep the legacy primary assignment populated for existing screens and APIs.
+                    if (is_null($lead->assigned_to) && $assignedToIds->isNotEmpty()) {
+                        $primaryUpdates[$lead->id] = $assignedToIds->first();
+                    }
+
+                    if ($newUserIds->isEmpty()) {
+                        continue;
+                    }
+
                     $oldAssigneeId = $lead->assigned_to ? (int) $lead->assigned_to : null;
                     $oldAssigneeName = $oldAssigneeId ? ($userNameMap->get($oldAssigneeId) ?: '--') : '--';
+                    $newAssigneeNames = $newUserIds
+                        ->map(fn ($id) => $userNameMap->get($id) ?: '--')
+                        ->implode(', ');
 
                     $historyRows[] = [
                         'company_id' => $lead->company_id ?: (company()->id ?? null),
                         'lead_id' => $lead->id,
                         'event_type' => 'lead_field_updated',
-                        'title' => 'Lead Updated',
-                        'description' => 'Assigned To changed from "' . $oldAssigneeName . '" to "' . $newAssigneeName . '".',
-                        'field_key' => 'assigned_to',
+                        'title' => 'Lead Assignees Updated',
+                        'description' => 'Added assignees: "' . $newAssigneeNames . '". Primary assignee: "' . $oldAssigneeName . '".',
+                        'field_key' => 'assignees',
                         'old_value' => $oldAssigneeName,
-                        'new_value' => $newAssigneeName,
+                        'new_value' => $newAssigneeNames,
                         'meta' => json_encode([
-                            'field' => 'assigned_to',
+                            'field' => 'assignees',
                             'old' => $oldAssigneeName,
-                            'new' => $newAssigneeName,
+                            'new' => $newAssigneeNames,
                         ]),
                         'created_by' => $currentUserId,
                         'event_at' => $now,
@@ -1357,21 +1422,25 @@ class LeadContactController extends AccountBaseController
                     ];
                 }
 
-                // Keep the write path to one update query and recreate the history rows
-                // that the Lead observer would normally write for each saved model.
-                Lead::whereIn('id', $eligibleLeads->pluck('id')->all())
-                    ->update([
+                if ($newAssignments) {
+                    DB::table('lead_assignees')->insertOrIgnore($newAssignments);
+                }
+
+                foreach ($primaryUpdates as $leadId => $assignedTo) {
+                    Lead::whereKey($leadId)->update([
                         'assigned_to' => $assignedTo,
                         'last_updated_by' => $currentUserId,
                         'updated_at' => $now,
                     ]);
+                }
 
                 if (!empty($historyRows) && Schema::hasTable('lead_histories')) {
                     DB::table('lead_histories')->insert($historyRows);
                 }
 
                 return [
-                    'updated_count' => $eligibleLeads->count(),
+                    'updated_count' => $accessibleLeads->count(),
+                    'added_assignments' => count($newAssignments),
                     'skipped_count' => $skippedCount,
                 ];
             });
@@ -1476,6 +1545,27 @@ class LeadContactController extends AccountBaseController
         abort_403(!$this->canEditFollowUpRecord($this->follow));
 
         return view('lead-contact.followups.edit', $this->data);
+    }
+
+    public function showFollowUp($id)
+    {
+        $viewFollowUpPermission = user()->permission('view_lead_follow_up');
+        abort_403(!in_array($viewFollowUpPermission, ['all', 'added', 'both', 'owned']));
+
+        $followUpQuery = LeadFollowUp::with(['lead', 'addedBy']);
+
+        if (Schema::hasTable('lead_follow_up_attachments')) {
+            $followUpQuery->with('attachments');
+        }
+
+        $this->follow = $followUpQuery->findOrFail($id);
+        abort_403(!$this->canAccessLead($this->follow->lead));
+
+        $this->followAttachments = Schema::hasTable('lead_follow_up_attachments')
+            ? ($this->follow->attachments ?? collect())
+            : collect();
+
+        return view('lead-contact.followups.show', $this->data);
     }
 
     public function updateFollow(Request $request)

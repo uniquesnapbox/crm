@@ -443,10 +443,18 @@ app.get("/qr", requireApiKey, async (req, res) => {
   );
 
   try {
-    await manager.ensureClient(sessionKey);
-    const qrInfo = forceRefresh
-      ? await manager.refreshQr(sessionKey)
-      : manager.getQrInfo(sessionKey);
+    let qrInfo;
+    if (forceRefresh) {
+      qrInfo = await manager.refreshQr(sessionKey);
+    } else {
+      manager.ensureClient(sessionKey).catch((error) => {
+        logger.warn("WhatsApp QR background initialization failed", {
+          sessionKey,
+          error: error.message
+        });
+      });
+      qrInfo = manager.getQrInfo(sessionKey);
+    }
 
     return res.status(200).json({
       success: true,
@@ -626,8 +634,6 @@ async function bootstrap() {
   pruneIdempotencyStore();
   setInterval(pruneIdempotencyStore, 10 * 60 * 1000).unref();
 
-  await manager.initAll();
-
   await new Promise((resolve, reject) => {
     const onError = (error) => {
       server.off("error", onError);
@@ -646,6 +652,13 @@ async function bootstrap() {
     nodeEnv: config.nodeEnv,
     sessions: config.sessions,
     socketPath: config.socketPath
+  });
+
+  manager.initAll().catch((error) => {
+    logger.error("WhatsApp background bootstrap failed", {
+      error: error.message,
+      stack: error.stack
+    });
   });
 }
 

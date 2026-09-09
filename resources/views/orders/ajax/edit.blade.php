@@ -77,6 +77,22 @@ $addProductPermission = user()->permission('add_product');
 
         <!-- ORDER NUMBER, DATE, DUE DATE, FREQUENCY END -->
 
+        @if(isset($partners) && $partners->count())
+        <div class="row px-lg-4 px-md-4 px-3 pb-3">
+            <div class="col-md-4">
+                <div class="form-group c-inv-select mb-0">
+                    <x-forms.label fieldId="partner_id" fieldLabel="Partner"></x-forms.label>
+                    <select name="partner_id" id="partner_id" class="form-control select-picker" data-live-search="true">
+                        <option value="">No Partner</option>
+                        @foreach($partners as $partner)
+                            <option value="{{ $partner->id }}" @selected((int) $order->partner_id === (int) $partner->id)>{{ $partner->partner_name }}{{ $partner->company_name ? ' - '.$partner->company_name : '' }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+        </div>
+        @endif
+
         <hr class="m-0 border-top-grey">
 
         <div class="row px-lg-4 px-md-4 px-3 py-3">

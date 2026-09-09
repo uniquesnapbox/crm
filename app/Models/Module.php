@@ -1241,6 +1241,52 @@ class Module extends BaseModel
             ]
         ],
         [
+            'module_name' => 'partners',
+            'description' => 'Partner sales and commission management',
+            'permissions' => [
+                [
+                    'allowed_permissions' => Permission::ALL_ADDED_NONE,
+                    'is_custom' => 0,
+                    'name' => 'add_partner',
+                ],
+                [
+                    'allowed_permissions' => Permission::ALL_4_ADDED_1_OWNED_2_BOTH_3_NONE_5,
+                    'is_custom' => 0,
+                    'name' => 'view_partner',
+                ],
+                [
+                    'allowed_permissions' => Permission::ALL_4_ADDED_1_OWNED_2_BOTH_3_NONE_5,
+                    'is_custom' => 0,
+                    'name' => 'edit_partner',
+                ],
+                [
+                    'allowed_permissions' => Permission::ALL_4_ADDED_1_OWNED_2_BOTH_3_NONE_5,
+                    'is_custom' => 0,
+                    'name' => 'delete_partner',
+                ],
+                [
+                    'allowed_permissions' => Permission::ALL_NONE,
+                    'is_custom' => 1,
+                    'name' => 'view_partner_commission',
+                ],
+                [
+                    'allowed_permissions' => Permission::ALL_ADDED_NONE,
+                    'is_custom' => 1,
+                    'name' => 'add_partner_sale',
+                ],
+                [
+                    'allowed_permissions' => Permission::ALL_NONE,
+                    'is_custom' => 1,
+                    'name' => 'add_partner_commission_payment',
+                ],
+                [
+                    'allowed_permissions' => Permission::ALL_NONE,
+                    'is_custom' => 1,
+                    'name' => 'view_partner_report',
+                ],
+            ],
+        ],
+        [
             'module_name' => 'holidays',
             'permissions' => [
                 [

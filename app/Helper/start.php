@@ -570,6 +570,11 @@ if (!function_exists('check_migrate_status')) {
     function check_migrate_status()
     {
 
+        // Local preview: migrations are intentionally not auto-run on each request.
+        if (app()->environment('local')) {
+            return 'Good';
+        }
+
         if (!session()->has('check_migrate_status')) {
 
             $status = Artisan::call('migrate:check');
@@ -859,6 +864,7 @@ if (!function_exists('sidebar_user_perms')) {
             $sidebarPermissionsArray = [
                 'view_clients',
                 'view_lead',
+                'view_partner',
                 'view_employees',
                 'view_leave',
                 'view_attendance',

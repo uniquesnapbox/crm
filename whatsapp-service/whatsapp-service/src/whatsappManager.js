@@ -246,6 +246,31 @@ class WhatsAppManager extends EventEmitter {
         return;
       }
 
+      const normalizedReason = String(reason || "unknown").toUpperCase();
+      if (["LOGOUT", "UNPAIRED", "UNPAIRED_IDLE"].includes(normalizedReason)) {
+        this.status.set(key, "initializing");
+        logger.warn("WhatsApp auth session was invalidated; starting clean QR recovery", {
+          sessionKey: key,
+          reason: normalizedReason
+        });
+
+        const recoveryTimer = setTimeout(async () => {
+          try {
+            await this.quarantineLoggedOutSession(key, normalizedReason.toLowerCase());
+            await this.reconnect(key, `auth_${normalizedReason.toLowerCase()}`);
+          } catch (error) {
+            logger.error("WhatsApp clean QR recovery failed", {
+              sessionKey: key,
+              reason: normalizedReason,
+              error: error.message
+            });
+            this.scheduleReconnect(key, `auth_${normalizedReason.toLowerCase()}`);
+          }
+        }, 2000);
+        recoveryTimer.unref?.();
+        return;
+      }
+
       this.status.set(key, "disconnected");
       logger.warn("WhatsApp disconnected", { sessionKey: key, reason });
       this.emit("whatsapp-disconnected", {
@@ -352,6 +377,34 @@ class WhatsAppManager extends EventEmitter {
     };
 
     await removeLockFiles(sessionDir);
+  }
+
+  async quarantineLoggedOutSession(sessionKey, reason = "logout") {
+    const key = sessionKey || this.config.defaultSession;
+    const sessionDir = path.resolve(this.config.dataPath, `session-${key}`);
+    const dataRoot = `${path.resolve(this.config.dataPath)}${path.sep}`;
+
+    if (!sessionDir.startsWith(dataRoot) || !fs.existsSync(sessionDir)) {
+      return null;
+    }
+
+    const backupDir = `${sessionDir}.backup-${reason}-${Date.now()}`;
+    try {
+      await fs.promises.rename(sessionDir, backupDir);
+      logger.warn("Quarantined invalid WhatsApp auth profile for QR recovery", {
+        sessionKey: key,
+        reason,
+        backupDir
+      });
+      return backupDir;
+    } catch (error) {
+      logger.warn("Unable to quarantine invalid WhatsApp auth profile", {
+        sessionKey: key,
+        reason,
+        error: error.message
+      });
+      return null;
+    }
   }
 
   isRetryableBootstrapError(error) {
@@ -601,8 +654,6 @@ class WhatsAppManager extends EventEmitter {
 
     let attempt = 0;
     const maxAttempts = 24;
-    let detachedFrameHits = 0;
-
     const probe = async () => {
       this.readyReconcileTimers.delete(key);
 
@@ -630,26 +681,6 @@ class WhatsAppManager extends EventEmitter {
           return;
         }
 
-        const inspectionText = `${inspection.waState || ""}\n${inspection?.page?.error || ""}`.toLowerCase();
-        if (inspectionText.includes("detached frame")) {
-          detachedFrameHits += 1;
-        }
-
-        if (
-          detachedFrameHits >= 2 &&
-          this.hasPersistedSessionArtifacts(key) &&
-          !this.manualDisconnectedSessions.has(key) &&
-          this.getStatus(key) !== "ready"
-        ) {
-          logger.warn("WhatsApp readiness probe falling back to persisted auth artifacts", {
-            sessionKey: key,
-            reason,
-            attempt: attempt + 1,
-            detachedFrameHits
-          });
-          this.markSessionReady(key, `probe:${reason}:persisted_auth`, inspection);
-          return;
-        }
       } catch (error) {
         logger.debug("WhatsApp readiness probe failed", {
           sessionKey: key,
@@ -769,8 +800,6 @@ class WhatsAppManager extends EventEmitter {
     const key = sessionKey || this.config.defaultSession;
     const currentStatus = this.getStatus(key);
     const currentQr = this.getQr(key);
-    const generatedAt = this.qrGeneratedAt.get(key);
-    const qrAgeMs = generatedAt ? Date.now() - Date.parse(generatedAt) : Number.POSITIVE_INFINITY;
 
     if (["ready", "authenticated"].includes(currentStatus)) {
       return this.getQrInfo(key);
@@ -792,8 +821,17 @@ class WhatsAppManager extends EventEmitter {
       }
     }
 
-    // Old dashboard tabs may still poll with refresh=1. Never recycle a fresh QR mid-scan.
-    if (currentStatus === "qr_required" && currentQr && qrAgeMs < 60000) {
+    // WhatsApp rotates QR tokens on the existing page. Recycling an active browser
+    // invalidates the QR currently visible in the CRM and can trap the session in
+    // an initialization loop when multiple dashboard tabs are open.
+    if (existingClient && ["initializing", "qr_required"].includes(this.getStatus(key))) {
+      if (!currentQr) {
+        try {
+          await this.waitForQrOrReady(key, 10000);
+        } catch (_) {
+          // Return the current state; the dashboard poller will request it again.
+        }
+      }
       return this.getQrInfo(key);
     }
 

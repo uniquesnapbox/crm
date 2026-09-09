@@ -125,8 +125,15 @@
         }
 
         .lead-contact-bulk-bar {
+            display: flex;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
             min-height: 46px;
+        }
+
+        .lead-contact-bulk-bar.d-none {
+            display: none !important;
         }
 
         .lead-contact-bulk-bar.is-visible {
@@ -134,7 +141,13 @@
         }
 
         .lead-contact-bulk-bar #quick-action-form {
-            display: block;
+            display: block !important;
+            flex: 1 1 auto;
+        }
+
+        .lead-contact-bulk-bar #quick-actions {
+            flex-wrap: wrap;
+            gap: 8px;
         }
 
         @media (max-width: 991.98px) {
@@ -174,10 +187,34 @@
             padding: 0.2rem 0.45rem;
         }
 
+        #lead-contact-table .lead-table-actions {
+            min-width: 104px;
+            white-space: nowrap;
+        }
+
         #lead-contact-table .lead-inline-select-wrap .form-control {
             height: 30px;
             font-size: 12px;
             border-radius: 8px;
+        }
+
+        #lead-contact-table .lead-assignee-list {
+            max-width: 190px;
+            margin-bottom: 4px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: #4f6fad;
+            font-size: 11px;
+        }
+
+        .content-wrapper.lead-contact-page {
+            padding: 0 !important;
+        }
+
+        .lead-contact-page .w-tables {
+            margin-top: 0 !important;
+            border-radius: 0 !important;
         }
     </style>
 @endpush
@@ -196,9 +233,9 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
 
     @section('content')
     <!-- CONTENT WRAPPER START -->
-    <div class="content-wrapper">
+    <div class="content-wrapper lead-contact-page">
         <!-- Task Box Start -->
-        <div class="d-flex flex-column w-tables rounded mt-3 bg-white table-responsive">
+        <div class="d-flex flex-column w-tables bg-white table-responsive">
 
             {!! $dataTable->table(['class' => 'table table-hover border-0 w-100']) !!}
 
@@ -401,10 +438,11 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
 
         $('#quick-action-apply').click(function() {
             const actionValue = $('#quick-action-type').val();
-            if (actionValue == 'assign-to' && ($('#assigned_to').val() || '') === '') {
+            const selectedAssignees = $('#assigned_to').val() || [];
+            if (actionValue == 'assign-to' && selectedAssignees.length === 0) {
                 Swal.fire({
                     title: "@lang('messages.sweetAlertTitle')",
-                    text: "Please select an employee to assign the selected leads.",
+                    text: "Please select at least one employee to assign the selected leads.",
                     icon: 'warning',
                     confirmButtonText: "@lang('app.ok')",
                     customClass: {
@@ -594,8 +632,18 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
             @endif
         });
 
+        let leadContactBulkActionSyncPending = false;
+
         const leadContactScheduleBulkActionUpdate = (callback) => {
-            window.setTimeout(callback, 0);
+            if (leadContactBulkActionSyncPending) {
+                return;
+            }
+
+            leadContactBulkActionSyncPending = true;
+            window.requestAnimationFrame(function() {
+                leadContactBulkActionSyncPending = false;
+                callback();
+            });
         };
 
         let leadContactBulkActionsVisible = false;
@@ -637,6 +685,10 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
             const $actionType = $('#quick-action-type');
             $actionType.prop('disabled', false);
 
+            if ($actionType.length > 0 && typeof $actionType.selectpicker === 'function') {
+                $actionType.selectpicker('enable');
+            }
+
             if ($actionType.val() == '') {
                 $('#quick-action-apply').prop('disabled', true);
             }
@@ -667,11 +719,15 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
 
             const $fields = $('#quick-actions').find('input, textarea, button, select');
             $fields.prop('disabled', true);
+            const $actionType = $('#quick-action-type');
+            if ($actionType.length > 0 && typeof $actionType.selectpicker === 'function') {
+                $actionType.selectpicker('disable');
+            }
             leadContactSetAssignedToState(false);
         };
 
         const leadContactSyncBulkActionState = () => {
-            const $selectedRows = $(".select-table-row:checked");
+            const $selectedRows = $("#lead-contact-table .select-table-row:checked");
             const selectedCount = $selectedRows.length;
             const $selectAll = $("#select-all-table");
 
@@ -728,28 +784,36 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
 
         window.selectAllTable = (source) => {
             const shouldCheck = !!source.checked;
-            const checkboxes = document.getElementsByName("datatable_ids[]");
+            const checkboxes = document.querySelectorAll("#lead-contact-table input[name='datatable_ids[]']");
 
-            for (let i = 0, n = checkboxes.length; i < n; i++) {
-                if (checkboxes[i].disabled) {
-                    continue;
+            checkboxes.forEach((checkbox) => {
+                if (checkbox.disabled) {
+                    return;
                 }
 
-                checkboxes[i].checked = shouldCheck;
+                checkbox.checked = shouldCheck;
 
-                const row = checkboxes[i].closest("tr");
+                const row = checkbox.closest("tr");
                 if (row) {
                     row.classList.toggle("table-active", shouldCheck);
                 }
-            }
+            });
 
-            if (shouldCheck) {
-                leadContactShowBulkActions();
-            } else {
-                leadContactHideBulkActions();
-            }
+            source.indeterminate = false;
+            leadContactSyncBulkActionState();
 
         };
+
+        // Keep the bulk toolbar working even when DataTables redraws the rows.
+        $('#lead-contact-table')
+            .off('change.leadContactBulk', '.select-table-row')
+            .on('change.leadContactBulk', '.select-table-row', function() {
+                const row = this.closest('tr');
+                if (row) {
+                    row.classList.toggle('table-active', this.checked);
+                }
+                leadContactSyncBulkActionState();
+            });
 
         window.resetActionButtons = () => {
             const form = document.getElementById('quick-action-form');

@@ -3,6 +3,11 @@
     $routeMatches = static fn(array $patterns) => collect($patterns)->contains(fn($pattern) => request()->routeIs($pattern));
     $isDashboardMenuActive = $routeMatches(['dashboard', 'dashboard.advanced']);
     $isLeadMenuActive = $routeMatches(['lead-contact.*', 'calendar.*']);
+    $isPartnerMenuActive = $routeMatches(['partners.*']);
+    $isPartnersModuleEnabled = \App\Models\ModuleSetting::checkModule('partners');
+    $canViewPartners = in_array('admin', user_roles(), true)
+        || (isset($sidebarUserPermissions['view_partner'])
+            && !in_array($sidebarUserPermissions['view_partner'], [5, 'none'], true));
     $isWhatsAppMenuActive = $routeMatches(['whatsapp.*']);
     $canViewBulkWhatsApp = in_array(user()->permission('view_lead'), ['all', 'added', 'owned', 'both'], true)
         && user()->permission('view_bulk_whatsapp') === 'all';
@@ -65,7 +70,6 @@
             </div>
         </x-menu-item>
     @endif
-
 
     <!-- NAV ITEM - WHATSAPP -->
     @if (in_array('leads', user_modules()) && $canViewBulkWhatsApp)
@@ -232,6 +236,15 @@
             <x-slot name="iconPath">
                 <path
                     d="M0 1.5A.5.5 0 0 1 .5 1H2a.5.5 0 0 1 .485.379L2.89 3H14.5a.5.5 0 0 1 .49.598l-1 5a.5.5 0 0 1-.465.401l-9.397.472L4.415 11H13a.5.5 0 0 1 0 1H4a.5.5 0 0 1-.491-.408L2.01 3.607 1.61 2H.5a.5.5 0 0 1-.5-.5zM3.102 4l.84 4.479 9.144-.459L13.89 4H3.102zM5 12a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm7 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-7 1a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm7 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2z" />
+            </x-slot>
+        </x-menu-item>
+    @endif
+
+    <!-- NAV ITEM - PARTNERS -->
+    @if (!in_array('client', user_roles()) && $isPartnersModuleEnabled && $canViewPartners)
+        <x-menu-item icon="people" :text="'Partners'" :link="route('partners.index')" :active="$isPartnerMenuActive">
+            <x-slot name="iconPath">
+                <path d="M5.5 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm5 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM0 14s0-4 5.5-4 5.5 4 5.5 4H0zm10 0s.05-2.35 2.9-3.45C15.55 11.45 15.5 14 15.5 14H10z" />
             </x-slot>
         </x-menu-item>
     @endif

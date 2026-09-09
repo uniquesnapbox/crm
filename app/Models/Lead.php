@@ -7,6 +7,7 @@ use App\Traits\CustomFieldsTrait;
 use App\Traits\HasCompany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
@@ -147,6 +148,11 @@ class Lead extends BaseModel
         return $this->belongsTo(LeadNote::class, 'lead_id');
     }
 
+    public function latestNote(): HasOne
+    {
+        return $this->hasOne(LeadNote::class, 'lead_id')->latestOfMany('created_at');
+    }
+
     public function followUps(): HasMany
     {
         return $this->hasMany(LeadFollowUp::class, 'lead_id')->orderByDesc('next_follow_up_date');
@@ -170,6 +176,14 @@ class Lead extends BaseModel
     public function assignedTo(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_to')->withoutGlobalScope(ActiveScope::class);
+    }
+
+    public function assignees(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'lead_assignees', 'lead_id', 'user_id')
+            ->withPivot('assigned_by')
+            ->withTimestamps()
+            ->withoutGlobalScope(ActiveScope::class);
     }
 
     public function leadAgent(): HasOneThrough

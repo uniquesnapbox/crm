@@ -53,6 +53,28 @@ class LeadContactDataTable extends BaseDataTable
         $datatables->addIndexColumn();
         $datatables->addColumn('check', fn($row) => $this->checkBox($row));
 
+        if ($this->showActionColumn()) {
+            $datatables->addColumn('action', function ($row) {
+                $action = '<div class="d-flex align-items-center justify-content-end lead-table-actions">';
+                $action .= '<a href="' . route('lead-contact.show', [$row->id]) . '" class="btn btn-sm btn-outline-secondary mr-1" title="' . __('app.view') . '"><i class="fa fa-eye"></i></a>';
+
+                if ($this->canInlineEdit($row)) {
+                    $action .= '<a class="btn btn-sm btn-outline-primary mr-1 openRightModal" href="' . route('lead-contact.edit', [$row->id]) . '" title="' . __('app.edit') . '"><i class="fa fa-edit"></i></a>';
+                }
+
+                if (
+                    $this->deleteLeadPermission == 'all'
+                    || ($this->deleteLeadPermission == 'added' && user()->id == $row->added_by)
+                    || ($this->deleteLeadPermission == 'owned' && user()->id == $row->assigned_to)
+                    || ($this->deleteLeadPermission == 'both' && (user()->id == $row->assigned_to || user()->id == $row->added_by))
+                ) {
+                    $action .= '<a class="btn btn-sm btn-outline-danger delete-table-row" href="javascript:;" data-id="' . $row->id . '" title="' . __('app.delete') . '"><i class="fa fa-trash"></i></a>';
+                }
+
+                return $action . '</div>';
+            });
+        }
+
         $datatables->addColumn('export_email', fn($row) => $row->client_email);
         $datatables->addColumn('lead_value', fn($row) => currency_format($row->value, $row->currency_id));
         $datatables->addColumn('name', fn($row) => $row->client_name);
@@ -94,7 +116,7 @@ class LeadContactDataTable extends BaseDataTable
 
         $customFieldColumns = CustomField::customFieldData($datatables, Lead::CUSTOM_FIELD_MODEL);
 
-        $datatables->rawColumns(array_merge(['client_name', 'check', 'lead_status', 'interest_level', 'assigned_to'], $customFieldColumns));
+        $datatables->rawColumns(array_merge(['client_name', 'check', 'lead_status', 'interest_level', 'assigned_to', 'action'], $customFieldColumns));
 
         return $datatables;
     }
@@ -113,6 +135,9 @@ class LeadContactDataTable extends BaseDataTable
             'assignedTo' => fn ($query) => $query
                 ->without(['clientDetails', 'employeeDetail', 'leaves', 'roles'])
                 ->select('id', 'name', 'company_id'),
+            'assignees' => fn ($query) => $query
+                ->without(['clientDetails', 'employeeDetail', 'leaves', 'roles'])
+                ->select('users.id', 'users.name', 'users.company_id'),
         ])
             ->select(
                 'leads.id',
@@ -289,8 +314,22 @@ class LeadContactDataTable extends BaseDataTable
             unset($data[__('app.addedBy')], $data[__('modules.tasks.assignTo')]);
         }
 
-        return array_merge($data, CustomFieldGroup::customFieldsDataMerge(new Lead()));
+        $action = $this->showActionColumn() ? [
+            Column::computed('action', __('app.action'))
+                ->exportable(false)
+                ->printable(false)
+                ->orderable(false)
+                ->searchable(false)
+                ->addClass('text-right pr-20')
+        ] : [];
 
+        return array_merge($data, CustomFieldGroup::customFieldsDataMerge(new Lead()), $action);
+
+    }
+
+    private function showActionColumn(): bool
+    {
+        return request()->routeIs('lead-contact.index') || request()->is('account/lead-contact');
     }
 
     private function canInlineEdit($row): bool
@@ -389,8 +428,19 @@ class LeadContactDataTable extends BaseDataTable
 
     private function renderAssignedToColumn($row): string
     {
+        $assigneeNames = collect($row->assignees ?? [])
+            ->pluck('name')
+            ->filter()
+            ->values();
+
+        if ($assigneeNames->isEmpty() && $row->assignedTo?->name) {
+            $assigneeNames = collect([$row->assignedTo->name]);
+        }
+
+        $assigneeLabel = $assigneeNames->implode(', ');
+
         if (!$this->canInlineEdit($row)) {
-            return e($row->assignedTo->name ?? '--');
+            return e($assigneeLabel ?: '--');
         }
 
         $url = route('lead-contact.quick_update', $row->id);
@@ -403,11 +453,13 @@ class LeadContactDataTable extends BaseDataTable
             $options .= '<option value="' . e($employeeId) . '"' . $selected . '>' . e($employee->name) . '</option>';
         }
 
-        return '<div class="lead-inline-select-wrap">' .
+        return '<div class="lead-assignee-cell">' .
+            '<div class="lead-assignee-list" title="' . e($assigneeLabel ?: 'Unassigned') . '">' . e($assigneeLabel ?: 'Unassigned') . '</div>' .
+            '<div class="lead-inline-select-wrap">' .
             '<select class="form-control form-control-sm js-lead-table-inline-select" id="lead-contact-assigned-to-' . (int) $row->id . '" name="lead_contact_assigned_to_' . (int) $row->id . '" style="min-width:150px;" data-field="assigned_to" data-prev-value="' . e($selectedValue) . '" data-url="' . e($url) . '" data-id="' . (int) $row->id . '">' .
             $options .
             '</select>' .
-            '</div>';
+            '</div></div>';
     }
 
     private function statuses()

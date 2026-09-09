@@ -1,4 +1,62 @@
+const fs = require("fs");
 const path = require("path");
+
+function compareVersionNames(left, right) {
+  const parse = (value) => String(value).split(".").map((part) => Number.parseInt(part, 10) || 0);
+  const leftParts = parse(left);
+  const rightParts = parse(right);
+  const length = Math.max(leftParts.length, rightParts.length);
+
+  for (let index = 0; index < length; index += 1) {
+    const difference = (leftParts[index] || 0) - (rightParts[index] || 0);
+    if (difference !== 0) {
+      return difference;
+    }
+  }
+
+  return 0;
+}
+
+function resolveCachedWebVersion(cachePath) {
+  try {
+    const files = fs.readdirSync(path.resolve(process.cwd(), cachePath));
+    const versions = files
+      .map((fileName) => String(fileName).match(/^(\d+(?:\.\d+){2,})\.html$/)?.[1])
+      .filter(Boolean)
+      .sort(compareVersionNames);
+
+    return versions.at(-1) || null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function resolveBrowserMajor() {
+  const configuredPath =
+    process.env.PUPPETEER_EXECUTABLE_PATH ||
+    process.env.CHROME_EXECUTABLE_PATH ||
+    process.env.WHATSAPP_BROWSER_EXECUTABLE_PATH;
+
+  if (configuredPath) {
+    try {
+      const { execFileSync } = require("child_process");
+      const output = execFileSync(configuredPath, ["--version"], {
+        stdio: ["ignore", "pipe", "ignore"],
+        timeout: 3000
+      }).toString();
+      const major = output.match(/Chrome\/(\d+)/i)?.[1];
+      if (major) {
+        return major;
+      }
+    } catch (_) {
+      // Fall back to the bundled browser-compatible major version below.
+    }
+  }
+
+  return "146";
+}
+
+const webCachePath = process.env.WHATSAPP_WEB_CACHE_PATH || "./.wwebjs_cache";
 
 function parseSessions(raw) {
   if (!raw) {
@@ -110,13 +168,13 @@ module.exports = {
     "",
   headless: String(process.env.WHATSAPP_HEADLESS || "true").toLowerCase() === "true",
   browserUserAgent: process.env.WHATSAPP_BROWSER_USER_AGENT ||
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+    `Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${resolveBrowserMajor()}.0.0.0 Safari/537.36`,
   deviceName: process.env.WHATSAPP_DEVICE_NAME || "USB CRM Server",
   browserName: process.env.WHATSAPP_BROWSER_NAME || "Chrome",
-  webVersion: process.env.WHATSAPP_WEB_VERSION || "2.3000.1045732124",
+  webVersion: process.env.WHATSAPP_WEB_VERSION || resolveCachedWebVersion(webCachePath) || "2.3000.1045732124",
   webVersionCache: {
     type: "local",
-    path: process.env.WHATSAPP_WEB_CACHE_PATH || "./.wwebjs_cache",
+    path: webCachePath,
     strict: parseBoolean(process.env.WHATSAPP_WEB_VERSION_CACHE_STRICT, false)
   },
   defaultSession:

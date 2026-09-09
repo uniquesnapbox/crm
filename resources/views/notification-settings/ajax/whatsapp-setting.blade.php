@@ -421,19 +421,10 @@
                     $error.removeClass('d-none').text(errors);
                 }
 
-                const qrAge = generatedAt && !Number.isNaN(generatedAt.getTime())
-                    ? Date.now() - generatedAt.getTime()
-                    : 0;
-                const refreshCooldownElapsed = Date.now() - state.lastRefreshAt > 45000;
+                const recoverableStatuses = ['failed', 'disconnected', 'destroyed', 'unknown'];
+                const canForceRecovery = recoverableStatuses.includes(connectionStatus);
 
-                if (!forceRefresh && connectionStatus === 'qr_required' && qrAge > 45000 &&
-                    refreshCooldownElapsed && !state.refreshInFlight) {
-                    window.setTimeout(function () {
-                        loadWhatsAppConnectionStatus(true);
-                    }, 0);
-                }
-
-                if (!forceRefresh && !state.initialRefreshTriggered && !isConnected && !qr.image) {
+                if (!forceRefresh && !state.initialRefreshTriggered && canForceRecovery && !qr.image) {
                     state.initialRefreshTriggered = true;
                     window.setTimeout(function () {
                         loadWhatsAppConnectionStatus(true);

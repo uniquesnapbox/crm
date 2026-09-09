@@ -37,11 +37,14 @@ use App\Http\Requests\Orders\UpdateOrder;
 use App\Models\PaymentGatewayCredentials;
 use App\Http\Requests\Stripe\StoreStripeDetail;
 use App\Models\BankAccount;
+use App\Models\Partner;
+use App\Models\PartnerSale;
+use App\Services\PartnerCommissionService;
 
 class OrderController extends AccountBaseController
 {
 
-    public function __construct()
+    public function __construct(private PartnerCommissionService $partnerCommissionService)
     {
         parent::__construct();
         $this->pageTitle = 'app.menu.orders';
@@ -86,6 +89,9 @@ class OrderController extends AccountBaseController
         $this->unit_types = UnitType::all();
         $this->companyAddresses = CompanyAddress::all();
         $this->projects = Project::allProjects();
+        $this->partners = user()->permission('view_partner') !== 'none'
+            ? Partner::where('status', 'active')->orderBy('partner_name')->get()
+            : collect();
         $this->lastOrder = Order::lastOrderNumber() + 1;
         $this->orderSetting = invoice_setting();
         $this->zero = '';
@@ -135,6 +141,7 @@ class OrderController extends AccountBaseController
 
         $order = new Order();
         $order->client_id = $request->client_id ?: user()->id;
+        $order->partner_id = $this->authorizedPartnerId($request->partner_id);
         $order->order_date = now()->format('Y-m-d');
         $order->sub_total = round($request->sub_total, 2);
         $order->total = round($request->total, 2);
@@ -209,6 +216,7 @@ class OrderController extends AccountBaseController
 
         $order = new Order();
         $order->client_id = $request->client_id ?: user()->id;
+        $order->partner_id = $this->authorizedPartnerId($request->partner_id);
         $order->project_id = $request->project_id;
         $order->order_date = now()->format('Y-m-d');
         $order->sub_total = round($request->sub_total, 2);
@@ -222,6 +230,7 @@ class OrderController extends AccountBaseController
         $order->company_address_id = $request->company_address_id ?: null;
         $order->order_number = $request->order_number;
         $order->save();
+        $this->storeOrderItems($order, $request);
 
         if ($order->show_shipping_address == 'yes') {
             /** @phpstan-ignore-next-line */
@@ -302,6 +311,9 @@ class OrderController extends AccountBaseController
         $this->products = Product::all();
         $this->categories = ProductCategory::all();
         $this->clients = User::allClients();
+        $this->partners = user()->permission('view_partner') !== 'none'
+            ? Partner::where('status', 'active')->orderBy('partner_name')->get()
+            : collect();
         $this->companyAddresses = CompanyAddress::all();
 
         if (request()->ajax()) {
@@ -326,6 +338,7 @@ class OrderController extends AccountBaseController
         $tax = $request->taxes;
         $invoice_item_image_url = $request->invoice_item_image_url;
         $item_ids = $request->item_ids;
+        $product_ids = $request->product_id;
 
         if ($request->total == 0) {
             return Reply::error(__('messages.amountIsZero'));
@@ -369,6 +382,7 @@ class OrderController extends AccountBaseController
         $order->discount_type = $request->discount_type;
         $order->status = $request->has('status') ? $request->status : $order->status;
         $order->company_address_id = $request->company_address_id ?: null;
+        $order->partner_id = $this->authorizedPartnerId($request->partner_id);
         $order->save();
 
         // delete old data
@@ -390,6 +404,8 @@ class OrderController extends AccountBaseController
             $orderItem->item_name = $item;
             $orderItem->item_summary = $itemsSummary[$key];
             $orderItem->type = $item;
+            $orderItem->product_id = $product_ids[$key] ?? null;
+            $orderItem->unit_id = $request->unit_id[$key] ?? null;
             $orderItem->hsn_sac_code = (isset($hsn_sac_code[$key]) ? $hsn_sac_code[$key] : null);
             $orderItem->quantity = $quantity[$key];
             $orderItem->unit_price = round($cost_per_item[$key], 2);
@@ -426,7 +442,99 @@ class OrderController extends AccountBaseController
             $this->makePayment($order->total, $invoice, 'complete');
         }
 
+        if ($request->has('status') && $request->status == 'completed') {
+            $this->syncPartnerSales($order->fresh(['items', 'invoice']));
+        }
+
+        if ($request->has('status') && $request->status == 'completed') {
+            $this->syncPartnerSales($order->fresh(['items', 'invoice']));
+        }
+
         return Reply::redirect(route('orders.index'), __('messages.updateSuccess'));
+    }
+
+    private function authorizedPartnerId($partnerId): ?int
+    {
+        if (!$partnerId || !in_array(user()->permission('add_partner_sale'), ['all', 'added', 'both'], true)) {
+            return null;
+        }
+
+        return Partner::where('status', 'active')->whereKey($partnerId)->value('id');
+    }
+
+    private function storeOrderItems(Order $order, Request $request): void
+    {
+        $items = $request->item_name ?? [];
+        $summaries = $request->item_summary ?? [];
+        $hsnCodes = $request->hsn_sac_code ?? [];
+        $prices = $request->cost_per_item ?? [];
+        $quantities = $request->quantity ?? [];
+        $amounts = $request->amount ?? [];
+        $taxes = $request->taxes ?? [];
+        $productIds = $request->product_id ?? [];
+        $unitIds = $request->unit_id ?? [];
+        $imageUrls = $request->invoice_item_image_url ?? [];
+
+        foreach ($items as $key => $item) {
+            $orderItem = new OrderItems();
+            $orderItem->order_id = $order->id;
+            $orderItem->item_name = $item;
+            $orderItem->item_summary = $summaries[$key] ?? null;
+            $orderItem->type = $item;
+            $orderItem->product_id = $productIds[$key] ?? null;
+            $orderItem->unit_id = $unitIds[$key] ?? null;
+            $orderItem->hsn_sac_code = $hsnCodes[$key] ?? null;
+            $orderItem->quantity = $quantities[$key];
+            $orderItem->unit_price = round($prices[$key], 2);
+            $orderItem->amount = round($amounts[$key], 2);
+            $orderItem->taxes = array_key_exists($key, $taxes) ? json_encode($taxes[$key]) : null;
+            $orderItem->save();
+
+            if (!empty($imageUrls[$key])) {
+                OrderItemImage::create([
+                    'order_item_id' => $orderItem->id,
+                    'external_link' => $imageUrls[$key],
+                ]);
+            }
+        }
+    }
+
+    private function syncPartnerSales(Order $order): void
+    {
+        if (!$order->partner_id) {
+            return;
+        }
+
+        $partner = Partner::find($order->partner_id);
+        if (!$partner) {
+            return;
+        }
+
+        foreach ($order->items as $item) {
+            if (PartnerSale::where('order_item_id', $item->id)->exists()) {
+                continue;
+            }
+
+            $product = $item->product;
+            $config = $this->partnerCommissionService->resolve($partner, $product);
+            PartnerSale::create([
+                'company_id' => company()->id,
+                'partner_id' => $partner->id,
+                'client_id' => $order->client_id,
+                'order_id' => $order->id,
+                'order_item_id' => $item->id,
+                'invoice_id' => $order->invoice?->id,
+                'product_id' => $item->product_id,
+                'quantity' => $item->quantity,
+                'sale_amount' => $item->amount,
+                'commission_type' => $config['commission_type'],
+                'commission_rate' => $config['commission_rate'],
+                'commission_amount' => $this->partnerCommissionService->calculate($config['commission_type'], $config['commission_rate'], (float) $item->amount, (float) $item->quantity),
+                'sale_date' => $order->order_date,
+                'status' => 'confirmed',
+                'created_by' => user()->id,
+            ]);
+        }
     }
 
     public function show($id)

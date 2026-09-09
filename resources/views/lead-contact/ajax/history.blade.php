@@ -126,6 +126,10 @@
 
                         @if (($item['type'] ?? '') === 'followup' && !empty($item['followup_id']))
                             <div class="lead-history-actions">
+                                @if (!empty($item['followup_view_url']))
+                                    <a href="{{ $item['followup_view_url'] }}" class="btn btn-sm btn-outline-secondary js-history-view">View</a>
+                                @endif
+
                                 @if (!empty($item['can_update_followup_status']))
                                     <select class="form-control form-control-sm js-history-followup-status"
                                         id="history-followup-status-{{ $item['followup_id'] }}-{{ $loop->index }}"
@@ -141,6 +145,13 @@
                                 @if (!empty($item['followup_edit_url']) && !empty($item['can_edit_followup']))
                                     <a href="javascript:;" class="btn btn-sm btn-outline-primary js-history-edit-followup"
                                         data-url="{{ $item['followup_edit_url'] }}">Edit</a>
+                                @endif
+                            </div>
+                        @elseif (($item['type'] ?? '') === 'note' && !empty($item['note_view_url']))
+                            <div class="lead-history-actions">
+                                <a href="{{ $item['note_view_url'] }}" class="btn btn-sm btn-outline-secondary js-history-view">View</a>
+                                @if (!empty($item['note_edit_url']))
+                                    <a href="{{ $item['note_edit_url'] }}" class="btn btn-sm btn-outline-primary js-history-edit-note">Edit</a>
                                 @endif
                             </div>
                         @endif
@@ -192,5 +203,41 @@
         const url = $(this).data('url');
         $(MODAL_LG + ' ' + MODAL_HEADING).html('...');
         $.ajaxModal(MODAL_LG, url);
+    });
+
+    $('body').off('click.historyEditNote').on('click.historyEditNote', '.js-history-edit-note', function(event) {
+        event.preventDefault();
+        $(MODAL_LG + ' ' + MODAL_HEADING).html('...');
+        $.ajaxModal(MODAL_LG, $(this).attr('href'));
+    });
+
+    $('body').off('click.historyView').on('click.historyView', '.js-history-view', function(event) {
+        event.preventDefault();
+        const url = $(this).attr('href');
+        const $modal = $(MODAL_LG);
+        const $modalBody = $modal.find('.modal-body');
+
+        $(MODAL_LG + ' ' + MODAL_HEADING).html('...');
+        $modalBody.html('<div class="text-center py-4">Loading...</div>');
+        $modal.modal('show');
+
+        $.ajax({
+            url: url,
+            type: 'GET',
+            success: function(response) {
+                const html = response && typeof response === 'object' && response.html
+                    ? response.html
+                    : response;
+                const title = response && typeof response === 'object' && response.title
+                    ? response.title
+                    : 'Details';
+
+                $(MODAL_LG + ' ' + MODAL_HEADING).html(title);
+                $modalBody.html(html);
+            },
+            error: function() {
+                $modalBody.html('<div class="text-center text-danger py-4">Unable to load details.</div>');
+            }
+        });
     });
 </script>

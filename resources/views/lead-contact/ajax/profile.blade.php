@@ -56,6 +56,267 @@
         font-weight: 700;
     }
 
+    .lead-profile-shell .lead-name-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+    }
+
+    .lead-profile-shell .latest-note-popover-wrap {
+        position: relative;
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-items: center;
+    }
+
+    .lead-profile-shell .latest-note-bubble {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        flex: 0 0 34px;
+        padding: 0;
+        border: 0;
+        border-radius: 50%;
+        background: linear-gradient(145deg, #5b2bd6 0%, #8b5cf6 58%, #b983ff 100%);
+        color: #fff;
+        font-size: 14px;
+        cursor: pointer;
+        text-decoration: none;
+        outline: none;
+        box-shadow: 0 6px 14px rgba(98, 54, 216, 0.34), 0 0 0 4px rgba(139, 92, 246, 0.08);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        animation: latestNoteBubblePulse 2.8s ease-in-out infinite;
+    }
+
+    .lead-profile-shell .latest-note-bubble::after {
+        content: '';
+        position: absolute;
+        inset: 2px;
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        border-radius: inherit;
+        pointer-events: none;
+    }
+
+    .lead-profile-shell .latest-note-unread-dot {
+        content: '';
+        position: absolute;
+        right: -2px;
+        bottom: 0;
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: #22c55e;
+        border: 2px solid #eef4ff;
+    }
+
+    .lead-profile-shell .latest-note-bubble:hover,
+    .lead-profile-shell .latest-note-bubble:focus {
+        color: #fff;
+        text-decoration: none;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(139, 92, 246, 0.38);
+    }
+
+    .lead-profile-shell .latest-note-popover {
+        position: absolute;
+        z-index: 50;
+        left: calc(100% + 15px);
+        top: 50%;
+        width: min(380px, calc(100vw - 80px));
+        padding: 11px 13px;
+        border: 1px solid rgba(139, 92, 246, 0.55);
+        border-radius: 18px;
+        background: linear-gradient(145deg, rgba(249, 246, 255, 0.98) 0%, rgba(255, 255, 255, 0.98) 48%, rgba(242, 235, 255, 0.98) 100%);
+        color: #253858;
+        box-shadow: 0 18px 40px rgba(65, 35, 150, 0.25), 0 0 0 5px rgba(139, 92, 246, 0.07), 0 0 22px rgba(139, 92, 246, 0.16);
+        backdrop-filter: blur(12px);
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+        transform: translateY(-50%) translateX(0);
+        transform-origin: left center;
+        animation: latestNotePopoverIn 0.45s cubic-bezier(0.22, 1, 0.36, 1), latestNotePopoverFloat 5s ease-in-out 0.45s infinite;
+        transition: opacity 0.22s ease, transform 0.22s ease, visibility 0.22s ease;
+    }
+
+    .lead-profile-shell .latest-note-popover::before,
+    .lead-profile-shell .latest-note-popover::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        width: 0;
+        height: 0;
+        transform: translateY(-50%);
+        border-top: 8px solid transparent;
+        border-bottom: 8px solid transparent;
+    }
+
+    .lead-profile-shell .latest-note-popover::before {
+        left: -9px;
+        border-right: 9px solid #8b5cf6;
+    }
+
+    .lead-profile-shell .latest-note-popover::after {
+        left: -6px;
+        border-right: 7px solid #fff;
+    }
+
+    .lead-profile-shell .latest-note-popover-header {
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        margin: -11px -13px 10px;
+        padding: 9px 10px 9px 12px;
+        border-radius: 15px 15px 9px 9px;
+        background: linear-gradient(100deg, #5124c7 0%, #7c45ed 48%, #b477ff 100%);
+        box-shadow: 0 9px 20px rgba(99, 52, 220, 0.28);
+    }
+
+    .lead-profile-shell .latest-note-popover-header::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: -45%;
+        width: 34%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent);
+        transform: skewX(-18deg);
+        animation: latestNoteHeaderShimmer 3.8s ease-in-out 0.8s infinite;
+        pointer-events: none;
+    }
+
+    .lead-profile-shell .latest-note-popover-heading {
+        position: relative;
+        z-index: 1;
+        color: #fff;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.16);
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.01em;
+    }
+
+    .lead-profile-shell .latest-note-popover-heading i {
+        margin-right: 0 !important;
+    }
+
+    .lead-profile-shell .latest-note-popover-date-actions {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        flex: 0 0 auto;
+    }
+
+    .lead-profile-shell .latest-note-popover-date {
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 9px;
+        font-weight: 600;
+        text-align: right;
+    }
+
+    .lead-profile-shell .latest-note-popover-close {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        padding: 0;
+        border: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.94);
+        color: #7040dd;
+        cursor: pointer;
+        box-shadow: 0 2px 5px rgba(44, 18, 105, 0.16);
+    }
+
+    .lead-profile-shell .latest-note-popover-close:hover,
+    .lead-profile-shell .latest-note-popover-close:focus {
+        background: #fff;
+        color: #4d1eb7;
+        outline: none;
+        transform: scale(1.06);
+    }
+
+    .lead-profile-shell .latest-note-popover-title {
+        display: block;
+        margin-bottom: 7px;
+        color: #273b62;
+        font-size: 13px;
+        font-weight: 800;
+    }
+
+    .lead-profile-shell .latest-note-popover-content {
+        display: block;
+        padding: 10px 11px;
+        border: 1px solid rgba(139, 92, 246, 0.18);
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.74);
+        box-shadow: inset 0 1px 2px rgba(75, 43, 157, 0.04);
+        max-height: 95px;
+        overflow-y: auto;
+        color: #3d4c68;
+        font-size: 11px;
+        line-height: 1.4;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+    }
+
+    .lead-profile-shell .latest-note-popover-wrap.is-collapsed .latest-note-popover {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transform: translateY(-50%) translateX(-5px);
+        animation: none;
+    }
+
+    @keyframes latestNoteBubblePulse {
+        0%, 100% { box-shadow: 0 6px 14px rgba(98, 54, 216, 0.34), 0 0 0 4px rgba(139, 92, 246, 0.08); }
+        50% { box-shadow: 0 8px 18px rgba(98, 54, 216, 0.44), 0 0 0 7px rgba(139, 92, 246, 0.13); }
+    }
+
+    @keyframes latestNotePopoverIn {
+        from { opacity: 0; transform: translateY(-50%) translateX(-8px) scale(0.94); }
+        to { opacity: 1; transform: translateY(-50%) translateX(0) scale(1); }
+    }
+
+    @keyframes latestNotePopoverInMobile {
+        from { opacity: 0; transform: translateY(8px) scale(0.94); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes latestNotePopoverFloat {
+        0%, 100% { transform: translateY(-50%) translateX(0); }
+        50% { transform: translateY(calc(-50% - 3px)) translateX(0); }
+    }
+
+    @keyframes latestNoteHeaderShimmer {
+        0%, 42% { left: -45%; }
+        70%, 100% { left: 125%; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .lead-profile-shell .latest-note-bubble,
+        .lead-profile-shell .latest-note-popover,
+        .lead-profile-shell .latest-note-popover-header::after {
+            animation: none;
+        }
+    }
+
     .lead-profile-shell .lead-company {
         margin: 3px 0;
         color: var(--crm-muted);
@@ -311,6 +572,82 @@
             line-height: 1.15;
         }
 
+        .lead-profile-shell .lead-name-row {
+            gap: 6px;
+        }
+
+        .lead-profile-shell .latest-note-bubble {
+            width: 28px;
+            height: 28px;
+            flex-basis: 28px;
+            font-size: 12px;
+        }
+
+        .lead-profile-shell .latest-note-unread-dot {
+            right: -2px;
+            bottom: -1px;
+            width: 8px;
+            height: 8px;
+        }
+
+        .lead-profile-shell .latest-note-popover {
+            left: 0;
+            top: calc(100% + 12px);
+            width: min(320px, calc(100vw - 32px));
+            padding: 10px 11px;
+            transform: translateY(0);
+            animation: latestNotePopoverInMobile 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .lead-profile-shell .latest-note-popover-header {
+            margin: -10px -11px 9px;
+            padding: 9px 9px 9px 11px;
+            border-radius: 14px 14px 9px 9px;
+        }
+
+        .lead-profile-shell .latest-note-popover-heading {
+            font-size: 13px;
+        }
+
+        .lead-profile-shell .latest-note-popover-date-actions {
+            gap: 5px;
+        }
+
+        .lead-profile-shell .latest-note-popover-date {
+            max-width: 88px;
+            font-size: 8px;
+        }
+
+        .lead-profile-shell .latest-note-popover-close {
+            width: 21px;
+            height: 21px;
+            font-size: 10px;
+        }
+
+        .lead-profile-shell .latest-note-popover::before,
+        .lead-profile-shell .latest-note-popover::after {
+            top: -2px;
+            left: 15px;
+            transform: rotate(45deg);
+            border: 0;
+            width: 12px;
+            height: 12px;
+        }
+
+        .lead-profile-shell .latest-note-popover::before {
+            background: #8b5cf6;
+        }
+
+        .lead-profile-shell .latest-note-popover::after {
+            top: 0;
+            left: 17px;
+            background: #fff;
+        }
+
+        .lead-profile-shell .latest-note-popover-wrap.is-collapsed .latest-note-popover {
+            transform: translateY(-5px);
+        }
+
         .lead-profile-shell .lead-company {
             margin: 2px 0;
             font-size: 11px;
@@ -506,6 +843,12 @@
             $statusLabel = str($statusKey)->replace('_', ' ')->title();
             $statusClass = $statusKey === 'connected' ? 'status-connected' : ($statusKey === 'not_connected' ? 'status-not-connected' : 'status-pending');
             $noteCreateUrl = route('lead-notes.create') . '?lead=' . $leadContact->id;
+            $latestNote = $leadContact->latestNote;
+            $latestNoteTitle = $latestNote ? trim((string) $latestNote->title) : '';
+            $latestNoteContent = $latestNote ? trim(strip_tags((string) $latestNote->details)) : '';
+            $latestNoteDateTime = $latestNote && $latestNote->created_at
+                ? $latestNote->created_at->timezone(company()->timezone)->format(company()->date_format . ' ' . company()->time_format)
+                : '--';
             $followUpCreateUrl = route('lead-contact.follow_up', $leadContact->id);
             $taskCreateUrl = route('tasks.create') . '?lead_id=' . $leadContact->id;
             $timelineCreated = $leadContact->created_at
@@ -531,7 +874,35 @@
                 <div class="lead-identity">
                     <div class="lead-avatar">{{ $leadInitial }}</div>
                     <div>
-                        <h3 class="lead-name">{{ $leadContact->client_name ?: '--' }}</h3>
+                        <div class="lead-name-row">
+                            <h3 class="lead-name">{{ $leadContact->client_name ?: '--' }}</h3>
+                            @if ($latestNote)
+                                <span class="latest-note-popover-wrap">
+                                    <button type="button" class="latest-note-bubble" aria-expanded="true"
+                                        aria-controls="latest-note-popover-{{ $leadContact->id }}"
+                                        aria-label="Show latest note for {{ $leadContact->client_name }}">
+                                        <i class="fa fa-comment-alt"></i>
+                                        <span class="latest-note-unread-dot" aria-label="New note"></span>
+                                    </button>
+                                    <span class="latest-note-popover" id="latest-note-popover-{{ $leadContact->id }}"
+                                        role="dialog" aria-label="Latest note for {{ $leadContact->client_name }}">
+                                        <span class="latest-note-popover-header">
+                                            <span class="latest-note-popover-heading"><i class="fa fa-sticky-note mr-1"></i></span>
+                                            <span class="latest-note-popover-date-actions">
+                                                <time class="latest-note-popover-date">{{ $latestNoteDateTime }}</time>
+                                                <button type="button" class="latest-note-popover-close" aria-label="Collapse latest note">
+                                                    <i class="fa fa-times"></i>
+                                                </button>
+                                            </span>
+                                        </span>
+                                        @if ($latestNoteTitle)
+                                            <span class="latest-note-popover-title">{{ $latestNoteTitle }}</span>
+                                        @endif
+                                        <span class="latest-note-popover-content">{{ $latestNoteContent ?: '--' }}</span>
+                                    </span>
+                                </span>
+                            @endif
+                        </div>
                         <p class="lead-company">{{ $leadContact->company_name ?: 'No company assigned' }}</p>
                         <p class="lead-phone mb-0">
                             <i class="fa fa-phone mr-1"></i>{{ $contactNumber ?: '--' }}
@@ -1132,6 +1503,26 @@
 
         $('body').off('change.leadStatusBadge').on('change.leadStatusBadge', '.js-lead-inline-field[data-field="contact_status"]', function() {
             updateContactStatusBadge();
+        });
+
+        $('body').off('click.latestNotePopover').on('click.latestNotePopover', '.latest-note-bubble', function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const $wrap = $(this).closest('.latest-note-popover-wrap');
+            const willExpand = $wrap.hasClass('is-collapsed');
+
+            $wrap.toggleClass('is-collapsed', !willExpand);
+            $(this).attr('aria-expanded', willExpand ? 'true' : 'false');
+        });
+
+        $('body').off('click.latestNotePopoverClose').on('click.latestNotePopoverClose', '.latest-note-popover-close', function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const $wrap = $(this).closest('.latest-note-popover-wrap');
+            $wrap.addClass('is-collapsed')
+                .find('.latest-note-bubble').attr('aria-expanded', 'false').trigger('focus');
         });
 
         updateContactStatusBadge();

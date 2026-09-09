@@ -204,8 +204,7 @@
         </div>
         @if ($canBulkAssignLead)
             <div class="select-status mr-2 d-none quick-action-field" id="change-agent-action">
-                <select name="assigned_to" id="assigned_to" class="form-control select-picker" data-live-search="true" data-size="8">
-                    <option value="">@lang('modules.tasks.assignTo')</option>
+                <select name="assigned_to[]" id="assigned_to" class="form-control select-picker" data-live-search="true" data-size="8" multiple title="Select employees">
                     @foreach ($assignableEmployees ?? $employees as $employee)
                         <x-user-option :user="$employee" />
                     @endforeach
