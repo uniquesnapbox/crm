@@ -12,6 +12,7 @@ class WhatsAppManager extends EventEmitter {
     this.clients = new Map();
     this.initializingClients = new Map();
     this.recoveringClients = new Map();
+    this.refreshingQrClients = new Map();
     this.readyReconcileTimers = new Map();
     this.status = new Map();
     this.qrCode = new Map();
@@ -792,12 +793,42 @@ class WhatsAppManager extends EventEmitter {
     return this.initClient(key);
   }
 
+  isQrStale(sessionKey, maxAgeMs = 90000) {
+    const key = sessionKey || this.config.defaultSession;
+    const qr = this.getQr(key);
+
+    if (!qr) {
+      return false;
+    }
+
+    const generatedAt = this.qrGeneratedAt.get(key);
+    const generatedAtMs = generatedAt ? Date.parse(generatedAt) : NaN;
+
+    return !Number.isFinite(generatedAtMs) || Date.now() - generatedAtMs > maxAgeMs;
+  }
+
   async refreshQr(sessionKey) {
     if (this.shuttingDown) {
       throw new Error("WhatsApp manager is shutting down");
     }
 
     const key = sessionKey || this.config.defaultSession;
+
+    if (this.refreshingQrClients.has(key)) {
+      return this.refreshingQrClients.get(key);
+    }
+
+    const refreshPromise = this.refreshQrInternal(key);
+    this.refreshingQrClients.set(key, refreshPromise);
+
+    try {
+      return await refreshPromise;
+    } finally {
+      this.refreshingQrClients.delete(key);
+    }
+  }
+
+  async refreshQrInternal(key) {
     const currentStatus = this.getStatus(key);
     const currentQr = this.getQr(key);
 
@@ -821,9 +852,9 @@ class WhatsAppManager extends EventEmitter {
       }
     }
 
-    // WhatsApp rotates QR tokens on the existing page. Recycling an active browser
-    // invalidates the QR currently visible in the CRM and can trap the session in
-    // an initialization loop when multiple dashboard tabs are open.
+    // Keep a fresh QR on the existing browser page, but recycle an unpaired client
+    // when its last QR has expired. Active authenticated/ready sessions returned
+    // above are never restarted by this recovery path.
     if (existingClient && ["initializing", "qr_required"].includes(this.getStatus(key))) {
       if (!currentQr) {
         try {
@@ -832,6 +863,29 @@ class WhatsAppManager extends EventEmitter {
           // Return the current state; the dashboard poller will request it again.
         }
       }
+
+      if (!this.isQrStale(key)) {
+        return this.getQrInfo(key);
+      }
+
+      logger.info("WhatsApp QR expired; restarting unpaired client", {
+        sessionKey: key,
+        generatedAt: this.qrGeneratedAt.get(key) || null
+      });
+
+      // Do not remove LocalAuth here. A browser restart is enough to obtain a new
+      // QR and preserves any usable authentication data in the session directory.
+      await this.destroyClient(key, { emitDestroyedStatus: false });
+      this.manualDisconnectedSessions.delete(key);
+      this.status.set(key, "initializing");
+
+      this.initClient(key).catch((error) => {
+        logger.error("WhatsApp stale QR client initialization failed", {
+          sessionKey: key,
+          error: error.message
+        });
+      });
+      await this.waitForQrOrReady(key, 30000);
       return this.getQrInfo(key);
     }
 

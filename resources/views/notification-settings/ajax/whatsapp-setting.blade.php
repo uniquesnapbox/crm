@@ -373,6 +373,11 @@
                 // Global health can be ready because a different session is connected.
                 const isConnected = connectionStatus === 'ready';
                 const generatedAt = qrData.generatedAt ? new Date(qrData.generatedAt) : null;
+                const generatedAtMs = generatedAt && !Number.isNaN(generatedAt.getTime())
+                    ? generatedAt.getTime()
+                    : NaN;
+                const staleQr = connectionStatus === 'qr_required' && Boolean(qr.image)
+                    && (!Number.isFinite(generatedAtMs) || Date.now() - generatedAtMs > 90000);
 
                 $serviceStatus
                     .removeClass('badge-secondary badge-success badge-danger badge-warning')
@@ -405,6 +410,12 @@
                         .removeClass('d-none')
                         .addClass('text-success')
                         .text('WhatsApp is connected. QR is hidden for this active session.');
+                } else if (staleQr) {
+                    $image.attr('src', '').addClass('d-none');
+                    $placeholder
+                        .removeClass('d-none')
+                        .addClass('text-muted')
+                        .text('QR expired. Generating a fresh QR...');
                 } else if (qr.image) {
                     $image.attr('src', qr.image).removeClass('d-none');
                     $placeholder.addClass('d-none');
@@ -422,9 +433,10 @@
                 }
 
                 const recoverableStatuses = ['failed', 'disconnected', 'destroyed', 'unknown'];
-                const canForceRecovery = recoverableStatuses.includes(connectionStatus);
+                const shouldForceRecovery = staleQr
+                    || (recoverableStatuses.includes(connectionStatus) && !qr.image);
 
-                if (!forceRefresh && !state.initialRefreshTriggered && canForceRecovery && !qr.image) {
+                if (!forceRefresh && !state.initialRefreshTriggered && shouldForceRecovery) {
                     state.initialRefreshTriggered = true;
                     window.setTimeout(function () {
                         loadWhatsAppConnectionStatus(true);
