@@ -71,6 +71,49 @@ test("refreshQr keeps a fresh QR and never restarts a ready session", async () =
   assert.equal(destroyCount, 0);
 });
 
+test("refreshQr preserves a scanned client while WhatsApp is linking", async () => {
+  const manager = createManager();
+  const client = {};
+  manager.clients.set("test-session", client);
+  manager.status.set("test-session", "qr_required");
+  manager.qrCode.set("test-session", "expired-qr");
+  manager.qrGeneratedAt.set("test-session", new Date(Date.now() - 120000).toISOString());
+
+  let destroyCount = 0;
+  manager.destroyClient = async () => {
+    destroyCount += 1;
+  };
+  manager.inspectClientReadiness = async () => ({
+    ready: false,
+    waState: "CONNECTED"
+  });
+  manager.scheduleReadyReconciliation = () => {};
+
+  const result = await manager.refreshQr("test-session");
+
+  assert.equal(destroyCount, 0);
+  assert.equal(result.status, "authenticated");
+  assert.equal(result.qr, null);
+  assert.equal(manager.getClient("test-session"), client);
+});
+
+test("change_state preserves OPENING client and clears the scanned QR", () => {
+  const manager = createManager();
+  manager.scheduleReadyReconciliation = () => {};
+
+  const client = manager.createClient("test-session");
+  manager.clients.set("test-session", client);
+  manager.status.set("test-session", "qr_required");
+  manager.qrCode.set("test-session", "scanned-qr");
+  manager.qrGeneratedAt.set("test-session", new Date().toISOString());
+
+  client.emit("change_state", "OPENING");
+
+  assert.equal(manager.getStatus("test-session"), "authenticated");
+  assert.equal(manager.getQr("test-session"), null);
+  assert.equal(manager.getClient("test-session"), client);
+});
+
 test("concurrent refresh requests share one stale QR restart", async () => {
   const manager = createManager();
   manager.clients.set("test-session", {});

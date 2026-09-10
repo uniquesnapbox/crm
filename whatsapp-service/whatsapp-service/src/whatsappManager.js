@@ -293,8 +293,9 @@ class WhatsAppManager extends EventEmitter {
           state
         });
 
-        if (String(state).toUpperCase() === "CONNECTED") {
-          this.scheduleReadyReconciliation(key, client, "state_connected");
+        const normalizedState = String(state).toUpperCase();
+        if (this.isLinkingBootstrapState(normalizedState)) {
+          this.preserveLinkingClient(key, client, "state_linking", normalizedState);
         }
       }
     });
@@ -614,6 +615,42 @@ class WhatsAppManager extends EventEmitter {
     return result;
   }
 
+  isLinkingBootstrapState(waState) {
+    const normalizedState = String(waState || "").toUpperCase();
+    return ["OPENING", "PAIRING", "CONNECTED", "OPEN"].includes(normalizedState);
+  }
+
+  preserveLinkingClient(sessionKey, client, source, waState) {
+    const key = sessionKey || this.config.defaultSession;
+    const previousStatus = this.getStatus(key);
+
+    if (previousStatus === "ready") {
+      return;
+    }
+
+    this.status.set(key, "authenticated");
+    this.qrCode.delete(key);
+    this.qrGeneratedAt.delete(key);
+
+    if (previousStatus !== "authenticated") {
+      logger.info("WhatsApp linking bootstrap detected; preserving client", {
+        sessionKey: key,
+        source,
+        previousStatus,
+        waState: waState || null
+      });
+
+      this.emit("whatsapp-status", {
+        sessionKey: key,
+        status: "authenticated",
+        source,
+        waState: waState || null
+      });
+    }
+
+    this.scheduleReadyReconciliation(key, client, source);
+  }
+
   markSessionReady(sessionKey, source, inspection = null) {
     const key = sessionKey || this.config.defaultSession;
     const previousStatus = this.getStatus(key);
@@ -842,6 +879,19 @@ class WhatsAppManager extends EventEmitter {
         const inspection = await this.inspectClientReadiness(existingClient);
         if (inspection.ready) {
           this.markSessionReady(key, "refresh_qr_probe", inspection);
+          return this.getQrInfo(key);
+        }
+
+        // A scanned QR transitions WhatsApp through OPENING/PAIRING/CONNECTED
+        // before whatsapp-web.js emits `ready`. Never recycle that browser just
+        // because the last QR timestamp is old; doing so aborts device linking.
+        if (this.isLinkingBootstrapState(inspection.waState)) {
+          this.preserveLinkingClient(
+            key,
+            existingClient,
+            "refresh_qr_linking_probe",
+            inspection.waState
+          );
           return this.getQrInfo(key);
         }
       } catch (error) {
