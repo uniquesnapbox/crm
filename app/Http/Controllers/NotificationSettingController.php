@@ -37,7 +37,7 @@ class NotificationSettingController extends AccountBaseController
         $allowedTabs = ['email-setting', 'whatsapp-setting'];
 
         if (!in_array($tab, $allowedTabs, true)) {
-            $tab = 'email-setting';
+            $tab = 'whatsapp-setting';
         }
 
         $this->emailSettings = EmailNotificationSetting::all();

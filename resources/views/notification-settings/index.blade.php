@@ -51,13 +51,13 @@
                 <div class="s-b-n-header" id="tabs">
                     <nav class="tabs px-4 border-bottom-grey">
                         <div class="nav" id="nav-tab" role="tablist">
-                            <a class="nav-item nav-link f-15 active email-setting"
+                            <a class="nav-item nav-link f-15 {{ $activeTab === 'email-setting' ? 'active' : '' }} email-setting"
                                 href="{{ route('notifications.index') }}" role="tab" aria-controls="nav-ticketAgents"
-                                aria-selected="true">@lang('app.email')
+                                aria-selected="{{ $activeTab === 'email-setting' ? 'true' : 'false' }}">@lang('app.email')
                             </a>
-                            <a class="nav-item nav-link f-15 whatsapp-setting"
+                            <a class="nav-item nav-link f-15 {{ $activeTab === 'whatsapp-setting' ? 'active' : '' }} whatsapp-setting"
                                 href="{{ route('notifications.index') }}?tab=whatsapp-setting" role="tab"
-                                aria-controls="nav-ticketTypes" aria-selected="true"
+                                aria-controls="nav-ticketTypes" aria-selected="{{ $activeTab === 'whatsapp-setting' ? 'true' : 'false' }}"
                                 ajax="false">WhatsApp API / QR<i title="Channel setting is {{ $whatsappStatus === 'active' ? 'enabled' : 'disabled' }}"
                                 class="fa fa-circle ml-1 {{ $whatsappSettings->status == 'active' ? 'text-light-green' : 'text-red' }}"></i>
                             </a>
