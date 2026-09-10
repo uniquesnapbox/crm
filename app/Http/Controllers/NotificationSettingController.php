@@ -95,7 +95,7 @@ class NotificationSettingController extends AccountBaseController
             break;
         }
 
-        $this->activeTab = $tab ?: 'email-setting';
+        $this->activeTab = $tab ?: 'whatsapp-setting';
 
         if (request()->ajax()) {
             $html = view($this->view, $this->data)->render();
