@@ -212,6 +212,13 @@ class Lead extends BaseModel
             $leadsQuery->where('id', $contactId);
         }
 
+        if (!in_array('admin', user_roles())) {
+            $leadsQuery->where(function ($query) {
+                $query->where('added_by', user()->id)
+                    ->orWhere('assigned_to', user()->id);
+            });
+        }
+
         // Retrieve leads
         return $leadsQuery->get();
     }

@@ -162,7 +162,9 @@ class LeadContactDataTable extends BaseDataTable
             ->leftJoin('lead_status', 'lead_status.id', 'leads.status_id');
         $leadContact = $leadContact->whereNull('leads.archived_at');
 
-        if (!in_array('admin', user_roles()) && $this->viewLeadPermission !== 'all') {
+        // Employee visibility is always limited to leads they added or that
+        // are assigned to them. Only admins can see the complete company list.
+        if (!in_array('admin', user_roles())) {
             $leadContact = $leadContact->where(function ($query) {
                 $query->where('leads.added_by', user()->id)
                     ->orWhere('leads.assigned_to', user()->id);

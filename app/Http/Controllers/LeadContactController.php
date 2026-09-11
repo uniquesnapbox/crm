@@ -780,7 +780,11 @@ class LeadContactController extends AccountBaseController
         $leadContact->contact_status = $request->contact_status;
         $leadContact->contact_status_reason = $request->contact_status_reason;
         $leadContact->products_services = $request->products_services;
-        $leadContact->added_by = $request->added_by ?? user()->id; // save added_by, fallback to current user
+        // Employees can only create leads under their own account. Admins may
+        // intentionally create a lead on behalf of another employee.
+        $leadContact->added_by = $this->isAdminUser() && $request->filled('added_by')
+            ? $this->normalizeNullableInteger($request->input('added_by'))
+            : user()->id;
         $leadContact->assigned_to = $this->resolvedAssignedTo($request);
         $leadContact->save();
 
@@ -810,7 +814,10 @@ class LeadContactController extends AccountBaseController
             $redirectUrl = route('lead-contact.show', $leadContact->id) . '?tab=follow-up';
         }
         elseif ($redirectUrl == '') {
-            $redirectUrl = route('lead-contact.index');
+            $redirectUrl = route('lead-contact.index', [
+                'lead_created' => 1,
+                'dt_page' => 0,
+            ]);
         }
 
         return Reply::successWithData(__('messages.recordSaved'), ['redirectUrl' => $redirectUrl]);
@@ -1997,7 +2004,7 @@ class LeadContactController extends AccountBaseController
             return false;
         }
 
-        if ($this->isAdminUser() || user()->permission('view_lead') === 'all') {
+        if ($this->isAdminUser()) {
             return true;
         }
 

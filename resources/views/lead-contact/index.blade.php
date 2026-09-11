@@ -253,6 +253,7 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
         const leadShowRouteTemplate = "{{ route('lead-contact.show', ':id') }}";
         const leadContactTableId = "lead-contact-table";
         const leadContactPageStateKey = "lead-contact-table:last-page";
+        const leadWasCreated = new URLSearchParams(window.location.search).get('lead_created') === '1';
 
         function getLeadContactDataTable() {
             return window.LaravelDataTables ? window.LaravelDataTables[leadContactTableId] : null;
@@ -322,6 +323,35 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
             }
 
             return true;
+        }
+
+        function resetLeadContactStateAfterCreate(attempt = 0) {
+            if (!leadWasCreated) {
+                return;
+            }
+
+            const table = getLeadContactDataTable();
+            if (!table || typeof table.search !== 'function') {
+                if (attempt < 20) {
+                    window.setTimeout(function() {
+                        resetLeadContactStateAfterCreate(attempt + 1);
+                    }, 100);
+                }
+
+                return;
+            }
+
+            sessionStorage.removeItem(leadContactPageStateKey);
+            if (table.state && typeof table.state.clear === 'function') {
+                table.state.clear();
+            }
+
+            table.search('').page(0).draw(false);
+
+            const cleanUrl = new URL(window.location.href);
+            cleanUrl.searchParams.delete('lead_created');
+            cleanUrl.searchParams.delete('dt_page');
+            window.history.replaceState({}, document.title, cleanUrl.toString());
         }
 
         function getLeadContactFilters() {
@@ -621,6 +651,10 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
 
             window.setTimeout(function() {
                 restoreLeadContactPageState();
+            }, 0);
+
+            window.setTimeout(function() {
+                resetLeadContactStateAfterCreate();
             }, 0);
 
             @if (!is_null(request('start')) && !is_null(request('end')))
