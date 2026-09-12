@@ -167,6 +167,8 @@ module.exports = {
     process.env.WHATSAPP_BROWSER_EXECUTABLE_PATH ||
     "",
   headless: String(process.env.WHATSAPP_HEADLESS || "true").toLowerCase() === "true",
+  headlessMode: String(process.env.WHATSAPP_HEADLESS_MODE || "shell").trim().toLowerCase(),
+  pairingPhoneNumber: String(process.env.WHATSAPP_PAIRING_PHONE || "").replace(/\D/g, ""),
   browserUserAgent: process.env.WHATSAPP_BROWSER_USER_AGENT ||
     `Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${resolveBrowserMajor()}.0.0.0 Safari/537.36`,
   deviceName: process.env.WHATSAPP_DEVICE_NAME || "USB CRM Server",

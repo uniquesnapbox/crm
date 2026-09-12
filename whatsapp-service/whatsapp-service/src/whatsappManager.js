@@ -17,6 +17,8 @@ class WhatsAppManager extends EventEmitter {
     this.status = new Map();
     this.qrCode = new Map();
     this.qrGeneratedAt = new Map();
+    this.pairingCode = new Map();
+    this.pairingCodeGeneratedAt = new Map();
     this.reconnectTimers = new Map();
     this.reconnectAttempts = new Map();
     this.manualDisconnectedSessions = new Set();
@@ -140,14 +142,28 @@ class WhatsAppManager extends EventEmitter {
       userAgent: this.config.browserUserAgent,
       deviceName: this.config.deviceName,
       browserName: this.config.browserName,
+      pairWithPhoneNumber: this.config.pairingPhoneNumber
+        ? {
+            phoneNumber: this.config.pairingPhoneNumber,
+            showNotification: true,
+            intervalMs: 180000
+          }
+        : undefined,
       puppeteer: {
-        headless: this.config.headless ? "new" : false,
+        // The legacy headless shell is more stable for WhatsApp Web's frequent
+        // frame navigations on Linux servers than Chromium's new headless mode.
+        headless: this.config.headless
+          ? (this.config.headlessMode === "new" ? "new" : "shell")
+          : false,
         executablePath: this.config.browserExecutablePath || undefined,
+        protocolTimeout: 120000,
         args: [
           "--no-sandbox",
           "--disable-setuid-sandbox",
           "--disable-dev-shm-usage",
           "--disable-gpu",
+          "--disable-webgl",
+          "--disable-accelerated-2d-canvas",
           "--no-zygote",
           "--no-first-run",
           "--disable-site-isolation-trials",
@@ -163,6 +179,8 @@ class WhatsAppManager extends EventEmitter {
 
       this.qrCode.set(key, qr);
       this.qrGeneratedAt.set(key, new Date().toISOString());
+      this.pairingCode.delete(key);
+      this.pairingCodeGeneratedAt.delete(key);
       this.status.set(key, "qr_required");
       logger.info("WhatsApp QR generated", { sessionKey: key });
 
@@ -179,12 +197,32 @@ class WhatsAppManager extends EventEmitter {
       this.scheduleReadyReconciliation(key, client, "qr");
     });
 
+    client.on("code", (code) => {
+      if (this.shuttingDown) {
+        return;
+      }
+
+      this.qrCode.delete(key);
+      this.qrGeneratedAt.delete(key);
+      this.pairingCode.set(key, String(code || ""));
+      this.pairingCodeGeneratedAt.set(key, new Date().toISOString());
+      this.status.set(key, "pairing_code_required");
+      logger.info("WhatsApp phone pairing code generated", { sessionKey: key });
+      this.emit("whatsapp-status", {
+        sessionKey: key,
+        status: "pairing_code_required"
+      });
+      this.scheduleReadyReconciliation(key, client, "pairing_code");
+    });
+
     client.on("authenticated", () => {
       if (this.shuttingDown) {
         return;
       }
 
       this.status.set(key, "authenticated");
+      this.pairingCode.delete(key);
+      this.pairingCodeGeneratedAt.delete(key);
       logger.info("WhatsApp authenticated", { sessionKey: key });
       this.emit("whatsapp-authenticated", {
         sessionKey: key,
@@ -205,6 +243,8 @@ class WhatsAppManager extends EventEmitter {
       this.status.set(key, "ready");
       this.qrCode.delete(key);
       this.qrGeneratedAt.delete(key);
+      this.pairingCode.delete(key);
+      this.pairingCodeGeneratedAt.delete(key);
       this.clearReconnectState(key);
       this.clearReadyReconciliation(key);
       logger.info("WhatsApp client ready", { sessionKey: key });
@@ -294,7 +334,10 @@ class WhatsAppManager extends EventEmitter {
         });
 
         const normalizedState = String(state).toUpperCase();
-        if (this.isLinkingBootstrapState(normalizedState)) {
+        // CONNECTED/OPEN can also be reported while WhatsApp Web is still
+        // displaying the QR screen. The authenticated event is the reliable
+        // signal that the phone actually accepted the pairing.
+        if (["OPENING", "PAIRING"].includes(normalizedState)) {
           this.preserveLinkingClient(key, client, "state_linking", normalizedState);
         }
       }
@@ -461,7 +504,7 @@ class WhatsAppManager extends EventEmitter {
       }
 
       const status = this.getStatus(key);
-      if (["qr_required", "authenticated", "ready"].includes(status)) {
+      if (["qr_required", "pairing_code_required", "authenticated", "ready"].includes(status)) {
         return true;
       }
       if (status === "failed") {
@@ -620,12 +663,22 @@ class WhatsAppManager extends EventEmitter {
     return ["OPENING", "PAIRING", "CONNECTED", "OPEN"].includes(normalizedState);
   }
 
-  preserveLinkingClient(sessionKey, client, source, waState) {
+  isLoggedOutInspection(inspection) {
+    const page = inspection?.page || {};
+    const pageText = `${page.title || ""}\n${page.bodyText || ""}`.toLowerCase();
+    return /scan|qr code|link with phone|log in|sign in/.test(pageText);
+  }
+
+  preserveLinkingClient(sessionKey, client, source, waState, inspection = null) {
     const key = sessionKey || this.config.defaultSession;
     const previousStatus = this.getStatus(key);
 
     if (previousStatus === "ready") {
-      return;
+      return true;
+    }
+
+    if (inspection && this.isLoggedOutInspection(inspection)) {
+      return false;
     }
 
     this.status.set(key, "authenticated");
@@ -649,6 +702,7 @@ class WhatsAppManager extends EventEmitter {
     }
 
     this.scheduleReadyReconciliation(key, client, source);
+    return true;
   }
 
   markSessionReady(sessionKey, source, inspection = null) {
@@ -869,7 +923,7 @@ class WhatsAppManager extends EventEmitter {
     const currentStatus = this.getStatus(key);
     const currentQr = this.getQr(key);
 
-    if (["ready", "authenticated"].includes(currentStatus)) {
+    if (["ready", "authenticated", "pairing_code_required"].includes(currentStatus)) {
       return this.getQrInfo(key);
     }
 
@@ -886,13 +940,16 @@ class WhatsAppManager extends EventEmitter {
         // before whatsapp-web.js emits `ready`. Never recycle that browser just
         // because the last QR timestamp is old; doing so aborts device linking.
         if (this.isLinkingBootstrapState(inspection.waState)) {
-          this.preserveLinkingClient(
+          const preserved = this.preserveLinkingClient(
             key,
             existingClient,
             "refresh_qr_linking_probe",
-            inspection.waState
+            inspection.waState,
+            inspection
           );
-          return this.getQrInfo(key);
+          if (preserved) {
+            return this.getQrInfo(key);
+          }
         }
       } catch (error) {
         logger.debug("WhatsApp QR refresh readiness probe failed", {
@@ -965,7 +1022,12 @@ class WhatsAppManager extends EventEmitter {
       }
 
       const status = this.getStatus(key);
-      if (status === "ready" || status === "authenticated" || this.getQr(key)) {
+      if (
+        status === "ready" ||
+        status === "authenticated" ||
+        status === "pairing_code_required" ||
+        this.getQr(key)
+      ) {
         return true;
       }
       if (status === "failed") {
@@ -1066,6 +1128,11 @@ class WhatsAppManager extends EventEmitter {
     return this.qrCode.get(key) || null;
   }
 
+  getPairingCode(sessionKey) {
+    const key = sessionKey || this.config.defaultSession;
+    return this.pairingCode.get(key) || null;
+  }
+
   getQrInfo(sessionKey) {
     const key = sessionKey || this.config.defaultSession;
 
@@ -1073,7 +1140,9 @@ class WhatsAppManager extends EventEmitter {
       sessionKey: key,
       status: this.getStatus(key),
       qr: this.getQr(key),
-      generatedAt: this.qrGeneratedAt.get(key) || null
+      generatedAt: this.qrGeneratedAt.get(key) || null,
+      pairingCode: this.getPairingCode(key),
+      pairingCodeGeneratedAt: this.pairingCodeGeneratedAt.get(key) || null
     };
   }
 
@@ -1302,7 +1371,7 @@ class WhatsAppManager extends EventEmitter {
 
   isTransientBrowserError(error) {
     const message = String(error?.message || error || "");
-    return /detached Frame|Execution context was destroyed|Target closed|Session closed/i.test(message);
+    return /detached Frame|Execution context was destroyed|Target closed|Session closed|MsgKey error|me is undefined|Runtime.callFunctionOn timed out/i.test(message);
   }
 
   async recoverClient(sessionKey, reason) {
@@ -1666,7 +1735,9 @@ class WhatsAppManager extends EventEmitter {
       sessionKey,
       status: this.getStatus(sessionKey),
       qrAvailable: Boolean(this.getQr(sessionKey)),
-      qrGeneratedAt: this.qrGeneratedAt.get(sessionKey) || null
+      qrGeneratedAt: this.qrGeneratedAt.get(sessionKey) || null,
+      pairingCodeAvailable: Boolean(this.getPairingCode(sessionKey)),
+      pairingCodeGeneratedAt: this.pairingCodeGeneratedAt.get(sessionKey) || null
     }));
   }
 
@@ -1701,6 +1772,8 @@ class WhatsAppManager extends EventEmitter {
     this.manualDisconnectedSessions.clear();
     this.qrCode.clear();
     this.qrGeneratedAt.clear();
+    this.pairingCode.clear();
+    this.pairingCodeGeneratedAt.clear();
     this.status.clear();
   }
 }
