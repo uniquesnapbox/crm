@@ -225,6 +225,9 @@ class LeadContactDataTable extends BaseDataTable
                         ->where('duplicate_leads.company_id', company()->id)
                         ->whereNull('duplicate_leads.archived_at')
                         ->whereNotNull('duplicate_leads.mobile_normalized')
+                        ->when($this->request()->type === 'client',
+                            fn ($query) => $query->whereNotNull('duplicate_leads.client_id'),
+                            fn ($query) => $query->whereNull('duplicate_leads.client_id'))
                         ->groupBy('duplicate_leads.mobile_normalized')
                         ->havingRaw('COUNT(*) > 1');
                 });
