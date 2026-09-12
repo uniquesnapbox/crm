@@ -662,6 +662,23 @@ async function bootstrap() {
   });
 }
 
+let stopping = false;
+async function stopService() {
+  if (stopping) return;
+  stopping = true;
+  server.close();
+  try {
+    await manager.shutdown();
+  } finally {
+    process.exit(0);
+  }
+}
+process.on("SIGINT", stopService);
+process.on("SIGTERM", stopService);
+process.on("message", (message) => {
+  if (message === "shutdown") stopService();
+});
+
 bootstrap().catch(async (error) => {
   logger.error("Fatal bootstrap error", {
     error: error.message,

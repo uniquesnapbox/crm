@@ -372,7 +372,7 @@ class User extends BaseModel implements AuthenticatableContract, AuthorizableCon
         return $this->onesignal_player_id;
     }
 
-    public function routeNotificationForWascript($notification = null)
+    public function routeNotificationForWhatsApp($notification = null)
     {
         if (!is_null($this->mobile) && !is_null($this->country_phonecode)) {
             return '+' . $this->country_phonecode . $this->mobile;

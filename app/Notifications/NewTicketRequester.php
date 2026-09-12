@@ -2,7 +2,7 @@
 
 namespace App\Notifications;
 
-use App\Channels\WascriptChannel;
+use App\Channels\WhatsAppChannel;
 use App\Models\EmailNotificationSetting;
 use App\Models\Ticket;
 use Illuminate\Notifications\Messages\SlackMessage;
@@ -53,7 +53,7 @@ class NewTicketRequester extends BaseNotification
         }
 
         if ($this->canSendWhatsApp($notifiable, $this->emailSetting, 'ticket')) {
-            array_push($via, WascriptChannel::class);
+            array_push($via, WhatsAppChannel::class);
         }
 
         return $via;
@@ -126,7 +126,7 @@ class NewTicketRequester extends BaseNotification
             ->setBody($this->ticket->subject . ' # ' . $this->ticket->id);
     }
 
-    public function toWascript($notifiable): array
+    public function toWhatsApp($notifiable): array
     {
         return [
             'message' => __('email.newTicketRequester.subject') . "\n"

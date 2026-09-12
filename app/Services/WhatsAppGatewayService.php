@@ -11,6 +11,7 @@ class WhatsAppGatewayService
 {
     private ?string $lastError = null;
     private ?array $lastResponseData = null;
+    private ?int $lastHttpStatus = null;
 
     public function getLastError(): ?string
     {
@@ -20,6 +21,11 @@ class WhatsAppGatewayService
     public function getLastResponseData(): ?array
     {
         return $this->lastResponseData;
+    }
+
+    public function getLastHttpStatus(): ?int
+    {
+        return $this->lastHttpStatus;
     }
 
     public function isConfigured(): bool
@@ -36,6 +42,7 @@ class WhatsAppGatewayService
     ): bool
     {
         $this->lastResponseData = null;
+        $this->lastHttpStatus = null;
         $baseUrl = rtrim((string) config('services.whatsapp_service.base_url'), '/');
         $apiKey = (string) config('services.whatsapp_service.api_key');
         $session = $this->resolveSessionKey($sessionKey);
@@ -100,6 +107,7 @@ class WhatsAppGatewayService
             }
 
             $json = $response->json();
+            $this->lastHttpStatus = $response->status();
 
             if ($response->successful() && ($json['success'] ?? false) === true) {
                 $this->lastError = null;

@@ -134,8 +134,31 @@ class WhatsappSettingController extends AccountBaseController
         );
 
         if (!$sent) {
-            return Reply::error((string) ($gatewayService->getLastError() ?: 'Unable to send test WhatsApp message.'));
+            $error = (string) ($gatewayService->getLastError() ?: 'Unable to send test WhatsApp message.');
+            $setting->forceFill([
+                'last_send_status' => 'failed',
+                'last_error_message' => $error,
+                'last_http_status' => $gatewayService->getLastHttpStatus(),
+                'last_response_body' => null,
+                'last_sent_at' => now(),
+                'last_normalized_phone' => $mobile,
+                'last_response_message' => $error,
+                'last_delivery_status' => 'failed',
+            ])->saveQuietly();
+
+            return Reply::error($error);
         }
+
+        $setting->forceFill([
+            'last_send_status' => 'sent',
+            'last_error_message' => null,
+            'last_http_status' => $gatewayService->getLastHttpStatus() ?: 200,
+            'last_response_body' => json_encode($gatewayService->getLastResponseData(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            'last_sent_at' => now(),
+            'last_normalized_phone' => $mobile,
+            'last_response_message' => null,
+            'last_delivery_status' => 'sent',
+        ])->saveQuietly();
 
         return Reply::success('Test WhatsApp notification sent successfully.');
     }

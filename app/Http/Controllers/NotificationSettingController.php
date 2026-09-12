@@ -43,7 +43,7 @@ class NotificationSettingController extends AccountBaseController
         $this->emailSettings = EmailNotificationSetting::all();
         $this->whatsappSettings = WhatsappNotificationSetting::first() ?: new WhatsappNotificationSetting([
             'status' => 'inactive',
-            'base_url' => 'https://api-whatsapp.wascript.com.br',
+            'base_url' => config('services.whatsapp_service.base_url'),
             'api_token' => null,
             'default_country_code' => null,
             'test_number' => null,

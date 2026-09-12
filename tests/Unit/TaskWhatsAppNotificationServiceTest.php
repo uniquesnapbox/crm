@@ -45,7 +45,7 @@ class TaskWhatsAppNotificationServiceTest extends TestCase
         );
 
         $this->assertSame(
-            'Hello *Arindam Dey*, Task: Fix WhatsApp Auto Logout. Completed by ',
+            'Hello *Arindam Dey*, Task: Fix WhatsApp Auto Logout. Completed by',
             $message
         );
     }

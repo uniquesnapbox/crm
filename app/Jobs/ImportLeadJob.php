@@ -125,5 +125,4 @@ class ImportLeadJob implements ShouldQueue
             $this->failJob(__('messages.invalidData'));
         }
     }
-
 }

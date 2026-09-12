@@ -2,49 +2,37 @@
 
 namespace App\Modules\WhatsApp;
 
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
+use App\Services\WhatsAppGatewayService;
 
 class WhatsAppService
 {
-    private string $apiUrl;
-    private string $token;
-
-    public function __construct()
+    public function __construct(private WhatsAppGatewayService $gatewayService)
     {
-        $this->apiUrl = (string) config('whatsapp.api_url');
-        $this->token = (string) config('whatsapp.token');
     }
 
     public function sendMessage($number, $message): array
     {
-        if (empty($this->apiUrl) || empty($this->token) || empty($number) || empty($message)) {
+        if (empty($number) || empty($message)) {
             return [
                 'status' => false,
                 'message' => 'WhatsApp configuration or payload missing.',
             ];
         }
 
-        try {
-            $response = Http::withToken($this->token)
-                ->timeout(20)
-                ->post(rtrim($this->apiUrl, '/') . '/send-message', [
-                    'number' => $number,
-                    'message' => $message,
-                ]);
+        $sent = $this->gatewayService->sendMessage(
+            (string) $number,
+            (string) $message,
+            config('services.whatsapp_service.session')
+        );
 
-            return $response->json() ?? [
-                'status' => $response->successful(),
-                'message' => $response->body(),
-            ];
-        } catch (\Throwable $e) {
-            Log::error('WhatsApp send failed: ' . $e->getMessage());
-
-            return [
-                'status' => false,
-                'message' => $e->getMessage(),
-            ];
-        }
+        return [
+            'status' => $sent,
+            'success' => $sent,
+            'message' => $sent
+                ? 'WhatsApp message sent successfully.'
+                : ($this->gatewayService->getLastError() ?: 'WhatsApp bridge send failed.'),
+            'data' => $this->gatewayService->getLastResponseData(),
+        ];
     }
 }
 

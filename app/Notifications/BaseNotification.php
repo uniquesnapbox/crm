@@ -5,6 +5,7 @@ namespace App\Notifications;
 use App\Models\GlobalSetting;
 use App\Models\SmtpSetting;
 use App\Models\WhatsappNotificationSetting;
+use App\Services\WhatsAppGatewayService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -150,7 +151,7 @@ class BaseNotification extends Notification implements ShouldQueue
 
         $setting = WhatsappNotificationSetting::where('company_id', $notifiable->company_id)->first();
 
-        if (!$setting || $setting->status !== 'active' || empty($setting->api_token)) {
+        if (!$setting || $setting->status !== 'active' || !app(WhatsAppGatewayService::class)->isConfigured()) {
             return false;
         }
 
@@ -166,7 +167,8 @@ class BaseNotification extends Notification implements ShouldQueue
             return false;
         }
 
-        return method_exists($notifiable, 'routeNotificationForWascript') && !empty($notifiable->routeNotificationForWascript());
+        return method_exists($notifiable, 'routeNotificationForWhatsApp')
+            && !empty($notifiable->routeNotificationForWhatsApp());
     }
 
 }

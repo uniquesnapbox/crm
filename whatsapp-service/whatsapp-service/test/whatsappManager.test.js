@@ -146,3 +146,81 @@ test("concurrent refresh requests share one stale QR restart", async () => {
   assert.equal(first.qr, "fresh-qr");
   assert.equal(second.qr, "fresh-qr");
 });
+
+test("logout recovery closes browser before archiving and shares concurrent requests", async () => {
+  const manager = createManager();
+  const client = {};
+  manager.clients.set("test-session", client);
+  const steps = [];
+  manager.destroyClient = async () => { steps.push("close"); };
+  manager.quarantineLoggedOutSession = async () => { steps.push("archive"); };
+  manager.initClient = async () => { steps.push("start"); };
+  await Promise.all([
+    manager.recoverLoggedOutClient("test-session", client, "logout"),
+    manager.recoverLoggedOutClient("test-session", client, "logout")
+  ]);
+  assert.deepEqual(steps, ["close", "archive", "start"]);
+  assert.equal(manager.logoutRecoveries.size, 0);
+});
+
+test("a logged-out old browser cannot reset its replacement", () => {
+  const manager = createManager();
+  const oldClient = manager.createClient("test-session");
+  manager.clients.set("test-session", {});
+  manager.status.set("test-session", "ready");
+  oldClient.emit("disconnected", "LOGOUT");
+  oldClient.emit("qr", "old-qr");
+  oldClient.emit("auth_failure", "stale failure");
+  assert.equal(manager.getStatus("test-session"), "ready");
+  assert.equal(manager.getQr("test-session"), null);
+  assert.equal(manager.logoutRecoveries.size, 0);
+});
+
+test("authentication removes the scanned QR", () => {
+  const manager = createManager();
+  manager.scheduleReadyReconciliation = () => {};
+  const client = manager.createClient("test-session");
+  manager.clients.set("test-session", client);
+  manager.qrCode.set("test-session", "scanned-qr");
+  client.emit("authenticated");
+  assert.equal(manager.getStatus("test-session"), "authenticated");
+  assert.equal(manager.getQr("test-session"), null);
+});
+
+test("CONNECTED alone is not ready until chat UI and message helpers are loaded", async () => {
+  const manager = createManager();
+  const page = { readyState: "complete", hasQr: false, hasChatList: false, hasHelpers: false };
+  const client = { getState: async () => "CONNECTED", pupPage: { evaluate: async () => page } };
+  assert.equal((await manager.inspectClientReadiness(client)).ready, false);
+  page.hasChatList = true;
+  page.hasHelpers = true;
+  assert.equal((await manager.inspectClientReadiness(client)).ready, true);
+});
+
+test("logout defers auth profile cleanup until the manager closes the browser", async () => {
+  const SessionAuth = require("../src/sessionAuth");
+  const auth = new SessionAuth({ clientId: "test-session" });
+  await auth.logout();
+  assert.equal(auth.logoutRequested, true);
+  // Upstream invokes this hook during logout navigation. It must not recreate
+  // the profile or access the old browser while recovery is closing it.
+  await auth.beforeBrowserInitialized();
+});
+
+test("readiness linking probes do not create a second reconciliation loop", () => {
+  const manager = createManager();
+  const client = {};
+  manager.clients.set("test-session", client);
+  let scheduled = 0;
+  manager.scheduleReadyReconciliation = () => { scheduled += 1; };
+  manager.preserveLinkingClient(
+    "test-session",
+    client,
+    "readiness_probe",
+    "CONNECTED",
+    { page: { hasQr: false } },
+    false
+  );
+  assert.equal(manager.getStatus("test-session"), "authenticated");
+  assert.equal(scheduled, 0);
+});

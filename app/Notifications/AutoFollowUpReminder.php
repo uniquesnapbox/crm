@@ -2,7 +2,7 @@
 
 namespace App\Notifications;
 
-use App\Channels\WascriptChannel;
+use App\Channels\WhatsAppChannel;
 use App\Models\EmailNotificationSetting;
 use App\Models\LeadFollowUp;
 
@@ -39,7 +39,7 @@ class AutoFollowUpReminder extends BaseNotification
         }
 
         if ($this->canSendWhatsApp($notifiable, $this->emailSetting)) {
-            array_push($via, WascriptChannel::class);
+            array_push($via, WhatsAppChannel::class);
         }
 
         return $via;
@@ -108,7 +108,7 @@ class AutoFollowUpReminder extends BaseNotification
 
     }
 
-    public function toWascript($notifiable): array
+    public function toWhatsApp($notifiable): array
     {
         return [
             'message' => __('email.followUpReminder.subject') . "\n"

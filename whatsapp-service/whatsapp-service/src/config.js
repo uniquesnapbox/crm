@@ -1,35 +1,4 @@
-const fs = require("fs");
 const path = require("path");
-
-function compareVersionNames(left, right) {
-  const parse = (value) => String(value).split(".").map((part) => Number.parseInt(part, 10) || 0);
-  const leftParts = parse(left);
-  const rightParts = parse(right);
-  const length = Math.max(leftParts.length, rightParts.length);
-
-  for (let index = 0; index < length; index += 1) {
-    const difference = (leftParts[index] || 0) - (rightParts[index] || 0);
-    if (difference !== 0) {
-      return difference;
-    }
-  }
-
-  return 0;
-}
-
-function resolveCachedWebVersion(cachePath) {
-  try {
-    const files = fs.readdirSync(path.resolve(process.cwd(), cachePath));
-    const versions = files
-      .map((fileName) => String(fileName).match(/^(\d+(?:\.\d+){2,})\.html$/)?.[1])
-      .filter(Boolean)
-      .sort(compareVersionNames);
-
-    return versions.at(-1) || null;
-  } catch (_) {
-    return null;
-  }
-}
 
 function resolveBrowserMajor() {
   const configuredPath =
@@ -44,7 +13,7 @@ function resolveBrowserMajor() {
         stdio: ["ignore", "pipe", "ignore"],
         timeout: 3000
       }).toString();
-      const major = output.match(/Chrome\/(\d+)/i)?.[1];
+      const major = output.match(/(?:Chrome|Chromium)(?:\/|\s)(\d+)/i)?.[1];
       if (major) {
         return major;
       }
@@ -57,6 +26,10 @@ function resolveBrowserMajor() {
 }
 
 const webCachePath = process.env.WHATSAPP_WEB_CACHE_PATH || "./.wwebjs_cache";
+// Only pin a Web build when explicitly configured. Picking the newest file on
+// disk indefinitely serves an old application against WhatsApp's live backend.
+const webCacheType = process.env.WHATSAPP_WEB_CACHE_TYPE ||
+  (process.env.WHATSAPP_WEB_VERSION ? "local" : "none");
 
 function parseSessions(raw) {
   if (!raw) {
@@ -167,15 +140,15 @@ module.exports = {
     process.env.WHATSAPP_BROWSER_EXECUTABLE_PATH ||
     "",
   headless: String(process.env.WHATSAPP_HEADLESS || "true").toLowerCase() === "true",
-  headlessMode: String(process.env.WHATSAPP_HEADLESS_MODE || "shell").trim().toLowerCase(),
+  headlessMode: String(process.env.WHATSAPP_HEADLESS_MODE || (process.platform === "win32" ? "new" : "shell")).trim().toLowerCase(),
   pairingPhoneNumber: String(process.env.WHATSAPP_PAIRING_PHONE || "").replace(/\D/g, ""),
   browserUserAgent: process.env.WHATSAPP_BROWSER_USER_AGENT ||
-    `Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${resolveBrowserMajor()}.0.0.0 Safari/537.36`,
+    `Mozilla/5.0 (${process.platform === "win32" ? "Windows NT 10.0; Win64; x64" : "X11; Linux x86_64"}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${resolveBrowserMajor()}.0.0.0 Safari/537.36`,
   deviceName: process.env.WHATSAPP_DEVICE_NAME || "USB CRM Server",
   browserName: process.env.WHATSAPP_BROWSER_NAME || "Chrome",
-  webVersion: process.env.WHATSAPP_WEB_VERSION || resolveCachedWebVersion(webCachePath) || "2.3000.1045732124",
+  webVersion: process.env.WHATSAPP_WEB_VERSION || undefined,
   webVersionCache: {
-    type: "local",
+    type: webCacheType,
     path: webCachePath,
     strict: parseBoolean(process.env.WHATSAPP_WEB_VERSION_CACHE_STRICT, false)
   },

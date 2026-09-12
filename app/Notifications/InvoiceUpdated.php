@@ -2,7 +2,7 @@
 
 namespace App\Notifications;
 
-use App\Channels\WascriptChannel;
+use App\Channels\WhatsAppChannel;
 use App\Http\Controllers\InvoiceController;
 use App\Models\EmailNotificationSetting;
 use App\Models\GlobalSetting;
@@ -43,7 +43,7 @@ class InvoiceUpdated extends BaseNotification
         }
 
         if ($this->canSendWhatsApp($notifiable, $this->emailSetting)) {
-            array_push($via, WascriptChannel::class);
+            array_push($via, WhatsAppChannel::class);
         }
 
         return $via;
@@ -111,7 +111,7 @@ class InvoiceUpdated extends BaseNotification
             ->setBody(__('email.invoice.updateText'));
     }
 
-    public function toWascript($notifiable): array
+    public function toWhatsApp($notifiable): array
     {
         return [
             'message' => __('email.invoice.updateSubject') . "\n"

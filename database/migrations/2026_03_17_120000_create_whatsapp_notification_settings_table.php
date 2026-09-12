@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->unsignedInteger('company_id')->nullable()->index();
             $table->enum('status', ['active', 'inactive'])->default('inactive');
-            $table->string('base_url')->default('https://api-whatsapp.wascript.com.br');
+            $table->string('base_url')->default('http://127.0.0.1:3100');
             $table->string('api_token')->nullable();
             $table->string('default_country_code', 10)->nullable();
             $table->string('test_number', 30)->nullable();

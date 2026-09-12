@@ -308,8 +308,7 @@
             poller: null,
             requestInFlight: false,
             refreshInFlight: false,
-            lastRefreshAt: 0,
-            initialRefreshTriggered: false
+            lastRefreshAt: 0
         };
 
         window.whatsappConnectionPanelState = state;
@@ -372,6 +371,7 @@
                 const connectionStatus = String(qrData.status || healthSession.status || 'unknown').toLowerCase();
                 // Global health can be ready because a different session is connected.
                 const isConnected = connectionStatus === 'ready';
+                const isLinking = connectionStatus === 'authenticated' || connectionStatus === 'initializing';
                 const generatedAt = qrData.generatedAt ? new Date(qrData.generatedAt) : null;
                 const generatedAtMs = generatedAt && !Number.isNaN(generatedAt.getTime())
                     ? generatedAt.getTime()
@@ -382,7 +382,7 @@
                 $serviceStatus
                     .removeClass('badge-secondary badge-success badge-danger badge-warning')
                     .addClass(health.success ? (isConnected ? 'badge-success' : 'badge-warning') : 'badge-danger')
-                    .text(health.success ? (isConnected ? 'Connected / Running' : 'Running / Waiting') : 'Service Error');
+                    .text(health.success ? (isConnected ? 'Connected / Running' : (isLinking ? 'Connecting / Syncing' : 'Running / Waiting')) : 'Service Error');
 
                 $sessionStatus
                     .removeClass('badge-secondary badge-success badge-danger badge-warning')
@@ -410,6 +410,10 @@
                         .removeClass('d-none')
                         .addClass('text-success')
                         .text('WhatsApp is connected. QR is hidden for this active session.');
+                } else if (isLinking) {
+                    $image.attr('src', '').addClass('d-none');
+                    $placeholder.removeClass('d-none').addClass('text-muted')
+                        .text('WhatsApp is connecting and syncing. Please keep your phone online and wait.');
                 } else if (staleQr) {
                     $image.attr('src', '').addClass('d-none');
                     $placeholder
@@ -424,7 +428,7 @@
                     $placeholder
                         .removeClass('d-none')
                         .addClass('text-muted')
-                        .text('QR is not available yet. The panel will retry once automatically and you can also use Refresh QR.');
+                        .text('Waiting for a QR code. Connection status updates automatically.');
                 }
 
                 const errors = [health.error, qr.error].filter(Boolean).join(' ');
@@ -436,8 +440,8 @@
                 const shouldForceRecovery = staleQr
                     || (recoverableStatuses.includes(connectionStatus) && !qr.image);
 
-                if (!forceRefresh && !state.initialRefreshTriggered && shouldForceRecovery) {
-                    state.initialRefreshTriggered = true;
+                const recoveryCooldownPassed = Date.now() - state.lastRefreshAt > 45000;
+                if (health.success && !forceRefresh && recoveryCooldownPassed && shouldForceRecovery) {
                     window.setTimeout(function () {
                         loadWhatsAppConnectionStatus(true);
                     }, 1200);
@@ -483,6 +487,6 @@
         loadWhatsAppConnectionStatus(false);
         state.poller = window.setInterval(function () {
             loadWhatsAppConnectionStatus(false);
-        }, 15000);
+        }, 5000);
     })();
 </script>

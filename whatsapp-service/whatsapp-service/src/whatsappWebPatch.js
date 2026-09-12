@@ -82,6 +82,9 @@ function patchClientInject(Client) {
   }
 
   Client.prototype.inject = async function patchedInject(...args) {
+    if (this.authStrategy?.logoutRequested) {
+      return;
+    }
     if (this.__usbCrmInjectPromise) {
       return this.__usbCrmInjectPromise;
     }

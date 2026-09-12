@@ -8,6 +8,12 @@ use Illuminate\Support\Facades\Log;
 class WhatsAppOtpService
 {
     private ?string $lastError = null;
+    private WhatsAppGatewayService $gatewayService;
+
+    public function __construct(?WhatsAppGatewayService $gatewayService = null)
+    {
+        $this->gatewayService = $gatewayService ?: app(WhatsAppGatewayService::class);
+    }
 
     public function getLastError(): ?string
     {
@@ -37,56 +43,18 @@ class WhatsAppOtpService
         return $this->sendViaBhashSMS($mobile, $otp);
     }
 
-    /**
-     * Send a plain WhatsApp message (non-OTP) via BhashSMS.
-     *
-     * @param string $mobile number without country prefix 91 (BhashSMS requirement)
-     * @param string $message text or template name depending on your account setup
-     */
+    /** Send a normal WhatsApp message through the connected CRM bridge. */
     public function sendMessage(string $mobile, string $message): bool
     {
-        try {
-            $apiUrl   = config('services.whatsapp.api_url', 'http://bhashsms.com/api/sendmsg.php');
-            $user     = config('services.whatsapp.user');
-            $password = config('services.whatsapp.password');
-            $sender   = config('services.whatsapp.sender');
-            $timeout  = (int) config('services.whatsapp.timeout', 25);
-            $timeout  = max(10, min(60, $timeout));
+        $sent = $this->gatewayService->sendMessage(
+            $mobile,
+            $message,
+            config('services.whatsapp_service.session')
+        );
 
-            $phone = $this->formatMobile($mobile);
+        $this->lastError = $sent ? null : $this->gatewayService->getLastError();
 
-            $params = [
-                'user'     => $user,
-                'pass'     => $password,
-                'sender'   => $sender,
-                'phone'    => $phone,
-                'text'     => $message,
-                'priority' => 'wa',
-                'stype'    => 'normal',
-            ];
-
-            $http = Http::withoutVerifying()->timeout($timeout)->connectTimeout(15);
-            $response = $http->get($apiUrl, $params);
-
-            $body = $response->body();
-            if (
-                $response->successful()
-                && !str_contains($body, 'Error')
-                && !str_contains($body, 'Credits')
-                && !str_contains($body, 'Incorrect')
-            ) {
-                $this->lastError = null;
-                return true;
-            }
-
-            $this->lastError = $body;
-            Log::error('BhashSMS sendMessage failed: ' . $body);
-            return false;
-        } catch (\Exception $e) {
-            $this->lastError = $e->getMessage();
-            Log::error('BhashSMS sendMessage exception: ' . $e->getMessage());
-            return false;
-        }
+        return $sent;
     }
 
     /**
