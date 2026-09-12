@@ -102,6 +102,16 @@
         </div>
 
         <div class="more-filter-items">
+            <label class="f-14 text-dark-grey mb-12 text-capitalize" for="filter_duplicate_leads">Duplicate Leads</label>
+            <div class="select-filter mb-4">
+                <select class="form-control select-picker" name="duplicate_leads" id="filter_duplicate_leads">
+                    <option value="all">@lang('app.all')</option>
+                    <option value="duplicates">Duplicate Leads</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="more-filter-items">
             <label class="f-14 text-dark-grey mb-12 text-capitalize"
                 for="filter_category_id">@lang('modules.lead.leadCategory')</label>
             <div class="select-filter mb-4">
@@ -216,7 +226,7 @@
 
 @push('scripts')
     <script>
-        $('#type, #filter_assigned_to, #filter_category_id, #filter_status_id, #filter_interest_level, #filter_source_id, #date_filter_on, #min, #max, #filter_addedBy')
+        $('#type, #filter_assigned_to, #filter_category_id, #filter_status_id, #filter_interest_level, #filter_source_id, #date_filter_on, #filter_duplicate_leads, #min, #max, #filter_addedBy')
             .on('change keyup', function() {
                 if ($('#type').val() != "lead") {
                     $('#reset-filters').removeClass('d-none');
@@ -240,6 +250,9 @@
                     $('#reset-filters').removeClass('d-none');
                     showTable();
                 } else if ($('#date_filter_on').val() != "created_at") {
+                    $('#reset-filters').removeClass('d-none');
+                    showTable();
+                } else if ($('#filter_duplicate_leads').val() != "all") {
                     $('#reset-filters').removeClass('d-none');
                     showTable();
                 } else if ($('#filter_addedBy').val() != "all") {

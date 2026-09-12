@@ -216,6 +216,20 @@ class LeadContactDataTable extends BaseDataTable
             $leadContact = $leadContact->where('leads.interest_level', $this->request()->interest_level);
         }
 
+        if ($this->request()->input('duplicate_leads', 'all') === 'duplicates') {
+            $leadContact = $leadContact
+                ->whereNotNull('leads.mobile_normalized')
+                ->whereIn('leads.mobile_normalized', function ($query) {
+                    $query->from('leads as duplicate_leads')
+                        ->select('duplicate_leads.mobile_normalized')
+                        ->where('duplicate_leads.company_id', company()->id)
+                        ->whereNull('duplicate_leads.archived_at')
+                        ->whereNotNull('duplicate_leads.mobile_normalized')
+                        ->groupBy('duplicate_leads.mobile_normalized')
+                        ->havingRaw('COUNT(*) > 1');
+                });
+        }
+
         $productsServices = $this->request()->input('products_services', []);
         $productsServices = is_array($productsServices) ? $productsServices : [$productsServices];
         $productsServices = collect($productsServices)

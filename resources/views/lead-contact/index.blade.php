@@ -379,6 +379,7 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
                 status_id: $('#filter_status_id').val(),
                 interest_level: $('#filter_interest_level').val(),
                 date_filter_on: $('#date_filter_on').val(),
+                duplicate_leads: $('#filter_duplicate_leads').val(),
                 filter_addedBy: $('#filter_addedBy').val(),
                 filter_assignedTo: $('#filter_assigned_to').val()
             };
