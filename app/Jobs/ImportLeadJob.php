@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\Lead;
 use App\Models\LeadSource;
 use App\Models\User;
+use App\Support\LeadMobile;
 use App\Traits\ExcelImportable;
 use App\Traits\UniversalSearchTrait;
 use Exception;
@@ -48,6 +49,15 @@ class ImportLeadJob implements ShouldQueue
     {
         if ($this->isColumnExists('name')) {
 
+            if ($this->isColumnExists('mobile') && LeadMobile::findExisting(
+                (int) $this->company?->id,
+                $this->getColumnValue('mobile'),
+            )) {
+                $this->failJobWithMessage(LeadMobile::DUPLICATE_MESSAGE);
+
+                return;
+            }
+
             if ($this->isColumnExists('email') && $this->isEmailValid($this->getColumnValue('email'))) {
                 $lead = Lead::where('client_email', $this->getColumnValue('email'))->where('company_id', $this->company?->id)->first();
                 $user = User::where('email', $this->getColumnValue('email'))->first();
@@ -81,6 +91,7 @@ class ImportLeadJob implements ShouldQueue
                 $lead->company_name = $this->isColumnExists('company_name') ? $this->getColumnValue('company_name') : null;
                 $lead->website = $this->isColumnExists('company_website') ? $this->getColumnValue('company_website') : null;
                 $lead->mobile = $this->isColumnExists('mobile') ? $this->getColumnValue('mobile') : null;
+                $lead->mobile_normalized = LeadMobile::normalize($lead->mobile);
                 $lead->office = $this->isColumnExists('company_phone') ? $this->getColumnValue('company_phone') : null;
                 $lead->country = $this->isColumnExists('country') ? $this->getColumnValue('country') : null;
                 $lead->state = $this->isColumnExists('state') ? $this->getColumnValue('state') : null;
@@ -105,7 +116,9 @@ class ImportLeadJob implements ShouldQueue
                 DB::commit();
             } catch (Exception $e) {
                 DB::rollBack();
-                $this->failJobWithMessage($e->getMessage());
+                $this->failJobWithMessage(LeadMobile::isDuplicateException($e)
+                    ? LeadMobile::DUPLICATE_MESSAGE
+                    : $e->getMessage());
             }
         }
         else {
@@ -114,4 +127,3 @@ class ImportLeadJob implements ShouldQueue
     }
 
 }
-

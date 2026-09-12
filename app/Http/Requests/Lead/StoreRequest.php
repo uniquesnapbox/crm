@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Lead;
 
 use App\Http\Requests\CoreRequest;
+use App\Rules\UniqueLeadMobile;
 use App\Traits\CustomFieldsRequestTrait;
 
 class StoreRequest extends CoreRequest
@@ -64,7 +65,7 @@ class StoreRequest extends CoreRequest
         $rules = [];
 
         $rules['client_name'] = 'required';
-        $rules['mobile'] = ['required', 'regex:/^\+\d{7,15}$/'];
+        $rules['mobile'] = ['required', 'regex:/^\+\d{7,15}$/', new UniqueLeadMobile(company()->id)];
         $rules['client_email'] = 'nullable|email:rfc,strict|unique:leads,client_email,null,id,company_id,' . company()->id;
         $rules['assigned_to'] = 'nullable|exists:users,id';
         $rules['status_id'] = 'nullable|exists:lead_status,id';

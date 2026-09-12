@@ -4,6 +4,7 @@ namespace App\Http\Requests\Lead;
 
 use App\Models\Company;
 use App\Http\Requests\CoreRequest;
+use App\Rules\UniqueLeadMobile;
 use App\Traits\CustomFieldsRequestTrait;
 
 class StorePublicLead extends CoreRequest
@@ -31,6 +32,7 @@ class StorePublicLead extends CoreRequest
         $rules = array();
         $rules['name'] = 'required';
         $rules['email'] = 'nullable|email:rfc,strict|unique:leads,client_email,null,id,company_id,' . $company->id.'|unique:users,email,null,id,company_id,' . $company->id;
+        $rules['mobile'] = ['nullable', 'string', new UniqueLeadMobile($company->id)];
 
         $rules = $this->customFieldRules($rules);
 

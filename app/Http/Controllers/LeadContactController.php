@@ -32,6 +32,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Models\WhatsappNotificationSetting;
 use App\Services\WhatsAppGatewayService;
+use App\Support\LeadMobile;
 use App\Traits\ImportExcel;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -40,6 +41,8 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Database\QueryException;
 
 class LeadContactController extends AccountBaseController
 {
@@ -733,6 +736,26 @@ class LeadContactController extends AccountBaseController
 
     }
 
+    public function checkMobile(Request $request)
+    {
+        $viewPermission = user()->permission('view_lead');
+        abort_403(!in_array($viewPermission, ['all', 'added', 'owned', 'both']));
+
+        $lead = LeadMobile::findExisting(
+            company()->id,
+            $request->input('mobile'),
+            $request->filled('lead_id') ? (int) $request->input('lead_id') : null,
+        );
+
+        $canView = $lead && $this->canAccessLead($lead);
+
+        return response()->json([
+            'exists' => (bool) $lead,
+            'message' => $lead ? LeadMobile::DUPLICATE_MESSAGE : null,
+            'lead_url' => $canView ? route('lead-contact.show', $lead->id) : null,
+        ]);
+    }
+
     /**
      * @param StoreRequest $request
      * @return array|void
@@ -775,6 +798,7 @@ class LeadContactController extends AccountBaseController
         // city, state, postal_code removed
         $leadContact->country = $request->country ?: 'India';
         $leadContact->mobile = $this->normalizeMobileByCountry($request->mobile, $request->country);
+        $leadContact->mobile_normalized = LeadMobile::normalize($leadContact->mobile);
         $leadContact->interest_level = $request->interest_level;
         $leadContact->deal_size = $request->deal_size;
         $leadContact->contact_status = $request->contact_status;
@@ -786,7 +810,15 @@ class LeadContactController extends AccountBaseController
             ? $this->normalizeNullableInteger($request->input('added_by'))
             : user()->id;
         $leadContact->assigned_to = $this->resolvedAssignedTo($request);
-        $leadContact->save();
+        try {
+            $leadContact->save();
+        } catch (QueryException $exception) {
+            if (LeadMobile::isDuplicateException($exception)) {
+                throw ValidationException::withMessages(['mobile' => LeadMobile::DUPLICATE_MESSAGE]);
+            }
+
+            throw $exception;
+        }
 
         $followUpCreated = $this->createLeadFormFollowUp($leadContact, $request);
 
@@ -947,6 +979,7 @@ class LeadContactController extends AccountBaseController
                 $request->input('mobile'),
                 $request->input('country', $leadContact->country)
             );
+            $leadContact->mobile_normalized = LeadMobile::normalize($leadContact->mobile);
         }
 
         if ($request->exists('interest_level')) {
@@ -974,7 +1007,15 @@ class LeadContactController extends AccountBaseController
         }
 
         $leadContact->assigned_to = $this->resolvedAssignedTo($request, $leadContact);
-        $leadContact->save();
+        try {
+            $leadContact->save();
+        } catch (QueryException $exception) {
+            if (LeadMobile::isDuplicateException($exception)) {
+                throw ValidationException::withMessages(['mobile' => LeadMobile::DUPLICATE_MESSAGE]);
+            }
+
+            throw $exception;
+        }
 
         if ($request->exists('deal_size')) {
             $this->syncConvertedClientDealSize($leadContact);
@@ -1156,7 +1197,18 @@ class LeadContactController extends AccountBaseController
         }
 
         $leadContact->{$field} = $value;
-        $leadContact->save();
+        if ($field === 'mobile') {
+            $leadContact->mobile_normalized = LeadMobile::normalize($value);
+        }
+        try {
+            $leadContact->save();
+        } catch (QueryException $exception) {
+            if (LeadMobile::isDuplicateException($exception)) {
+                throw ValidationException::withMessages(['mobile' => LeadMobile::DUPLICATE_MESSAGE]);
+            }
+
+            throw $exception;
+        }
 
         if ($field === 'deal_size') {
             $this->syncConvertedClientDealSize($leadContact);

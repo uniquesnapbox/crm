@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Scopes\ActiveScope;
+use App\Support\LeadMobile;
 use App\Traits\CustomFieldsTrait;
 use App\Traits\HasCompany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -108,6 +109,15 @@ class Lead extends BaseModel
         // 'salutation' => Salutation::class,  // removed
         'whatsapp_greeting_sent_at' => 'datetime',
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (Lead $lead): void {
+            if ($lead->isDirty('mobile')) {
+                $lead->mobile_normalized = LeadMobile::normalize($lead->mobile);
+            }
+        });
+    }
 
     public function getImageUrlAttribute()
     {

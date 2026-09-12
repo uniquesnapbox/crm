@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Lead;
 
 use App\Http\Requests\CoreRequest;
+use App\Rules\UniqueLeadMobile;
 use App\Traits\CustomFieldsRequestTrait;
 
 class UpdateRequest extends CoreRequest
@@ -43,7 +44,11 @@ class UpdateRequest extends CoreRequest
     {
         $rules = [
             'client_name' => 'required',
-            'mobile' => ['required', 'regex:/^\+\d{7,15}$/'],
+            'mobile' => [
+                'required',
+                'regex:/^\+\d{7,15}$/',
+                new UniqueLeadMobile(company()->id, (int) $this->route('lead_contact')),
+            ],
             'client_email' => 'nullable|email:rfc,strict|unique:leads,client_email,'.$this->route('lead_contact').',id,company_id,' . company()->id,
             'assigned_to' => 'nullable|exists:users,id',
             'status_id' => 'nullable|exists:lead_status,id',

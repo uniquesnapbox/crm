@@ -270,6 +270,7 @@ $assignLeadPermission = in_array('admin', user_roles()) || user()->permission('a
                                     inputmode="numeric" pattern="[0-9]{10}" placeholder="9876543210" autocomplete="off">
                             </div>
                             <input type="hidden" name="mobile" id="mobile" value="">
+                            <div id="lead-mobile-duplicate-message" class="text-danger f-12 mt-1 d-none" role="alert"></div>
                         </div>
                     </div>
 
@@ -441,6 +442,70 @@ $assignLeadPermission = in_array('admin', user_roles()) || user()->permission('a
             return local;
         }
 
+        let mobileDuplicate = false;
+        let mobileCheckXhr = null;
+        let mobileCheckTimer = null;
+
+        function setMobileDuplicateState(exists, leadUrl) {
+            mobileDuplicate = exists;
+            const $message = $('#lead-mobile-duplicate-message');
+            const $buttons = $('#save-lead-form, #save-more-lead-form');
+
+            $message.empty().toggleClass('d-none', !exists);
+            if (exists) {
+                $message.text('This mobile number already exists in another lead.');
+                if (leadUrl) {
+                    $('<a>', {
+                        href: leadUrl,
+                        class: 'd-block',
+                        target: '_blank',
+                        rel: 'noopener',
+                        text: 'Open existing lead'
+                    }).appendTo($message);
+                }
+            }
+
+            $buttons.prop('disabled', exists);
+        }
+
+        function checkMobileDuplicate() {
+            const code = selectedCountryCode();
+            const local = syncHiddenMobile();
+            const isValid = code === '91' ? local.length === 10 : (local.length >= 6 && local.length <= 12);
+
+            if (!isValid) {
+                setMobileDuplicateState(false);
+                return;
+            }
+
+            if (mobileCheckXhr) {
+                mobileCheckXhr.abort();
+            }
+
+            const requestedMobile = $('#mobile').val();
+            mobileCheckXhr = $.ajax({
+                url: "{{ route('lead-contact.check_mobile') }}",
+                type: 'GET',
+                data: { mobile: requestedMobile },
+                success: function(response) {
+                    if ($('#mobile').val() !== requestedMobile) {
+                        return;
+                    }
+
+                    setMobileDuplicateState(Boolean(response.exists), response.lead_url);
+                },
+                error: function() {
+                    // The backend validation remains authoritative if the availability check fails.
+                    setMobileDuplicateState(false);
+                }
+            });
+        }
+
+        function queueMobileDuplicateCheck() {
+            clearTimeout(mobileCheckTimer);
+            mobileCheckTimer = setTimeout(checkMobileDuplicate, 300);
+        }
+
         function validateMobileBeforeSave() {
             const code = selectedCountryCode();
             const local = syncHiddenMobile();
@@ -465,16 +530,19 @@ $assignLeadPermission = in_array('admin', user_roles()) || user()->permission('a
 
         $('#mobile_local').on('input', function() {
             syncHiddenMobile();
+            queueMobileDuplicateCheck();
         });
 
         $('#country').on('change', function() {
             syncCountryToCode();
             syncHiddenMobile();
+            queueMobileDuplicateCheck();
         });
 
         $('#mobile_country_code').on('change', function() {
             syncCodeToCountry();
             syncHiddenMobile();
+            queueMobileDuplicateCheck();
         });
 
         syncCountryToCode();
@@ -491,6 +559,9 @@ $assignLeadPermission = in_array('admin', user_roles()) || user()->permission('a
             if (!validateMobileBeforeSave()) {
                 return;
             }
+            if (mobileDuplicate) {
+                return;
+            }
             $('#add_more').val(true);
             const url = "{{ route('lead-contact.store') }}?add_more=true";
             var data = $('#save-lead-data-form').serialize() + '&add_more=true';
@@ -499,6 +570,9 @@ $assignLeadPermission = in_array('admin', user_roles()) || user()->permission('a
 
         $('#save-lead-form').click(function() {
             if (!validateMobileBeforeSave()) {
+                return;
+            }
+            if (mobileDuplicate) {
                 return;
             }
             const url = "{{ route('lead-contact.store') }}";

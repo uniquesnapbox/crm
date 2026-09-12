@@ -276,6 +276,7 @@ $editMobileLocal = (str_starts_with($rawEditMobile, '91') && strlen($rawEditMobi
                                     value="{{ $editMobileLocal }}" autocomplete="off">
                             </div>
                             <input type="hidden" name="mobile" id="mobile" value="">
+                            <div id="lead-mobile-duplicate-message" class="text-danger f-12 mt-1 d-none" role="alert"></div>
                         </div>
                     </div>
 
@@ -449,6 +450,70 @@ $editMobileLocal = (str_starts_with($rawEditMobile, '91') && strlen($rawEditMobi
             return local;
         }
 
+        let mobileDuplicate = false;
+        let mobileCheckXhr = null;
+        let mobileCheckTimer = null;
+        let originalMobile = '';
+
+        function setMobileDuplicateState(exists, leadUrl) {
+            mobileDuplicate = exists;
+            const $message = $('#lead-mobile-duplicate-message');
+            const $buttons = $('#save-lead-form, #save-more-lead-form');
+
+            $message.empty().toggleClass('d-none', !exists);
+            if (exists) {
+                $message.text('This mobile number already exists in another lead.');
+                if (leadUrl) {
+                    $('<a>', {
+                        href: leadUrl,
+                        class: 'd-block',
+                        target: '_blank',
+                        rel: 'noopener',
+                        text: 'Open existing lead'
+                    }).appendTo($message);
+                }
+            }
+
+            $buttons.prop('disabled', exists);
+        }
+
+        function checkMobileDuplicate() {
+            const code = selectedCountryCode();
+            const local = syncHiddenMobile();
+            const isValid = code === '91' ? local.length === 10 : (local.length >= 6 && local.length <= 12);
+
+            if (!isValid || $('#mobile').val() === originalMobile) {
+                setMobileDuplicateState(false);
+                return;
+            }
+
+            if (mobileCheckXhr) {
+                mobileCheckXhr.abort();
+            }
+
+            const requestedMobile = $('#mobile').val();
+            mobileCheckXhr = $.ajax({
+                url: "{{ route('lead-contact.check_mobile') }}",
+                type: 'GET',
+                data: { mobile: requestedMobile, lead_id: {{ $leadContact->id }} },
+                success: function(response) {
+                    if ($('#mobile').val() !== requestedMobile) {
+                        return;
+                    }
+
+                    setMobileDuplicateState(Boolean(response.exists), response.lead_url);
+                },
+                error: function() {
+                    setMobileDuplicateState(false);
+                }
+            });
+        }
+
+        function queueMobileDuplicateCheck() {
+            clearTimeout(mobileCheckTimer);
+            mobileCheckTimer = setTimeout(checkMobileDuplicate, 300);
+        }
+
         function validateMobileBeforeSave() {
             const code = selectedCountryCode();
             const local = syncHiddenMobile();
@@ -473,20 +538,24 @@ $editMobileLocal = (str_starts_with($rawEditMobile, '91') && strlen($rawEditMobi
 
         $('#mobile_local').on('input', function() {
             syncHiddenMobile();
+            queueMobileDuplicateCheck();
         });
 
         $('#country').on('change', function() {
             syncCountryToCode();
             syncHiddenMobile();
+            queueMobileDuplicateCheck();
         });
 
         $('#mobile_country_code').on('change', function() {
             syncCodeToCountry();
             syncHiddenMobile();
+            queueMobileDuplicateCheck();
         });
 
         syncCountryToCode();
         syncHiddenMobile();
+        originalMobile = $('#mobile').val();
 
         $('.custom-date-picker').each(function(ind, el) {
             datepicker(el, {
@@ -500,12 +569,18 @@ $editMobileLocal = (str_starts_with($rawEditMobile, '91') && strlen($rawEditMobi
             if (!validateMobileBeforeSave()) {
                 return;
             }
+            if (mobileDuplicate) {
+                return;
+            }
             saveLead('normal');
         });
 
         // Save & Add More button
         $('#save-more-lead-form').click(function() {
             if (!validateMobileBeforeSave()) {
+                return;
+            }
+            if (mobileDuplicate) {
                 return;
             }
             saveLead('add_more');
