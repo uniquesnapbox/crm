@@ -5,6 +5,7 @@ const fs = require("fs");
 const path = require("path");
 const http = require("http");
 const express = require("express");
+const QRCode = require("qrcode");
 const { Server } = require("socket.io");
 
 const config = require("./config");
@@ -434,6 +435,131 @@ app.get("/health", (_req, res) => {
       sessions
     }
   });
+});
+
+// Browser-friendly QR viewer. The page itself is public, but the QR remains
+// protected: the user must enter the service API key and the browser sends it
+// in the x-api-key header rather than putting it in the URL.
+app.get("/qr/view", (req, res) => {
+  const sessionKey = String(req.query.sessionKey || config.defaultSession).trim() || config.defaultSession;
+  const safeSessionKey = JSON.stringify(sessionKey).replace(/</g, "\\u003c");
+
+  res.type("html").send(`<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WhatsApp QR — ${sessionKey.replace(/[<>&\"']/g, "")}</title>
+  <style>
+    :root { color-scheme: light; font-family: system-ui, -apple-system, sans-serif; }
+    body { display: grid; min-height: 100vh; place-items: center; margin: 0; background: #f4f7f6; color: #17221e; }
+    main { width: min(92vw, 520px); box-sizing: border-box; padding: 28px; border-radius: 18px; background: #fff; box-shadow: 0 12px 36px #17352b1f; text-align: center; }
+    h1 { margin: 0 0 8px; font-size: 1.45rem; }
+    p { color: #53645d; }
+    input { width: 100%; box-sizing: border-box; padding: 12px; margin: 10px 0; border: 1px solid #ccd8d2; border-radius: 8px; font-size: 1rem; }
+    button { padding: 12px 18px; border: 0; border-radius: 8px; background: #16805c; color: #fff; font-weight: 700; cursor: pointer; }
+    button:disabled { opacity: .6; cursor: wait; }
+    #qr { display: block; width: min(100%, 440px); margin: 22px auto 12px; image-rendering: pixelated; }
+    #qr[hidden] { display: none; }
+    #status { min-height: 1.4em; font-size: .95rem; }
+    .hint { font-size: .82rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>WhatsApp Bridge QR</h1>
+    <p>Session: <strong>${sessionKey.replace(/[<>&\"']/g, "")}</strong></p>
+    <input id="apiKey" type="password" autocomplete="off" placeholder="WHATSAPP_API_KEY">
+    <button id="load" type="button">Show current QR</button>
+    <p id="status" role="status">Enter the service API key to load the protected QR.</p>
+    <img id="qr" alt="WhatsApp QR code" hidden>
+    <p class="hint">QR refreshes automatically while this page is open. Do not share this page or API key.</p>
+  </main>
+  <script>
+    const sessionKey = ${safeSessionKey};
+    const apiKeyInput = document.getElementById("apiKey");
+    const loadButton = document.getElementById("load");
+    const status = document.getElementById("status");
+    const qrImage = document.getElementById("qr");
+    let objectUrl = null;
+
+    async function loadQr() {
+      const apiKey = apiKeyInput.value.trim();
+      if (!apiKey) {
+        status.textContent = "API key is required.";
+        return;
+      }
+
+      loadButton.disabled = true;
+      status.textContent = "Loading current QR…";
+      try {
+        const headers = { "x-api-key": apiKey };
+        const infoResponse = await fetch("/qr?sessionKey=" + encodeURIComponent(sessionKey), { headers, cache: "no-store" });
+        const info = await infoResponse.json();
+        if (!infoResponse.ok) throw new Error(info.error || "Unable to load QR status");
+        if (!info.data || !info.data.qr) throw new Error("QR is not available yet. Try again in a few seconds.");
+
+        const imageResponse = await fetch("/qr/image?sessionKey=" + encodeURIComponent(sessionKey), { headers, cache: "no-store" });
+        if (!imageResponse.ok) throw new Error("Unable to render QR image");
+        const blob = await imageResponse.blob();
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
+        objectUrl = URL.createObjectURL(blob);
+        qrImage.src = objectUrl;
+        qrImage.hidden = false;
+        status.textContent = "QR ready — scan it from WhatsApp → Linked devices.";
+      } catch (error) {
+        qrImage.hidden = true;
+        status.textContent = error.message;
+      } finally {
+        loadButton.disabled = false;
+      }
+    }
+
+    loadButton.addEventListener("click", loadQr);
+    apiKeyInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") loadQr();
+    });
+    setInterval(() => {
+      if (apiKeyInput.value.trim() && !loadButton.disabled) loadQr();
+    }, 15000);
+  </script>
+</body>
+</html>`);
+});
+
+app.get("/qr/image", requireApiKey, async (req, res) => {
+  const sessionKey = String(req.query.sessionKey || req.query.channelKey || config.defaultSession);
+  const qrInfo = manager.getQrInfo(sessionKey);
+
+  if (!qrInfo.qr) {
+    return res.status(404).json({
+      success: false,
+      error: "QR is not available",
+      data: qrInfo
+    });
+  }
+
+  try {
+    const image = await QRCode.toBuffer(qrInfo.qr, {
+      type: "png",
+      width: 480,
+      margin: 2,
+      errorCorrectionLevel: "M"
+    });
+
+    res.set("Cache-Control", "no-store");
+    res.type("png").send(image);
+  } catch (error) {
+    logger.error("WhatsApp QR image rendering failed", {
+      sessionKey,
+      error: error.message
+    });
+
+    res.status(500).json({
+      success: false,
+      error: "Unable to render QR image"
+    });
+  }
 });
 
 app.get("/qr", requireApiKey, async (req, res) => {
