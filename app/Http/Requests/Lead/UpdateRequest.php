@@ -42,16 +42,19 @@ class UpdateRequest extends CoreRequest
      */
     public function rules()
     {
+        $leadId = $this->currentLeadId();
+
         $rules = [
-            'client_name' => 'required',
+            'client_name' => 'required|string|max:191',
             'mobile' => [
                 'required',
                 'regex:/^\+\d{7,15}$/',
-                new UniqueLeadMobile(company()->id, (int) $this->route('lead_contact')),
+                new UniqueLeadMobile(company()->id, $leadId),
             ],
-            'client_email' => 'nullable|email:rfc,strict|unique:leads,client_email,'.$this->route('lead_contact').',id,company_id,' . company()->id,
-            'assigned_to' => 'nullable|exists:users,id',
-            'status_id' => 'nullable|exists:lead_status,id',
+            'client_email' => 'nullable|email:rfc,strict|unique:leads,client_email,' . ($leadId ?? 'NULL') . ',id,company_id,' . company()->id,
+            'status_id' => 'nullable|integer|exists:lead_status,id',
+            'category_id' => 'nullable|integer|exists:lead_category,id',
+            'assigned_to' => 'nullable|integer|exists:users,id',
             'interest_level' => 'nullable|in:low,medium,high,very_high',
             'deal_size' => 'nullable|numeric|min:0',
             'contact_status' => 'nullable|in:pending,connected,not_connected',
@@ -70,6 +73,17 @@ class UpdateRequest extends CoreRequest
         $rules = $this->customFieldRules($rules);
 
         return $rules;
+    }
+
+    /**
+     * Resolve both the API route's {id} and the web resource route's
+     * {lead_contact} parameter. The request class is shared by both routes.
+     */
+    protected function currentLeadId(): ?int
+    {
+        $routeId = $this->route('id') ?? $this->route('lead_contact');
+
+        return is_numeric($routeId) ? (int) $routeId : null;
     }
 
     public function attributes()

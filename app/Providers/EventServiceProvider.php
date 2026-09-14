@@ -81,6 +81,7 @@ use App\Listeners\AutoFollowUpReminderListener;
 use App\Listeners\AutoTaskReminderListener;
 use App\Listeners\BirthdayReminderListener;
 use App\Listeners\BulkShiftListener;
+use App\Listeners\ClearOneSignalPlayerIdOnLogout;
 use App\Listeners\ContractSignedListener;
 use App\Listeners\DailyTimeLogReportListener;
 use App\Listeners\DealListener;
@@ -449,6 +450,7 @@ use App\Observers\UserObserver;
 use App\Observers\UserPermissionObserver;
 use App\Observers\UserTaskboardSettingObserver;
 use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Logout;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
 class EventServiceProvider extends ServiceProvider
@@ -461,6 +463,7 @@ class EventServiceProvider extends ServiceProvider
      */
     protected $listen = [
         Login::class => [LogSuccessfulLogin::class],
+        Logout::class => [ClearOneSignalPlayerIdOnLogout::class],
         SubTaskCompletedEvent::class => [SubTaskCompletedListener::class],
         NewUserEvent::class => [NewUserListener::class],
         NewContractEvent::class => [NewContractListener::class],

@@ -64,11 +64,12 @@ class StoreRequest extends CoreRequest
     {
         $rules = [];
 
-        $rules['client_name'] = 'required';
+        $rules['client_name'] = 'required|string|max:191';
         $rules['mobile'] = ['required', 'regex:/^\+\d{7,15}$/', new UniqueLeadMobile(company()->id)];
         $rules['client_email'] = 'nullable|email:rfc,strict|unique:leads,client_email,null,id,company_id,' . company()->id;
-        $rules['assigned_to'] = 'nullable|exists:users,id';
-        $rules['status_id'] = 'nullable|exists:lead_status,id';
+        $rules['status_id'] = 'nullable|integer|exists:lead_status,id';
+        $rules['category_id'] = 'nullable|integer|exists:lead_category,id';
+        $rules['assigned_to'] = 'nullable|integer|exists:users,id';
         $rules['interest_level'] = 'nullable|in:low,medium,high,very_high';
         $rules['deal_size'] = 'nullable|numeric|min:0';
         $rules['contact_status'] = 'nullable|in:pending,connected,not_connected';

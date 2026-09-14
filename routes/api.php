@@ -54,12 +54,15 @@ Route::post('internal/whatsapp/incoming', [WhatsappWebhookController::class, 'in
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('me', [AuthController::class, 'profile'])->name('api.profile');
+    Route::get('follow-ups/pending', [LeadContactController::class, 'listPendingFollowUpsApi'])->name('api.follow-ups.pending');
     Route::get('lead-contacts', [LeadContactApiController::class, 'index'])->name('api.lead-contacts.index');
     Route::get('lead-options', [LeadOptionsController::class, 'index'])->name('api.lead-options.index');
     Route::post('lead-contacts', [LeadContactController::class, 'store'])->name('api.lead-contacts.store');
     Route::patch('lead-contacts/{id}', [LeadContactController::class, 'update'])->name('api.lead-contacts.update');
     Route::patch('lead-contacts/{id}/quick-update', [LeadContactController::class, 'quickUpdate'])->name('api.lead-contacts.quick-update');
+    Route::get('lead-contacts/{id}/follow-ups', [LeadContactController::class, 'listFollowUpsApi'])->name('api.lead-contacts.follow-ups.index');
     Route::post('lead-contacts/{id}/follow-ups', [LeadContactController::class, 'storeFollowUpApi'])->name('api.lead-contacts.follow-ups.store');
+    Route::patch('lead-contacts/{leadId}/follow-ups/{followUpId}', [LeadContactController::class, 'changeFollowUpStatusApi'])->name('api.lead-contacts.follow-ups.status');
     Route::get('employees', [MobileCrmApiController::class, 'employees'])->name('api.employees.index');
     Route::get('clients', [MobileCrmApiController::class, 'clients'])->name('api.clients.index');
     Route::get('clients/{client}', [MobileCrmApiController::class, 'client'])->name('api.clients.show');

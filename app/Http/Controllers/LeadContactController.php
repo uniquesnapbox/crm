@@ -783,8 +783,9 @@ class LeadContactController extends AccountBaseController
         if ($request->has('note')) {
             $leadContact->note = trim_editor($request->note);
         }
-        $leadContact->source_id = $request->source_id;
-        $leadContact->status_id = $request->status_id;
+        $leadContact->source_id = $this->normalizeNullableInteger($request->input('source_id'));
+        $leadContact->status_id = $this->normalizeNullableInteger($request->input('status_id'));
+        $leadContact->category_id = $this->normalizeNullableInteger($request->input('category_id'));
         $leadContact->client_id = $existingUser?->id;
         if ($request->has('company_name')) {
             $leadContact->company_name = $request->company_name;
@@ -2292,6 +2293,110 @@ class LeadContactController extends AccountBaseController
      * Store follow-up note from mobile app (API endpoint).
      * Accepts ISO8601 datetime format instead of company-specific format.
      */
+    public function listPendingFollowUpsApi(Request $request)
+    {
+        $viewPermission = user()->permission('view_lead_follow_up');
+        abort_403(!in_array($viewPermission, ['all', 'added', 'owned', 'both']));
+
+        $query = LeadFollowUp::with(['lead:id,client_name,mobile,cell,office,contact_status_reason', 'addedBy'])
+            ->where('status', 'pending')
+            ->whereNotNull('next_follow_up_date');
+
+        if (!$this->isAdminUser()) {
+            $query->whereHas('lead', function ($leadQuery) {
+                $leadQuery->where('added_by', user()->id)
+                    ->orWhere('assigned_to', user()->id);
+            });
+        }
+
+        $followUps = $query->orderBy('next_follow_up_date')
+            ->get()
+            ->map(fn (LeadFollowUp $followUp) => [
+                'id' => $followUp->id,
+                'lead_id' => $followUp->lead_id,
+                'lead_name' => $followUp->lead?->client_name,
+                'client_number' => $followUp->lead?->mobile ?: ($followUp->lead?->cell ?: $followUp->lead?->office),
+                'remarks' => $followUp->lead?->contact_status_reason,
+                'note' => $followUp->remark,
+                'scheduled_at' => $followUp->next_follow_up_date?->toIso8601String(),
+                'status' => $followUp->status ?: 'pending',
+                'created_at' => $followUp->created_at?->toIso8601String(),
+                'created_by' => optional($followUp->addedBy)->name,
+            ])
+            ->values();
+
+        return response()->json(['data' => $followUps]);
+    }
+
+    public function listFollowUpsApi(Request $request, $id)
+    {
+        $viewPermission = user()->permission('view_lead_follow_up');
+        abort_403(!in_array($viewPermission, ['all', 'added', 'owned', 'both']));
+
+        $lead = Lead::findOrFail($id);
+        abort_403(!$this->canAccessLead($lead));
+
+        $followUps = LeadFollowUp::with('addedBy')
+            ->where('lead_id', $lead->id)
+            ->orderByDesc('next_follow_up_date')
+            ->orderByDesc('id')
+            ->get()
+            ->map(fn (LeadFollowUp $followUp) => [
+                'id' => $followUp->id,
+                'lead_id' => $followUp->lead_id,
+                'lead_name' => $lead->client_name,
+                'client_number' => $lead->mobile ?: ($lead->cell ?: $lead->office),
+                'remarks' => $lead->contact_status_reason,
+                'note' => $followUp->remark,
+                'scheduled_at' => $followUp->next_follow_up_date?->toIso8601String(),
+                'status' => $followUp->status ?: 'pending',
+                'created_at' => $followUp->created_at?->toIso8601String(),
+                'created_by' => optional($followUp->addedBy)->name,
+            ])
+            ->values();
+
+        return response()->json(['data' => $followUps]);
+    }
+
+    public function changeFollowUpStatusApi(Request $request, $leadId, $followUpId)
+    {
+        $this->editFollowUpPermission = user()->permission('edit_lead_follow_up');
+        $request->validate(['status' => 'required|in:pending,canceled,completed']);
+
+        $lead = Lead::findOrFail($leadId);
+        abort_403(!$this->canAccessLead($lead));
+
+        $followUp = LeadFollowUp::where('lead_id', $lead->id)->findOrFail($followUpId);
+        abort_403(!$this->canEditFollowUpRecord($followUp));
+
+        $oldStatus = (string) ($followUp->status ?: 'pending');
+        $followUp->status = $request->status;
+        $followUp->last_updated_by = user()->id;
+        $followUp->save();
+
+        $this->syncLeadFollowUpFlag($followUp->lead_id);
+
+        if ($oldStatus !== (string) $followUp->status) {
+            $this->pushLeadHistory($followUp->lead_id, 'followup_status_updated', [
+                'title' => 'Follow-up Status Changed',
+                'description' => 'Status changed from "' . ucfirst($oldStatus) . '" to "' . ucfirst((string) $followUp->status) . '".',
+                'meta' => [
+                    'followup_id' => $followUp->id,
+                    'followup_status' => $followUp->status ?: 'pending',
+                ],
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Follow-up status updated successfully.',
+            'data' => [
+                'id' => $followUp->id,
+                'status' => $followUp->status ?: 'pending',
+            ],
+        ]);
+    }
+
     public function storeFollowUpApi(Request $request, $id)
     {
         $this->addFollowUpPermission = user()->permission('add_lead_follow_up');
@@ -2313,7 +2418,10 @@ class LeadContactController extends AccountBaseController
         // Parse scheduled datetime - use either field sent by mobile app
         $scheduledDateTime = $request->scheduled_at ?? $request->follow_up_date;
         if ($scheduledDateTime) {
-            $followUp->next_follow_up_date = Carbon::parse($scheduledDateTime, 'UTC')
+            // Mobile sends a timezone-less ISO string representing the
+            // company's local time. Explicit offsets (if supplied) are still
+            // respected by Carbon before normalising to the company timezone.
+            $followUp->next_follow_up_date = Carbon::parse($scheduledDateTime, company()->timezone)
                 ->setTimezone(company()->timezone);
         } else {
             $followUp->next_follow_up_date = null;
@@ -2347,7 +2455,12 @@ class LeadContactController extends AccountBaseController
             'data' => [
                 'id' => $followUp->id,
                 'lead_id' => $followUp->lead_id,
+                'lead_name' => $lead->client_name,
+                'client_number' => $lead->mobile ?: ($lead->cell ?: $lead->office),
+                'remarks' => $lead->contact_status_reason,
                 'note' => $followUp->remark,
+                'scheduled_at' => $followUp->next_follow_up_date?->toIso8601String(),
+                'status' => $followUp->status ?: 'pending',
                 'created_at' => $followUp->created_at?->toIso8601String(),
                 'created_by' => optional($followUp->addedBy)->name ?: user()->name,
             ],

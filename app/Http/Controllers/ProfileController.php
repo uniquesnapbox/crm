@@ -114,7 +114,13 @@ class ProfileController extends AccountBaseController
     public function updateOneSignalId(Request $request)
     {
         $user = user();
-        $user->onesignal_player_id = $request->userId;
+        $validated = $request->validate([
+            'userId' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $user->onesignal_player_id = filled($validated['userId'] ?? null)
+            ? trim($validated['userId'])
+            : null;
         $user->save();
         session()->forget('user');
     }
