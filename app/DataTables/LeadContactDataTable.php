@@ -275,7 +275,10 @@ class LeadContactDataTable extends BaseDataTable
      */
     public function html()
     {
-        $dataTable = $this->setBuilder('lead-contact-table', 2)
+        // Keep the web table in the same order as the mobile API: newest
+        // leads first. The created_at column is the 14th DataTable column
+        // (zero-based index 13; check and hidden columns come first).
+        $dataTable = $this->setBuilder('lead-contact-table', 13)
             ->parameters([
                 'stateSave' => true,
                 'initComplete' => 'function () {

@@ -98,7 +98,12 @@ class LeadContactApiController extends Controller
             $query->where('status_id', $status);
         }
 
-        return response()->json($query->orderByDesc('created_at')->paginate($perPage));
+        return response()->json(
+            $query
+                ->orderByDesc('created_at')
+                ->orderByDesc('id')
+                ->paginate($perPage)
+        );
     }
 
     private function hasNextFollowUpColumn(): bool
