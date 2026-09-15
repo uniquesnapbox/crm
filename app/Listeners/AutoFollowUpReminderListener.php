@@ -21,12 +21,18 @@ class AutoFollowUpReminderListener
     {
         $companyId = $event->followup->lead->company_id;
 
-        $adminUserIds = User::allAdmins($companyId)->pluck('id')->toArray();
+        $lead = $event->followup->lead;
+        $notifyUser = $lead?->assignedTo
+            ?: $lead?->addedBy
+            ?: $event->followup->addedBy;
 
-        /** @phpstan-ignore-next-line */
-        $notifyUser = is_null($event->followup->lead->leadAgent)
-            ? User::whereIn('id', $adminUserIds)->get()
-            : $event->followup->lead->leadAgent->user;
+        if (!$notifyUser && $lead?->leadAgent?->user) {
+            $notifyUser = $lead->leadAgent->user;
+        }
+
+        if (!$notifyUser) {
+            $notifyUser = User::whereIn('id', User::allAdmins($companyId)->pluck('id'))->get();
+        }
 
         if ($notifyUser) {
             Notification::send($notifyUser, new AutoFollowUpReminder($event->followup));

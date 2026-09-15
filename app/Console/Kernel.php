@@ -21,7 +21,6 @@ use App\Console\Commands\SendEventReminder;
 use App\Console\Commands\SendAutoFollowUpReminder;
 use App\Console\Commands\SendDailyPendingTaskWhatsappSummary;
 use App\Console\Commands\SendDailyLeadFollowUpWhatsappSummary;
-use App\Console\Commands\SendFollowupMessages;
 use App\Console\Commands\SendDailyTimelogReport;
 use App\Console\Commands\SendProjectReminder;
 use App\Console\Commands\UpdateExchangeRates;
@@ -63,7 +62,6 @@ class Kernel extends ConsoleKernel
         SendAutoFollowUpReminder::class,
         SendDailyPendingTaskWhatsappSummary::class,
         SendDailyLeadFollowUpWhatsappSummary::class,
-        SendFollowupMessages::class,
         FetchTicketEmails::class,
         AddMissingRolePermission::class,
         BirthdayReminderCommand::class,
@@ -108,7 +106,6 @@ class Kernel extends ConsoleKernel
         // $schedule->command('fetch-ticket-emails')->everyMinute(); // phpcs:ignore
         $schedule->command('send-auto-followup-reminder')->everyMinute();
         $schedule->command('send-lead-followup-whatsapp-reminders')->everyMinute()->withoutOverlapping(5);
-        $schedule->command('send-followup-messages')->everyMinute();
         $schedule->command('send-time-tracker')->everyMinute();
 
         // Daily added different time to reduce server load

@@ -48,6 +48,10 @@ class ProductionReadinessSmokeTest extends TestCase
         ] as $command) {
             $this->assertContains($command, $commands);
         }
+
+        // Follow-up WhatsApp messages are employee reminders only. The old
+        // client-message command must not be available to the scheduler.
+        $this->assertNotContains('send-followup-messages', $commands);
     }
 
     public function testCriticalCrmRoutesAreRegistered(): void
