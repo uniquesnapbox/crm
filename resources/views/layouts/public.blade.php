@@ -21,10 +21,10 @@
 
     <title>@lang($pageTitle)</title>
     <meta name="msapplication-TileColor" content="#ffffff">
-    <meta name="msapplication-TileImage" content="{{ isset($company)?$company->favicon_url:global_setting()->favicon_url }}">
+    <meta name="msapplication-TileImage" content="{{ $company ? $company->favicon_url : global_setting()->favicon_url }}">
     <meta name="theme-color" content="#ffffff">
     <link rel="icon" type="image/png" sizes="16x16"
-          href="{{ isset($company)?$company->favicon_url:global_setting()->favicon_url }}">
+          href="{{ $company ? $company->favicon_url : global_setting()->favicon_url }}">
 
     @include('sections.theme_css')
 
@@ -77,7 +77,7 @@
     <script src="{{ asset('vendor/jquery/jquery.min.js') }}"></script>
     <script src="{{ asset('vendor/jquery/modernizr.min.js') }}"></script>
     <script>
-        window.company = @json($company ?? global_setting());
+        window.company = @json($company ?: global_setting());
         window.init = window.init || function () {};
         var company = window.company;
     </script>
@@ -131,8 +131,8 @@
 
             <div class="row">
                 <div class="col-12 mb-4">
-                    <img src="{{ isset($company)?$company->light_logo_url:global_setting()->light_logo_url }}" class="height-35 rounded">
-                    <div class="mt-2 f-12 text-dark-grey">{{  isset($company)?$company->company_name:global_setting()->global_app_name }}</div>
+                    <img src="{{ $company ? $company->light_logo_url : global_setting()->light_logo_url }}" class="height-35 rounded">
+                    <div class="mt-2 f-12 text-dark-grey">{{ $company ? $company->company_name : global_setting()->global_app_name }}</div>
                 </div>
             </div>
 
@@ -141,7 +141,7 @@
 
             <div class="row">
                 <div class="col-12 f-11 text-dark-grey">
-                    &copy; {{ now()->year }} | {{  isset($company)?$company->company_name:global_setting()->global_app_name }}
+                    &copy; {{ now()->year }} | {{ $company ? $company->company_name : global_setting()->global_app_name }}
                 </div>
             </div>
         </div>
@@ -177,7 +177,7 @@
 <!-- Global Required Javascript -->
 <script src="{{ asset('js/main.js') }}?v={{ filemtime(public_path('js/main.js')) }}"></script>
 <script>
-    window.company = window.company || @json($company ?? global_setting());
+    window.company = window.company || @json($company ?: global_setting());
     window.init = window.init || function () {};
 </script>
 

@@ -3,7 +3,7 @@
         /* For Logged in user take header color a app theme*/
         /* For public pages use company specific header color example invoice,estimate public page*/
         /* For all other pages use like auth use global setting header*/
-        --header_color: @if(isset($appTheme)) {{ $appTheme->header_color}} @elseif(isset($company)) {{$company->header_color}} @else {{ global_setting()->header_color}} @endif;
+        --header_color: @if(isset($appTheme)) {{ $appTheme->header_color}} @elseif($company) {{$company->header_color}} @else {{ global_setting()->header_color}} @endif;
         --sidebar_color: @if(isset($appTheme) && $appTheme->sidebar_color) {{ $appTheme->sidebar_color }} @else #171F29 @endif;
     }
 
