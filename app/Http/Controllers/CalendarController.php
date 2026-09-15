@@ -41,6 +41,15 @@ class CalendarController extends AccountBaseController
         [$rangeStart, $rangeEnd] = $this->calendarRange($request);
 
         $followups = LeadFollowUp::query()
+            ->select([
+                'id',
+                'lead_id',
+                'next_follow_up_date',
+                'status',
+                'remark',
+                'latitude',
+                'longitude',
+            ])
             ->with(['lead:id,company_id,client_name'])
             ->whereNotNull('lead_id')
             // FullCalendar's end value is exclusive.
@@ -54,9 +63,17 @@ class CalendarController extends AccountBaseController
         $statusMeta = [
             'completed' => ['color' => '#16a34a', 'label' => __('app.completed')],
             'canceled' => ['color' => '#6b7280', 'label' => __('app.canceled')],
+            'overdue' => ['color' => '#dc2626', 'label' => __('app.overdue')],
+            'today' => ['color' => '#eab308', 'label' => __('app.today')],
+            'upcoming' => ['color' => '#2563eb', 'label' => __('app.upcoming')],
         ];
 
-        $now = now(company()->timezone);
+        $company = company();
+        $companyTimezone = $company->timezone;
+        $dateFormat = $company->date_format;
+        $timeFormat = $company->time_format;
+        $leadUrlTemplate = route('lead-contact.show', ['lead_contact' => '__lead_id__']) . '?tab=follow-up';
+        $now = now($companyTimezone);
         $today = $now->copy()->startOfDay();
 
         $events = [];
@@ -66,29 +83,18 @@ class CalendarController extends AccountBaseController
                 continue;
             }
 
-            $followUpAt = $followup->next_follow_up_date?->timezone(company()->timezone);
+            $followUpAt = $followup->next_follow_up_date?->timezone($companyTimezone);
             $followUpDay = $followUpAt?->copy()->startOfDay();
             $status = strtolower((string) ($followup->status ?: 'pending'));
 
-            if (isset($statusMeta[$status])) {
-                $color = $statusMeta[$status]['color'];
-                $statusLabel = $statusMeta[$status]['label'];
+            if (!isset($statusMeta[$status])) {
+                $status = $followUpAt && $followUpAt->lt($now)
+                    ? 'overdue'
+                    : ($followUpDay && $followUpDay->equalTo($today) ? 'today' : 'upcoming');
             }
-            elseif ($followUpAt && $followUpAt->lt($now)) {
-                $color = '#dc2626';
-                $status = 'overdue';
-                $statusLabel = __('app.overdue');
-            }
-            elseif ($followUpDay && $followUpDay->equalTo($today)) {
-                $color = '#eab308';
-                $status = 'today';
-                $statusLabel = __('app.today');
-            }
-            else {
-                $color = '#2563eb';
-                $status = 'upcoming';
-                $statusLabel = __('app.upcoming');
-            }
+
+            $color = $statusMeta[$status]['color'];
+            $statusLabel = $statusMeta[$status]['label'];
 
             $events[] = [
                 'id' => 'fup-' . $followup->id,
@@ -102,15 +108,15 @@ class CalendarController extends AccountBaseController
                     'followup_id' => $followup->id,
                     'status' => $status,
                     'status_label' => $statusLabel,
-                    'followup_date' => $followUpAt?->format(company()->date_format),
-                    'reminder_time' => $followUpAt?->format(company()->time_format),
+                    'followup_date' => $followUpAt?->format($dateFormat),
+                    'reminder_time' => $followUpAt?->format($timeFormat),
                     'note' => trim(strip_tags((string) $followup->remark)) ?: '--',
                     'latitude' => $followup->latitude,
                     'longitude' => $followup->longitude,
                     'maps_url' => ($followup->latitude && $followup->longitude)
                         ? 'https://www.google.com/maps/search/?api=1&query=' . $followup->latitude . ',' . $followup->longitude
                         : null,
-                    'redirect_url' => route('lead-contact.show', [$followup->lead_id]) . '?tab=follow-up',
+                    'redirect_url' => str_replace('__lead_id__', (string) $followup->lead_id, $leadUrlTemplate),
                 ],
             ];
         }

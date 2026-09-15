@@ -172,6 +172,8 @@
             selectable: false,
             editable: false,
             dayMaxEvents: true,
+            lazyFetching: true,
+            progressiveEventRendering: true,
             eventContent: function(arg) {
                 const props = arg.event.extendedProps || {};
                 const status = Object.prototype.hasOwnProperty.call(statusIcons, props.status)
@@ -208,19 +210,8 @@
             },
             eventDidMount: function(info) {
                 if (info.event.extendedProps.type === 'followup') {
-                    $(info.el).attr('data-toggle', 'tooltip');
-                    $(info.el).attr('data-html', 'true');
-                    $(info.el).attr('data-placement', 'top');
-                    $(info.el).attr('title', eventDetailsHtml(info.event));
-                    $(info.el).tooltip({
-                        container: 'body',
-                        html: true,
-                        trigger: 'hover'
-                    });
+                    $(info.el).attr('data-calendar-event-id', info.event.id);
                 }
-            },
-            eventWillUnmount: function(info) {
-                $(info.el).tooltip('dispose');
             },
             eventClick: function(arg) {
                 if (arg.event.extendedProps.type === 'followup' && arg.event.extendedProps.redirect_url) {
@@ -244,6 +235,18 @@
                         }
                     });
                 }
+            }
+        });
+
+        $(calendarEl).tooltip({
+            selector: '.fc-event',
+            container: 'body',
+            html: true,
+            trigger: 'hover',
+            title: function() {
+                const event = calendar.getEventById($(this).attr('data-calendar-event-id'));
+
+                return event ? eventDetailsHtml(event) : '';
             }
         });
 
