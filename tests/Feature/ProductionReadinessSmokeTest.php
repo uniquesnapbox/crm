@@ -14,6 +14,11 @@ class ProductionReadinessSmokeTest extends TestCase
         foreach ([
             '/account/dashboard',
             '/account/lead-contact',
+            route('calendar.index'),
+            route('crm.calendar.events', [
+                'start' => '2026-09-01T00:00:00+05:30',
+                'end' => '2026-10-01T00:00:00+05:30',
+            ]),
             '/account/deals',
             '/account/tasks',
             '/account/invoices',
@@ -52,6 +57,8 @@ class ProductionReadinessSmokeTest extends TestCase
             'user-permissions.index',
             'lead-contact.index',
             'lead-contact.convert_to_client',
+            'calendar.index',
+            'crm.calendar.events',
             'deals.index',
             'tasks.index',
             'invoices.index',

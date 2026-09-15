@@ -28,6 +28,36 @@
             border-radius: 999px;
             display: inline-block;
         }
+        .calendar-event-content {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            max-width: 100%;
+        }
+        .calendar-event-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            flex: 0 0 auto;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .calendar-event-status i { font-size: 10px; }
+        .calendar-event-title {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .calendar-status-completed { color: #15803d; }
+        .calendar-status-canceled { color: #4b5563; }
+        .calendar-status-overdue { color: #b91c1c; }
+        .calendar-status-today { color: #a16207; }
+        .calendar-status-upcoming { color: #1d4ed8; }
+        .calendar-empty-state {
+            padding: 36px 16px;
+            text-align: center;
+            color: #6b7280;
+        }
         .follow-up-tooltip {
             text-align: left;
             max-width: 320px;
@@ -42,13 +72,7 @@
 
 @section('content')
     <div class="content-wrapper">
-        <div class="d-grid d-lg-flex d-md-flex action-bar my-3">
-            <div id="table-actions" class="flex-grow-1 align-items-center">
-                <!-- optional action buttons -->
-            </div>
-        </div>
-
-        <x-cards.data>
+        <x-cards.data :title="__('app.menu.calendar')">
             <div class="calendar-legend">
                 <div class="calendar-legend-item">
                     <span class="calendar-legend-dot" style="background:#16a34a;"></span>
@@ -59,6 +83,10 @@
                     <span>Overdue (not completed)</span>
                 </div>
                 <div class="calendar-legend-item">
+                    <span class="calendar-legend-dot" style="background:#6b7280;"></span>
+                    <span>Canceled</span>
+                </div>
+                <div class="calendar-legend-item">
                     <span class="calendar-legend-dot" style="background:#eab308;"></span>
                     <span>Today (pending)</span>
                 </div>
@@ -67,7 +95,11 @@
                     <span>Upcoming</span>
                 </div>
             </div>
-            <div id="calendar"></div>
+            <div id="calendar" aria-label="{{ __('app.menu.calendar') }}"></div>
+            <div id="calendar-empty-state" class="calendar-empty-state d-none" role="status">
+                No follow-ups are scheduled for this date range.
+            </div>
+            <div id="calendar-status" class="sr-only" role="status" aria-live="polite"></div>
         </x-cards.data>
     </div>
 @endsection
@@ -92,7 +124,7 @@
         const eventDetailsHtml = (event) => {
             const props = event.extendedProps || {};
             const mapsLink = props.maps_url
-                ? `<div><span class="label">Location:</span><a href="${props.maps_url}" target="_blank" rel="noopener">Open in Google Maps</a></div>`
+                ? `<div><span class="label">Location:</span><a href="${escapeHtml(props.maps_url)}" target="_blank" rel="noopener">Open in Google Maps</a></div>`
                 : '';
 
             return `
@@ -103,6 +135,29 @@
                     ${mapsLink}
                 </div>
             `;
+        };
+
+        const statusIcons = {
+            completed: 'fa-check-circle',
+            canceled: 'fa-ban',
+            overdue: 'fa-exclamation-circle',
+            today: 'fa-clock',
+            upcoming: 'fa-calendar-day'
+        };
+
+        const emptyStateEl = document.getElementById('calendar-empty-state');
+        const statusEl = document.getElementById('calendar-status');
+
+        const setCalendarStatus = (message) => {
+            if (statusEl) {
+                statusEl.textContent = message;
+            }
+        };
+
+        const setCalendarEmptyState = (isEmpty) => {
+            if (emptyStateEl) {
+                emptyStateEl.classList.toggle('d-none', !isEmpty);
+            }
         };
 
         var calendar = new FullCalendar.Calendar(calendarEl, {
@@ -117,8 +172,39 @@
             selectable: false,
             editable: false,
             dayMaxEvents: true,
+            eventContent: function(arg) {
+                const props = arg.event.extendedProps || {};
+                const status = Object.prototype.hasOwnProperty.call(statusIcons, props.status)
+                    ? props.status
+                    : 'upcoming';
+                const label = escapeHtml(props.status_label || status);
+
+                return {
+                    html: `<span class="calendar-event-content">
+                        <span class="calendar-event-status calendar-status-${status}" aria-label="${label}">
+                            <i class="fa ${statusIcons[status]}" aria-hidden="true"></i><span>${label}</span>
+                        </span>
+                        <span class="calendar-event-title">${escapeHtml(arg.event.title)}</span>
+                    </span>`
+                };
+            },
             events: {
                 url: "{{ route('crm.calendar.events') }}",
+            },
+            loading: function(isLoading) {
+                if (isLoading) {
+                    setCalendarStatus('Loading follow-ups.');
+                }
+            },
+            eventsSet: function(events) {
+                setCalendarEmptyState(events.length === 0);
+                setCalendarStatus(events.length === 0
+                    ? 'No follow-ups are scheduled for this date range.'
+                    : `${events.length} follow-up${events.length === 1 ? '' : 's'} loaded.`);
+            },
+            eventSourceFailure: function() {
+                setCalendarEmptyState(false);
+                setCalendarStatus('Unable to load follow-ups. Please try again.');
             },
             eventDidMount: function(info) {
                 if (info.event.extendedProps.type === 'followup') {

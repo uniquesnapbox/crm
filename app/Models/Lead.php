@@ -7,12 +7,14 @@ use App\Support\LeadMobile;
 use App\Traits\CustomFieldsTrait;
 use App\Traits\HasCompany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use Illuminate\Notifications\Notifiable;
+use App\Models\User;
 
 /**
  * App\Models\Lead
@@ -222,15 +224,39 @@ class Lead extends BaseModel
             $leadsQuery->where('id', $contactId);
         }
 
-        if (!in_array('admin', user_roles())) {
-            $leadsQuery->where(function ($query) {
-                $query->where('added_by', user()->id)
-                    ->orWhere('assigned_to', user()->id);
-            });
-        }
+        $leadsQuery->accessibleTo(user());
 
         // Retrieve leads
         return $leadsQuery->get();
+    }
+
+    /**
+     * Limit a lead query to the visibility rules used by the CRM lead views.
+     * Admins can see all leads in their company; other users can see leads
+     * they created, the primary lead assignment points to them, or they are
+     * listed in the existing multi-assignee relation.
+     */
+    public function scopeAccessibleTo(Builder $query, User $user): Builder
+    {
+        if ($user->hasRole('admin')) {
+            return $query;
+        }
+
+        return $query->where(function (Builder $leadQuery) use ($user) {
+            $leadQuery->where('added_by', $user->id)
+                ->orWhere('assigned_to', $user->id)
+                ->orWhereHas('assignees', function (Builder $assigneeQuery) use ($user) {
+                    $assigneeQuery->whereKey($user->id);
+                });
+        });
+    }
+
+    public function isAccessibleBy(User $user): bool
+    {
+        return $user->hasRole('admin')
+            || (int) $this->added_by === (int) $user->id
+            || (int) $this->assigned_to === (int) $user->id
+            || $this->assignees()->whereKey($user->id)->exists();
     }
 
     public function getIsConvertedAttribute(): bool

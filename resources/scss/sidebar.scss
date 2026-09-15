@@ -209,11 +209,34 @@
       align-items: center;
       padding: 10px 20px 10px 20px;
 
+      &.accordionItemHeading {
+        border: 0;
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        text-align: left;
+        cursor: pointer;
+      }
+
+      &.active {
+        color: $white_shade !important;
+        background: rgba(255, 255, 255, 0.10);
+        box-shadow: inset 3px 0 0 $white_shade;
+      }
+
       &:focus, &:hover{
         color: $white_shade !important;
       }
     }
   }
+}
+
+.sidebar-menu li .accordionItemPanel {
+  display: block;
+}
+
+.sidebar-menu li.accordionItem.closeIt > .accordionItemPanel {
+  display: none;
 }
 
 .side-icon{

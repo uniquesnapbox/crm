@@ -1,24 +1,65 @@
 /*******************************************************
-                Accordion Sidebar Menu Start
+          Accessible Accordion Sidebar Menu Start
 *******************************************************/
-var accItem = document.getElementsByClassName('accordionItem');
-var accHD = document.getElementsByClassName('accordionItemHeading');
-for (i = 0; i < accHD.length; i++) {
-    accHD[i].addEventListener('click', toggleItem, false);
-}
+(function () {
+    function setAccordionOpen(item, open) {
+        item.classList.toggle('openIt', open);
+        item.classList.toggle('closeIt', !open);
 
-function toggleItem() {
-    var itemClass = this.parentNode.className;
+        var heading = item.querySelector(':scope > .accordionItemHeading');
+        var panel = item.querySelector(':scope > .accordionItemPanel');
 
-    for (i = 0; i < accItem.length; i++) {
-        accItem[i].className = 'accordionItem closeIt';
+        if (heading) {
+            heading.setAttribute('aria-expanded', open ? 'true' : 'false');
+        }
+
+        if (panel) {
+            panel.hidden = !open;
+        }
     }
-    if (itemClass == 'accordionItem closeIt') {
-        this.parentNode.className = 'accordionItem openIt';
+
+    function initAccordionSidebar() {
+        var menu = document.getElementById('appSideMenuScroll');
+
+        if (!menu) {
+            return;
+        }
+
+        menu.querySelectorAll('.accordionItem').forEach(function (item) {
+            setAccordionOpen(item, item.classList.contains('openIt'));
+        });
+
+        menu.addEventListener('click', function (event) {
+            var heading = event.target.closest('.accordionItemHeading');
+
+            if (!heading || !menu.contains(heading)) {
+                return;
+            }
+
+            event.preventDefault();
+
+            var currentItem = heading.closest('.accordionItem');
+            var wasOpen = currentItem.classList.contains('openIt');
+
+            menu.querySelectorAll('.accordionItem').forEach(function (item) {
+                setAccordionOpen(item, false);
+            });
+
+            if (!wasOpen) {
+                setAccordionOpen(currentItem, true);
+            }
+        });
     }
-}
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initAccordionSidebar, { once: true });
+    }
+    else {
+        initAccordionSidebar();
+    }
+})();
 /*******************************************************
-                Accordion Sidebar Menu End
+          Accessible Accordion Sidebar Menu End
 *******************************************************/
 
 /*******************************************************

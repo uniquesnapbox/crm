@@ -233,38 +233,6 @@ $("#sidebarToggle").on("click", function () {
     }
 });
 
-// active left sub menu item
-var currentUrl = window.location;
-var pathArray = window.location.pathname.split("account/");
-if (typeof pathArray[1] !== "undefined") {
-    var currentRoute = pathArray[1].split("/");
-    currentRoute = currentRoute[0];
-    var element = $("#appSideMenuScroll li a")
-        .filter(function () {
-            return this.href == currentUrl.href;
-        })
-        .addClass("active")
-        .closest("li")
-        .removeClass("closeIt")
-        .addClass("openIt");
-
-    // active left main menu item
-    var element2 = $("#appSideMenuScroll li a").filter(function () {
-        var pathArray = this.href.split("account/");
-        if (currentRoute == pathArray[1]) {
-            return true;
-        }
-        // console.log(this.href, currentUrl.href, currentUrl.href.indexOf(this.href));
-    });
-    element2.addClass("active");
-    element2
-        .closest("li")
-        .removeClass("closeIt")
-        .addClass("openIt")
-        .children("a")
-        .addClass("active");
-}
-
 //nl2br
 function nl2br(str, is_xhtml) {
     if (typeof str === "undefined" || str === null) {

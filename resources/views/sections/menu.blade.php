@@ -61,12 +61,14 @@
             </x-slot>
             @if ($sidebarUserPermissions['view_lead'] != 5 && $sidebarUserPermissions['view_lead'] != 'none')
             <div class="accordionItemContent ">
-                <x-sub-menu-item :link="route('lead-contact.index')" :text="__('app.leadContact')" />
+                <x-sub-menu-item :link="route('lead-contact.index')" :text="__('app.leadContact')"
+                                 :active="$routeMatches(['lead-contact.*'])" />
             </div>
             @endif
             {{-- calendar under leads --}}
             <div class="accordionItemContent">
-                <x-sub-menu-item :link="route('calendar.index')" :text="__('app.menu.calendar')" />
+                <x-sub-menu-item :link="route('calendar.index')" :text="__('app.menu.calendar')"
+                                 :active="$routeMatches(['calendar.*'])" />
             </div>
         </x-menu-item>
     @endif

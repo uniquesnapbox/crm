@@ -4,6 +4,7 @@ namespace App\View\Components;
 
 use Illuminate\Contracts\View\View;
 use Illuminate\View\Component;
+use Illuminate\Support\Str;
 
 class MenuItem extends Component
 {
@@ -14,6 +15,7 @@ class MenuItem extends Component
     public $active;
     public $addon;
     public $count;
+    public $accordionId;
 
     /**
      * Create a new component instance.
@@ -28,6 +30,7 @@ class MenuItem extends Component
         $this->active = (bool) $active || (!is_null($link) && url()->current() === $link);
         $this->addon = $addon;
         $this->count = $count;
+        $this->accordionId = 'sidebar-accordion-' . Str::slug($icon . '-' . $text);
     }
 
     /**

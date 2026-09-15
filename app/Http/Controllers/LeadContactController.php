@@ -2057,19 +2057,7 @@ class LeadContactController extends AccountBaseController
 
     private function canAccessLead(?Lead $lead): bool
     {
-        if (!$lead) {
-            return false;
-        }
-
-        if ($this->isAdminUser()) {
-            return true;
-        }
-
-        if ((int) $lead->added_by === (int) user()->id) {
-            return true;
-        }
-
-        return (int) $lead->assigned_to === (int) user()->id;
+        return $lead?->isAccessibleBy(user()) ?? false;
     }
 
     private function canEditFollowUpRecord(?LeadFollowUp $followUp): bool

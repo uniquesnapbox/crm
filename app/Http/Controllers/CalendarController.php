@@ -3,17 +3,20 @@
 namespace App\Http\Controllers;
 
 use App\Models\LeadFollowUp;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class CalendarController extends AccountBaseController
 {
+    private const VIEWABLE_PERMISSION_TYPES = ['all', 'added', 'owned', 'both'];
+
     public function __construct()
     {
         parent::__construct();
         $this->pageTitle = 'app.menu.calendar';
         $this->activeMenu = 'calendar';
         $this->middleware(function ($request, $next) {
-            abort_403(!in_array('leads', $this->user->modules));
+            $this->authorizeCalendarAccess();
 
             return $next($request);
         });
@@ -35,20 +38,26 @@ class CalendarController extends AccountBaseController
     public function events(Request $request)
     {
         $user = auth()->user();
+        [$rangeStart, $rangeEnd] = $this->calendarRange($request);
 
-        if ($user->hasRole('admin')) {
-            $followups = LeadFollowUp::with('lead')
-                ->whereNotNull('lead_id')
-                ->whereNotNull('next_follow_up_date')
-                ->get();
-        }
-        else {
-            $followups = LeadFollowUp::with('lead')
-                ->where('added_by', $user->id)
-                ->whereNotNull('lead_id')
-                ->whereNotNull('next_follow_up_date')
-                ->get();
-        }
+        $followups = LeadFollowUp::query()
+            ->with(['lead:id,company_id,client_name'])
+            ->whereNotNull('lead_id')
+            // FullCalendar's end value is exclusive.
+            ->where('next_follow_up_date', '>=', $rangeStart)
+            ->where('next_follow_up_date', '<', $rangeEnd)
+            ->whereHas('lead', fn ($leadQuery) => $leadQuery->accessibleTo($user))
+            ->orderBy('next_follow_up_date')
+            ->orderBy('id')
+            ->get();
+
+        $statusMeta = [
+            'completed' => ['color' => '#16a34a', 'label' => __('app.completed')],
+            'canceled' => ['color' => '#6b7280', 'label' => __('app.canceled')],
+        ];
+
+        $now = now(company()->timezone);
+        $today = $now->copy()->startOfDay();
 
         $events = [];
 
@@ -58,27 +67,27 @@ class CalendarController extends AccountBaseController
             }
 
             $followUpAt = $followup->next_follow_up_date?->timezone(company()->timezone);
-            $now = now(company()->timezone);
-            $today = $now->copy()->startOfDay();
             $followUpDay = $followUpAt?->copy()->startOfDay();
+            $status = strtolower((string) ($followup->status ?: 'pending'));
 
-            // Completed follow-ups stay green even when their scheduled time
-            // is already in the past. Pending follow-ups are then coloured
-            // by their scheduled date.
-            if ((string) $followup->status === 'completed') {
-                $color = '#16a34a';
+            if (isset($statusMeta[$status])) {
+                $color = $statusMeta[$status]['color'];
+                $statusLabel = $statusMeta[$status]['label'];
             }
             elseif ($followUpAt && $followUpAt->lt($now)) {
                 $color = '#dc2626';
+                $status = 'overdue';
+                $statusLabel = __('app.overdue');
             }
             elseif ($followUpDay && $followUpDay->equalTo($today)) {
                 $color = '#eab308';
-            }
-            elseif ($followUpDay) {
-                $color = '#2563eb';
+                $status = 'today';
+                $statusLabel = __('app.today');
             }
             else {
-                $color = '#dc2626';
+                $color = '#2563eb';
+                $status = 'upcoming';
+                $statusLabel = __('app.upcoming');
             }
 
             $events[] = [
@@ -91,6 +100,8 @@ class CalendarController extends AccountBaseController
                     'type' => 'followup',
                     'lead_id' => $followup->lead_id,
                     'followup_id' => $followup->id,
+                    'status' => $status,
+                    'status_label' => $statusLabel,
                     'followup_date' => $followUpAt?->format(company()->date_format),
                     'reminder_time' => $followUpAt?->format(company()->time_format),
                     'note' => trim(strip_tags((string) $followup->remark)) ?: '--',
@@ -105,5 +116,46 @@ class CalendarController extends AccountBaseController
         }
 
         return response()->json($events);
+    }
+
+    private function authorizeCalendarAccess(): void
+    {
+        $user = auth()->user();
+
+        abort_403(!$user || !in_array('leads', $user->modules));
+
+        // Admins already receive the complete company lead calendar. Other
+        // users need both permissions because events contain lead data and
+        // follow-up notes.
+        if (!$user->hasRole('admin')) {
+            abort_403(!in_array($user->permission('view_lead'), self::VIEWABLE_PERMISSION_TYPES, true));
+            abort_403(!in_array($user->permission('view_lead_follow_up'), self::VIEWABLE_PERMISSION_TYPES, true));
+        }
+    }
+
+    /**
+     * Convert FullCalendar's company-local range to the UTC range stored in
+     * the database. FullCalendar sends an exclusive end boundary.
+     *
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    private function calendarRange(Request $request): array
+    {
+        $start = $request->input('start');
+        $end = $request->input('end');
+
+        abort_unless($start && $end, 422, 'Calendar range is required.');
+
+        try {
+            $rangeStart = Carbon::parse($start, company()->timezone)->setTimezone('UTC');
+            $rangeEnd = Carbon::parse($end, company()->timezone)->setTimezone('UTC');
+        }
+        catch (\Throwable $exception) {
+            abort(422, 'Invalid calendar range.');
+        }
+
+        abort_unless($rangeEnd->greaterThan($rangeStart), 422, 'Invalid calendar range.');
+
+        return [$rangeStart, $rangeEnd];
     }
 }
