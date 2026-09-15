@@ -130,8 +130,8 @@
         <div class="content-wrapper">
 
             <div class="row">
-                <div class="col-12 mb-4">
-                    <img src="{{ $company ? $company->light_logo_url : global_setting()->light_logo_url }}" class="height-35 rounded">
+                <div class="col-12 mb-4 text-center">
+                    <img src="{{ $company ? $company->light_logo_url : global_setting()->light_logo_url }}" class="height-35 rounded" alt="{{ $company ? $company->company_name : global_setting()->global_app_name }}">
                     <div class="mt-2 f-12 text-dark-grey">{{ $company ? $company->company_name : global_setting()->global_app_name }}</div>
                 </div>
             </div>
@@ -140,8 +140,8 @@
             @yield('content')
 
             <div class="row">
-                <div class="col-12 f-11 text-dark-grey">
-                    &copy; {{ now()->year }} | {{ $company ? $company->company_name : global_setting()->global_app_name }}
+                <div class="col-12 f-11 text-dark-grey text-center">
+                    &copy; 2023 | {{ $company ? $company->company_name : global_setting()->global_app_name }}
                 </div>
             </div>
         </div>

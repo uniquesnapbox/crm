@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\CustomPage;
+use App\Models\Company;
 
 class PublicCustomPageController extends Controller
 {
@@ -13,6 +14,7 @@ class PublicCustomPageController extends Controller
             ->firstOrFail();
 
         $this->pageTitle = $customPage->page_title;
+        $this->company = Company::find($customPage->company_id);
 
         return view('public.custom-page', $this->data + ['customPage' => $customPage]);
     }
