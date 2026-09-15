@@ -9,7 +9,9 @@ export COMPOSER_ALLOW_SUPERUSER=1
 # Laravel runtime/cache directories can be removed by rsync --delete when empty.
 mkdir -p bootstrap/cache
 mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs
+mkdir -p public/user-uploads
 chmod -R ug+rwX bootstrap/cache || true
+chmod -R ug+rwX public/user-uploads || true
 
 if [ -f composer.json ]; then
   composer install --no-interaction --no-dev --prefer-dist --optimize-autoloader

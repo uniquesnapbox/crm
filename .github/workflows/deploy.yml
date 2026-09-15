@@ -52,7 +52,8 @@ jobs:
             mkdir -p '${APP_BASE}/shared/storage/framework/cache' \
                      '${APP_BASE}/shared/storage/framework/sessions' \
                      '${APP_BASE}/shared/storage/framework/views' \
-                     '${APP_BASE}/shared/storage/logs'
+                     '${APP_BASE}/shared/storage/logs' \
+                     '${APP_BASE}/shared/user-uploads'
             if [ ! -f '${APP_BASE}/shared/.env' ]; then
               echo 'shared/.env not found at ${APP_BASE}/shared/.env'
               exit 1
@@ -83,6 +84,10 @@ jobs:
             ln -sfn '${APP_BASE}/shared/.env' '${RELEASE_PATH}/.env'
             rm -rf '${RELEASE_PATH}/storage'
             ln -sfn '${APP_BASE}/shared/storage' '${RELEASE_PATH}/storage'
+            rm -rf '${RELEASE_PATH}/public/user-uploads'
+            ln -sfn '${APP_BASE}/shared/user-uploads' '${RELEASE_PATH}/public/user-uploads'
+            chmod -R ug+rwX '${APP_BASE}/shared/user-uploads'
+            chown -R www-data:www-data '${APP_BASE}/shared/user-uploads'
             chmod +x '${RELEASE_PATH}/scripts/post_deploy.sh'
             cd '${RELEASE_PATH}'
             ./scripts/post_deploy.sh
