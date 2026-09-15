@@ -106,7 +106,9 @@
 
 @push('scripts')
     <script src="{{ asset('vendor/full-calendar/main.min.js') }}"></script>
-    <script src="{{ asset('vendor/full-calendar/locales-all.min.js') }}"></script>
+    @if (strtolower((string) user()->locale) !== 'en')
+        <script src="{{ asset('vendor/full-calendar/locales-all.min.js') }}"></script>
+    @endif
 
     <script>
         var initialLocaleCode = '{{ user()->locale }}';
