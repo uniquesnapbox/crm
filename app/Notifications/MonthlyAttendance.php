@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Company;
+use App\Models\EmployeeWorkActivity;
 use App\Models\Holiday;
 use App\Models\User;
 use Carbon\Carbon;
@@ -189,6 +190,19 @@ class MonthlyAttendance extends BaseNotification
 
         $employeeAttendence = $final;
 
+        // These are documented work notes, not attendance IN/OUT records. Keep
+        // the employee relation outside ActiveScope so inactive employees are
+        // still represented in historical reports.
+        $documentedWorkActivities = EmployeeWorkActivity::with('user')
+            ->where('company_id', $company->id)
+            ->whereBetween('activity_date', [
+                Carbon::create($this->year, $this->month, 1)->toDateString(),
+                Carbon::create($this->year, $this->month, $daysInMonth)->toDateString(),
+            ])
+            ->orderBy('activity_date')
+            ->orderBy('start_time')
+            ->get();
+
         $weekMap = Holiday::weekMap('D');
 
         $pdf = app('dompdf.wrapper')->setPaper('A4', 'landscape');
@@ -198,7 +212,7 @@ class MonthlyAttendance extends BaseNotification
         $pdf->getDomPDF()->setOptions($options);
         /** @phpstan-ignore-line */
 
-        $pdf->loadView('attendance-report', ['daysInMonth' => $daysInMonth, 'month' => $this->month, 'year' => $this->year, 'weekMap' => $weekMap, 'employeeAttendence' => $employeeAttendence, 'holidayOccasions' => $holidayOccasions, 'company' => $company]);
+        $pdf->loadView('attendance-report', ['daysInMonth' => $daysInMonth, 'month' => $this->month, 'year' => $this->year, 'weekMap' => $weekMap, 'employeeAttendence' => $employeeAttendence, 'holidayOccasions' => $holidayOccasions, 'company' => $company, 'documentedWorkActivities' => $documentedWorkActivities]);
 
         $filename = 'attendance-report';
 

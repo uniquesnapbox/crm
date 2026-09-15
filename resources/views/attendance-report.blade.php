@@ -42,6 +42,33 @@
             height: 50px;
         }
 
+        .activity-section-title {
+            font-family: 'noto-sans, DejaVu Sans , sans-serif';
+            font-size: 12px;
+            font-weight: bold;
+            color: #28313c;
+            margin: 8px 0 4px;
+        }
+
+        .activity-note {
+            font-family: 'noto-sans, DejaVu Sans , sans-serif';
+            font-size: 9px;
+            color: #666666;
+            margin: 0 0 6px;
+        }
+
+        .activity-table th, .activity-table td {
+            padding: 4px 5px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .activity-table .activity-date,
+        .activity-table .activity-time,
+        .activity-table .activity-status {
+            white-space: nowrap;
+        }
+
     </style>
 </head>
 
@@ -127,6 +154,42 @@
     @endforeach
     </tbody>
 </table>
+
+
+@if (isset($documentedWorkActivities) && $documentedWorkActivities->isNotEmpty())
+    <div class="activity-section-title">Documented Work Activity</div>
+    <div class="activity-note">The timestamps below are documented work activity times, not exact attendance IN/OUT times. Normal office timing: 10:00 AM – 6:00 PM.</div>
+    <table class="content activity-table">
+        <thead>
+        <tr>
+            <th>Employee</th>
+            <th>Date</th>
+            <th>Time</th>
+            <th>Task/Activity</th>
+            <th>Status</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach ($documentedWorkActivities as $workActivity)
+            <tr>
+                <td>{{ $workActivity->user?->name ?? 'Unknown employee' }}</td>
+                <td class="activity-date">{{ $workActivity->activity_date->format('d-M-Y') }}</td>
+                <td class="activity-time">
+                    @if ($workActivity->start_time && $workActivity->end_time)
+                        {{ \Carbon\Carbon::createFromFormat('H:i:s', $workActivity->start_time)->format('h:i A') }} – {{ \Carbon\Carbon::createFromFormat('H:i:s', $workActivity->end_time)->format('h:i A') }}
+                    @elseif ($workActivity->start_time)
+                        {{ \Carbon\Carbon::createFromFormat('H:i:s', $workActivity->start_time)->format('h:i A') }}
+                    @else
+                        —
+                    @endif
+                </td>
+                <td>{{ $workActivity->activity }}</td>
+                <td class="activity-status">{{ $workActivity->status }}</td>
+            </tr>
+        @endforeach
+        </tbody>
+    </table>
+@endif
 
 
 <table class="content">
