@@ -69,11 +69,16 @@
     .sidebar-light .sidebar-menu li .nav-item:focus,
     .sidebar-light .sidebar-menu li .nav-item:hover,
     .sidebar-light .sidebar-menu li .accordionItemContent a:hover {
-        color: var(--header_color) !important;
+        color: #ffffff !important;
     }
 
     .sidebar-light .accordionItem a.active {
-        color: var(--header_color) !important;
+        color: #ffffff !important;
+    }
+
+    .sidebar-light .sidebar-menu li .nav-item,
+    .sidebar-light .sidebar-menu li .accordionItemContent a {
+        color: #ffffff !important;
     }
 
     .menu-item-count, .unread-notifications-count, .active-timer-count {

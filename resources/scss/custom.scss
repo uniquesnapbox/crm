@@ -590,7 +590,7 @@ ul.thumbnails.image_picker_selector li .thumbnail.selected {
         li {
             box-shadow: 0 1px 0 0 $grey;
             .nav-item {
-                color: $dark_grey;
+                color: $white !important;
             }
         }
     }

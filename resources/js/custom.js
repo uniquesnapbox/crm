@@ -58,6 +58,7 @@ const scheduleBulkActionUpdate = (callback) => {
 const showBulkActions = () => {
     const form = document.getElementById("quick-action-form");
     if (form) {
+        form.classList.remove("d-none");
         form.style.display = "";
     }
 
@@ -75,6 +76,7 @@ const showBulkActions = () => {
 const hideBulkActions = () => {
     const form = document.getElementById("quick-action-form");
     if (form) {
+        form.classList.add("d-none");
         form.style.display = "none";
     }
 
