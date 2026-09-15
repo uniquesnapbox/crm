@@ -16,6 +16,7 @@ class WhatsAppManager extends EventEmitter {
     this.refreshingQrClients = new Map();
     this.logoutRecoveries = new Map();
     this.readyReconcileTimers = new Map();
+    this.readyRecoveryAttempts = new WeakMap();
     this.status = new Map();
     this.qrCode = new Map();
     this.qrGeneratedAt = new Map();
@@ -663,6 +664,7 @@ class WhatsAppManager extends EventEmitter {
         hasChatList: Boolean(document.querySelector('#pane-side')),
         hasQr: Boolean(document.querySelector('[data-ref]')),
         hasSynced: window.AuthStore?.AppState?.hasSynced === true,
+        hasSyncCallback: typeof window.onAppStateHasSyncedEvent === 'function',
         hasHelpers: typeof window.WWebJS?.sendMessage === 'function'
           && typeof window.WWebJS?.getChats === 'function',
         webVersion: window.Debug?.VERSION || null
@@ -681,6 +683,49 @@ class WhatsAppManager extends EventEmitter {
 
     result.ready = Boolean(stateLooksConnected && pageLooksLoaded && !pageLooksLoggedOut);
     return result;
+  }
+
+  async recoverMissedReadyEvent(sessionKey, client, inspection) {
+    const key = sessionKey || this.config.defaultSession;
+    const page = inspection?.page || {};
+    const waState = String(inspection?.waState || "").toUpperCase();
+    const connected = ["CONNECTED", "OPEN"].includes(waState);
+
+    if (!client?.pupPage || !connected || page.hasQr || page.hasHelpers || !page.hasSyncCallback) {
+      return false;
+    }
+
+    const recoveryAttempts = this.readyRecoveryAttempts.get(client) || 0;
+    if (recoveryAttempts >= 2) {
+      return false;
+    }
+    this.readyRecoveryAttempts.set(client, recoveryAttempts + 1);
+
+    logger.warn("Recovering missed WhatsApp sync event", {
+      sessionKey: key,
+      attempt: recoveryAttempts + 1,
+      waState
+    });
+
+    try {
+      return await client.pupPage.evaluate(async () => {
+        const state = String(window.AuthStore?.AppState?.state || "").toUpperCase();
+        const hasQr = Boolean(document.querySelector('[data-ref]'));
+        if (!["CONNECTED", "OPEN"].includes(state) || hasQr || typeof window.onAppStateHasSyncedEvent !== 'function') {
+          return false;
+        }
+
+        await window.onAppStateHasSyncedEvent();
+        return true;
+      });
+    } catch (error) {
+      logger.warn("Missed WhatsApp sync event recovery failed", {
+        sessionKey: key,
+        attempt: recoveryAttempts + 1,
+        error: error.message
+      });
+      return false;
+    }
   }
 
   isLinkingBootstrapState(waState) {
@@ -802,6 +847,16 @@ class WhatsAppManager extends EventEmitter {
         if (inspection.ready) {
           this.markSessionReady(key, `probe:${reason}`, inspection);
           return;
+        }
+
+        const recovered = await this.recoverMissedReadyEvent(key, activeClient, inspection);
+        if (recovered) {
+          await this.sleep(500);
+          const recoveredInspection = await this.inspectClientReadiness(activeClient);
+          if (recoveredInspection.ready) {
+            this.markSessionReady(key, `sync-recovery:${reason}`, recoveredInspection);
+            return;
+          }
         }
 
         if (this.isLinkingBootstrapState(inspection.waState)) {

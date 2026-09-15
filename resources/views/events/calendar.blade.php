@@ -51,12 +51,16 @@
         <x-cards.data>
             <div class="calendar-legend">
                 <div class="calendar-legend-item">
-                    <span class="calendar-legend-dot" style="background:#dc2626;"></span>
-                    <span>Overdue</span>
+                    <span class="calendar-legend-dot" style="background:#16a34a;"></span>
+                    <span>Completed</span>
                 </div>
                 <div class="calendar-legend-item">
-                    <span class="calendar-legend-dot" style="background:#f97316;"></span>
-                    <span>Today</span>
+                    <span class="calendar-legend-dot" style="background:#dc2626;"></span>
+                    <span>Overdue (not completed)</span>
+                </div>
+                <div class="calendar-legend-item">
+                    <span class="calendar-legend-dot" style="background:#eab308;"></span>
+                    <span>Today (pending)</span>
                 </div>
                 <div class="calendar-legend-item">
                     <span class="calendar-legend-dot" style="background:#2563eb;"></span>

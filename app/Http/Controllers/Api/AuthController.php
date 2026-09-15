@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\PushNotificationSetting;
 use App\Models\User;
 use App\Models\WhatsappOtp;
 use App\Services\WhatsAppOtpService;
@@ -84,6 +85,49 @@ class AuthController extends Controller
             ],
             'employee_id' => $user->employeeDetail?->id ?? $user->id,
         ]);
+    }
+
+    /**
+     * Return only the public mobile push configuration. Never expose the
+     * OneSignal REST key to the client.
+     */
+    public function pushConfig(): JsonResponse
+    {
+        $setting = PushNotificationSetting::query()
+            ->where('status', 'active')
+            ->first();
+        $appId = trim((string) ($setting?->onesignal_app_id ?? ''));
+
+        if ($appId === '' || str_contains(strtolower($appId), 'your-')) {
+            $appId = null;
+        }
+
+        return response()->json([
+            'enabled' => $appId !== null,
+            'app_id' => $appId,
+        ]);
+    }
+
+    public function registerPushSubscription(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'subscription_id' => ['required', 'string', 'max:255'],
+        ]);
+
+        $request->user()->forceFill([
+            'onesignal_mobile_subscription_id' => trim($validated['subscription_id']),
+        ])->saveQuietly();
+
+        return response()->json(['success' => true]);
+    }
+
+    public function unregisterPushSubscription(Request $request): JsonResponse
+    {
+        $request->user()->forceFill([
+            'onesignal_mobile_subscription_id' => null,
+        ])->saveQuietly();
+
+        return response()->json(['success' => true]);
     }
 
 }

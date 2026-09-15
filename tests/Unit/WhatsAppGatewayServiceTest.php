@@ -113,6 +113,25 @@ class WhatsAppGatewayServiceTest extends TestCase
         $this->assertNull($service->getLastError());
     }
 
+    public function test_it_does_not_treat_an_authenticated_but_unsynced_session_as_ready(): void
+    {
+        Http::fake([
+            'http://whatsapp.test/health' => Http::response([
+                'success' => true,
+                'data' => [
+                    'sessions' => [
+                        ['sessionKey' => '7099481497', 'status' => 'authenticated'],
+                    ],
+                ],
+            ]),
+        ]);
+
+        $service = app(WhatsAppGatewayService::class);
+
+        $this->assertFalse($service->hasReadySession(['7099481497']));
+        $this->assertSame('No configured WhatsApp session is ready.', $service->getLastError());
+    }
+
     public function test_it_reuses_the_same_idempotency_key_for_a_reminder_retry(): void
     {
         Http::fake([

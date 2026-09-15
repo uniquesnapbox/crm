@@ -58,19 +58,27 @@ class CalendarController extends AccountBaseController
             }
 
             $followUpAt = $followup->next_follow_up_date?->timezone(company()->timezone);
-            $today = now(company()->timezone)->startOfDay();
+            $now = now(company()->timezone);
+            $today = $now->copy()->startOfDay();
             $followUpDay = $followUpAt?->copy()->startOfDay();
 
-            $color = '#0ea5a4';
-
-            if ($followUpDay && $followUpDay->lt($today)) {
+            // Completed follow-ups stay green even when their scheduled time
+            // is already in the past. Pending follow-ups are then coloured
+            // by their scheduled date.
+            if ((string) $followup->status === 'completed') {
+                $color = '#16a34a';
+            }
+            elseif ($followUpAt && $followUpAt->lt($now)) {
                 $color = '#dc2626';
             }
             elseif ($followUpDay && $followUpDay->equalTo($today)) {
-                $color = '#f97316';
+                $color = '#eab308';
             }
             elseif ($followUpDay) {
                 $color = '#2563eb';
+            }
+            else {
+                $color = '#dc2626';
             }
 
             $events[] = [

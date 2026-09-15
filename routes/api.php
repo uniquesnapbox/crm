@@ -54,6 +54,9 @@ Route::post('internal/whatsapp/incoming', [WhatsappWebhookController::class, 'in
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('me', [AuthController::class, 'profile'])->name('api.profile');
+    Route::get('push/config', [AuthController::class, 'pushConfig'])->name('api.push.config');
+    Route::post('push/subscription', [AuthController::class, 'registerPushSubscription'])->name('api.push.subscription.register');
+    Route::delete('push/subscription', [AuthController::class, 'unregisterPushSubscription'])->name('api.push.subscription.unregister');
     Route::get('follow-ups/pending', [LeadContactController::class, 'listPendingFollowUpsApi'])->name('api.follow-ups.pending');
     Route::get('lead-contacts', [LeadContactApiController::class, 'index'])->name('api.lead-contacts.index');
     Route::get('lead-options', [LeadOptionsController::class, 'index'])->name('api.lead-options.index');

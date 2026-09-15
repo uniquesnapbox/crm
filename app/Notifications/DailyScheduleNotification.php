@@ -7,9 +7,12 @@ use App\Models\ModuleSetting;
 use Illuminate\Bus\Queueable;
 use App\Models\EmailNotificationSetting;
 use App\Models\RoleUser;
+use App\Models\PushNotificationSetting;
 use Illuminate\Notifications\Notification;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
+use NotificationChannels\OneSignal\OneSignalChannel;
+use NotificationChannels\OneSignal\OneSignalMessage;
 
 class DailyScheduleNotification extends BaseNotification
 {
@@ -46,10 +49,25 @@ class DailyScheduleNotification extends BaseNotification
         || in_array('holidays', $this->userModules) || in_array('leaves', $this->userModules)
         || in_array('recruit', $this->userModules);
 
-        if($setting->send_email == 'yes' && $moduleEnabled)
-        {
-            return ['mail'];
+        $via = [];
+        if ($setting?->send_email === 'yes' && $moduleEnabled) {
+            $via[] = 'mail';
         }
+
+        $pushSetting = PushNotificationSetting::query()
+            ->where('status', 'active')
+            ->first();
+        $appId = trim((string) ($pushSetting?->onesignal_app_id ?? ''));
+        $restKey = trim((string) ($pushSetting?->onesignal_rest_api_key ?? ''));
+        if ($setting?->send_push === 'yes'
+            && $appId !== ''
+            && $restKey !== ''
+            && !str_contains(strtolower($appId), 'your-')
+            && !str_contains(strtolower($restKey), 'your-')) {
+            $via[] = OneSignalChannel::class;
+        }
+
+        return $via;
     }
 
     /**
@@ -64,6 +82,11 @@ class DailyScheduleNotification extends BaseNotification
         $leaveUrl = getDomainSpecificUrl(route('dashboard'), null);
 
         $content = __('email.dailyScheduleReminder.content') . ':<br>';
+        $content .= '<br>Pending Calls: ' . $this->pendingCalls();
+        $content .= '<br>Pending Tasks: ' . ($this->userData['tasks'][$this->userId] ?? 0);
+        $content .= '<br>Today\'s Follow-ups: ' . $this->todayFollowUps();
+        $content .= '<br>Meetings: ' . $this->meetings();
+        $content .= '<br>Demos: ' . $this->demos();
 
         if(in_array('tasks', $this->userModules))
         {
@@ -99,6 +122,51 @@ class DailyScheduleNotification extends BaseNotification
                 'notifiableName' => $this->userData['user'][$this->userId]->name,
                 'content' => $content
             ]);
+    }
+
+    public function toOneSignal($notifiable): OneSignalMessage
+    {
+        $body = 'Calls: ' . $this->pendingCalls()
+            . ' | Tasks: ' . ($this->userData['tasks'][$this->userId] ?? 0)
+            . ' | Follow-ups: ' . $this->todayFollowUps()
+            . ' | Meetings: ' . $this->meetings()
+            . ' | Demos: ' . $this->demos()
+            . ' | Calendar: ' . ($this->userData['events'][$this->userId] ?? 0)
+            . ' | Interviews: ' . ($this->userData['interview'][$this->userId] ?? 0);
+
+        return OneSignalMessage::create()
+            ->setSubject('Today\'s CRM schedule')
+            ->setBody($body)
+            ->setData('type', 'daily_schedule_summary')
+            ->setData('pending_calls', $this->pendingCalls())
+            ->setData('pending_tasks', (int) ($this->userData['tasks'][$this->userId] ?? 0))
+            ->setData('today_followups', $this->todayFollowUps())
+            ->setData('meetings', $this->meetings())
+            ->setData('demos', $this->demos())
+            ->setData('calendar_events', (int) ($this->userData['events'][$this->userId] ?? 0))
+            ->setData('interviews', (int) ($this->userData['interview'][$this->userId] ?? 0))
+            ->setData('leaves', (int) ($this->userData['leaves'][$this->userId] ?? 0))
+            ->setData('holidays', (int) ($this->userData['holidays'][$this->userId] ?? 0));
+    }
+
+    private function todayFollowUps(): int
+    {
+        return (int) ($this->userData['today_followups'][$this->userId] ?? 0);
+    }
+
+    private function pendingCalls(): int
+    {
+        return (int) ($this->userData['pending_calls'][$this->userId] ?? 0);
+    }
+
+    private function meetings(): int
+    {
+        return (int) ($this->userData['meetings'][$this->userId] ?? 0);
+    }
+
+    private function demos(): int
+    {
+        return (int) ($this->userData['demos'][$this->userId] ?? 0);
     }
 
     public function userModules($userId)

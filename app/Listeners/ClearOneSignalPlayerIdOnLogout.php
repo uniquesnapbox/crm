@@ -15,6 +15,7 @@ class ClearOneSignalPlayerIdOnLogout
 
         $event->user->forceFill([
             'onesignal_player_id' => null,
+            'onesignal_mobile_subscription_id' => null,
         ])->saveQuietly();
     }
 }

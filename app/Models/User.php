@@ -50,6 +50,7 @@ use Yajra\DataTables\Html\Editor\Fields\BelongsTo;
  * @property string $status
  * @property string $login
  * @property string|null $onesignal_player_id
+ * @property string|null $onesignal_mobile_subscription_id
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property \Illuminate\Support\Carbon|null $last_login
@@ -369,7 +370,12 @@ class User extends BaseModel implements AuthenticatableContract, AuthorizableCon
 
     public function routeNotificationForOneSignal()
     {
-        return $this->onesignal_player_id;
+        $ids = array_values(array_unique(array_filter([
+            $this->onesignal_player_id,
+            $this->onesignal_mobile_subscription_id,
+        ])));
+
+        return count($ids) === 1 ? $ids[0] : $ids;
     }
 
     public function routeNotificationForWhatsApp($notification = null)

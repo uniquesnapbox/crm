@@ -1569,6 +1569,7 @@ class LeadContactController extends AccountBaseController
         $attachmentCount = $this->storeFollowUpAttachments($followUp, $request);
 
         $this->syncLeadFollowUpFlag($lead->id);
+        app(\App\Services\LeadFollowUpPushService::class)->send($followUp, 'created');
 
         $this->pushLeadHistory($lead->id, 'followup_created', [
             'title' => 'Follow-up Added',
@@ -1667,6 +1668,7 @@ class LeadContactController extends AccountBaseController
         $followUp->save();
         $attachmentCount = $this->storeFollowUpAttachments($followUp, $request);
         $this->syncLeadFollowUpFlag($followUp->lead_id);
+        app(\App\Services\LeadFollowUpPushService::class)->send($followUp, 'updated');
 
         $newStatus = (string) ($followUp->status ?: 'pending');
         $newRemark = trim(strip_tags((string) $followUp->remark));
@@ -1702,6 +1704,7 @@ class LeadContactController extends AccountBaseController
 
         $leadId = $followUp->lead_id;
         $oldStatus = (string) ($followUp->status ?: 'pending');
+        app(\App\Services\LeadFollowUpPushService::class)->send($followUp, 'deleted');
         $this->deleteFollowUpAttachments($followUp);
         $followUp->delete();
 
@@ -1732,6 +1735,7 @@ class LeadContactController extends AccountBaseController
         $followUp->save();
 
         $this->syncLeadFollowUpFlag($followUp->lead_id);
+        app(\App\Services\LeadFollowUpPushService::class)->send($followUp, 'status_changed');
 
         if ($oldStatus !== (string) $followUp->status) {
             $this->pushLeadHistory($followUp->lead_id, 'followup_status_updated', [
@@ -2229,6 +2233,7 @@ class LeadContactController extends AccountBaseController
         $followUp->save();
 
         $this->syncLeadFollowUpFlag($lead->id);
+        app(\App\Services\LeadFollowUpPushService::class)->send($followUp, 'created');
 
         return true;
     }
@@ -2375,6 +2380,7 @@ class LeadContactController extends AccountBaseController
         $followUp->save();
 
         $this->syncLeadFollowUpFlag($followUp->lead_id);
+        app(\App\Services\LeadFollowUpPushService::class)->send($followUp, 'status_changed');
 
         if ($oldStatus !== (string) $followUp->status) {
             $this->pushLeadHistory($followUp->lead_id, 'followup_status_updated', [
@@ -2419,10 +2425,10 @@ class LeadContactController extends AccountBaseController
         $scheduledDateTime = $request->scheduled_at ?? $request->follow_up_date;
         if ($scheduledDateTime) {
             // Mobile sends a timezone-less ISO string representing the
-            // company's local time. Explicit offsets (if supplied) are still
-            // respected by Carbon before normalising to the company timezone.
+            // company's local time. Store the instant in UTC, matching the
+            // desktop follow-up path and making push/alarm timestamps stable.
             $followUp->next_follow_up_date = Carbon::parse($scheduledDateTime, company()->timezone)
-                ->setTimezone(company()->timezone);
+                ->setTimezone('UTC');
         } else {
             $followUp->next_follow_up_date = null;
         }
@@ -2438,6 +2444,7 @@ class LeadContactController extends AccountBaseController
         $followUp->save();
 
         $this->syncLeadFollowUpFlag($lead->id);
+        app(\App\Services\LeadFollowUpPushService::class)->send($followUp, 'created');
 
         $this->pushLeadHistory($lead->id, 'followup_created', [
             'title' => 'Follow-up Added',

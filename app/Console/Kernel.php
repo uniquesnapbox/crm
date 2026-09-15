@@ -129,7 +129,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('send-daily-lead-follow-up-whatsapp-summary')
             ->dailyAt('09:00')
             ->withoutOverlapping();
-        $schedule->command('daily-schedule-reminder')->daily();
+        $schedule->command('daily-schedule-reminder')->dailyAt('09:00');
 
         // Hourly
         $schedule->command('clear-null-session')->hourly();

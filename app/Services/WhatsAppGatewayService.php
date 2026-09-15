@@ -224,7 +224,7 @@ class WhatsAppGatewayService
             $status = strtolower((string) ($session['status'] ?? ''));
 
             if (in_array($sessionKey, $wantedSessions, true)
-                && in_array($status, ['ready', 'authenticated'], true)) {
+                && $status === 'ready') {
                 $this->lastError = null;
                 return true;
             }
