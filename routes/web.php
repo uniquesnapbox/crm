@@ -824,6 +824,7 @@ Route::group(['middleware' => 'auth:sanctum,web', 'prefix' => 'account'], functi
 
     Route::resource('expense-report', ExpenseReportController::class);
     Route::get('lead-performance-report/employee', [LeadPerformanceReportController::class, 'employee'])->name('lead-performance-report.employee');
+    Route::get('lead-performance-report/employee/{employee}/status-changes', [LeadPerformanceReportController::class, 'statusChanges'])->name('lead-performance-report.employee.status_changes')->whereNumber('employee');
     Route::get('lead-performance-report/conversion', [LeadPerformanceReportController::class, 'conversion'])->name('lead-performance-report.conversion');
     Route::resource('lead-report', LeadReportController::class);
     Route::resource('sales-report', SalesReportController::class);

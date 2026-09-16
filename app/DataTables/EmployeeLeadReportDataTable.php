@@ -17,14 +17,17 @@ class EmployeeLeadReportDataTable extends BaseDataTable
         return datatables()
             ->eloquent($query)
             ->editColumn('employee_name', fn ($row) => e($row->employee_name))
-            ->editColumn('total_leads_added', fn ($row) => (int) $row->total_leads_added)
-            ->editColumn('converted_leads', fn ($row) => (int) $row->converted_leads)
-            ->editColumn('lost_leads', fn ($row) => (int) $row->lost_leads)
-            ->editColumn('active_leads', fn ($row) => (int) $row->active_leads)
-            ->editColumn('conversion_percentage', fn ($row) => number_format((float) $row->conversion_percentage, 2))
+            ->editColumn('leads_contacted', fn ($row) => (int) $row->leads_contacted)
+            ->editColumn('status_changed', fn ($row) => (int) $row->status_changed)
+            ->editColumn('followups', fn ($row) => (int) $row->followups)
+            ->addColumn('view', function ($row) {
+                $url = route('lead-performance-report.employee.status_changes', ['employee' => $row->employee_id], false);
+
+                return '<button type="button" class="btn btn-sm btn-outline-primary js-view-status-changes" '
+                    . 'data-url="' . e($url) . '" title="View employee activity">View</button>';
+            })
             ->addIndexColumn()
-            ->with('summary', $this->reportService->employeeLeadSummary($this->request()))
-            ->rawColumns([]);
+            ->rawColumns(['view']);
     }
 
     public function query()
@@ -58,11 +61,10 @@ class EmployeeLeadReportDataTable extends BaseDataTable
         return [
             '#' => ['data' => 'DT_RowIndex', 'orderable' => false, 'searchable' => false, 'visible' => false, 'title' => '#'],
             'Employee' => ['data' => 'employee_name', 'name' => 'users.name', 'title' => 'Employee'],
-            'Total Leads Added' => ['data' => 'total_leads_added', 'name' => 'total_leads_added', 'title' => 'Total Leads Added'],
-            'Converted Leads' => ['data' => 'converted_leads', 'name' => 'converted_leads', 'title' => 'Converted Leads'],
-            'Lost Leads' => ['data' => 'lost_leads', 'name' => 'lost_leads', 'title' => 'Lost Leads'],
-            'Active Leads' => ['data' => 'active_leads', 'name' => 'active_leads', 'title' => 'Active Leads'],
-            'Conversion %' => ['data' => 'conversion_percentage', 'name' => 'conversion_percentage', 'title' => 'Conversion %'],
+            'Leads Contacted' => ['data' => 'leads_contacted', 'name' => 'leads_contacted', 'title' => 'Leads Contacted'],
+            'Status Changed' => ['data' => 'status_changed', 'name' => 'status_changed', 'title' => 'Status Changed'],
+            'Follow-ups' => ['data' => 'followups', 'name' => 'followups', 'title' => 'Follow-ups'],
+            'View' => ['data' => 'view', 'name' => 'view', 'title' => 'View', 'orderable' => false, 'searchable' => false],
         ];
     }
 }

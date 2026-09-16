@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\DataTables\EmployeeLeadReportDataTable;
 use App\DataTables\LeadConversionReportDataTable;
+use App\Models\User;
 use App\Services\LeadPerformanceReportService;
 use Illuminate\Http\Request;
 
@@ -26,10 +27,37 @@ class LeadPerformanceReportController extends AccountBaseController
             $this->employees = $this->reportService->employees();
             $this->sources = $this->reportService->leadSources();
             $this->statuses = $this->reportService->leadStatuses();
-            $this->summary = $this->reportService->employeeLeadSummary($this->reportRequestWithDefaults('startDate', 'endDate'));
         }
 
         return $dataTable->render('reports.lead-performance.employee', $this->data);
+    }
+
+    public function statusChanges(int $employee)
+    {
+        abort_403(user()->permission('view_lead_report') === 'none');
+
+        $employeeUser = User::query()
+            ->withRole('employee')
+            ->where('company_id', company()->id)
+            ->findOrFail($employee);
+
+        $activity = $this->reportService->employeeActivityDetails($employee, request());
+        $view = request()->boolean('append')
+            ? 'reports.lead-performance.status-changes-rows'
+            : 'reports.lead-performance.status-changes';
+        $viewData = [
+            'employee' => $employeeUser,
+            'rows' => $activity['rows'],
+            'hasMore' => $activity['has_more'],
+            'nextPage' => $activity['next_page'],
+        ];
+
+        return response()->json([
+            'title' => 'Lead Activity - ' . $employeeUser->name,
+            'html' => view($view, $viewData)->render(),
+            'has_more' => $activity['has_more'],
+            'next_page' => $activity['next_page'],
+        ]);
     }
 
     public function conversion(LeadConversionReportDataTable $dataTable)

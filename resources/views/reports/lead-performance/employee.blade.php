@@ -4,6 +4,67 @@
     @include('sections.datatable_css')
 @endpush
 
+@push('styles')
+    <style>
+        .employee-lead-updates-dialog {
+            width: 90vw;
+            max-width: 1400px;
+        }
+
+        .employee-lead-updates-dialog .modal-content {
+            aspect-ratio: 16 / 9;
+            max-height: calc(100vh - 2rem);
+        }
+
+        .employee-lead-updates-dialog .modal-body {
+            overflow-y: auto;
+        }
+
+        .employee-lead-activity-table-wrap {
+            max-height: 100%;
+        }
+
+        .employee-lead-activity-table-wrap table {
+            min-width: 820px;
+        }
+
+        .employee-lead-activity-table-wrap th,
+        .employee-lead-activity-table-wrap td {
+            white-space: nowrap;
+            vertical-align: middle;
+            padding: .55rem .65rem;
+        }
+
+        .employee-lead-activity-pair {
+            display: grid;
+            grid-template-columns: minmax(88px, 1fr) minmax(88px, 1fr);
+            min-width: 176px;
+        }
+
+        .employee-lead-activity-pair span {
+            overflow: hidden;
+            padding: 0 .45rem;
+            text-overflow: ellipsis;
+        }
+
+        .employee-lead-activity-pair span + span {
+            border-left: 1px solid #e5e7eb;
+        }
+
+        @media (max-width: 767.98px) {
+            .employee-lead-updates-dialog {
+                width: calc(100vw - 1rem);
+                margin: .5rem auto;
+            }
+
+            .employee-lead-updates-dialog .modal-content {
+                aspect-ratio: auto;
+                max-height: calc(100vh - 1rem);
+            }
+        }
+    </style>
+@endpush
+
 @section('filter-section')
     <x-filters.filter-box>
         <div class="select-box d-flex pr-2 border-right-grey border-right-grey-sm-0">
@@ -62,43 +123,6 @@
 
 @section('content')
     <div class="content-wrapper">
-        <div class="row mb-4">
-            <div class="col-12">
-                <x-cards.data>
-                    <div class="d-flex flex-nowrap align-items-center justify-content-between" style="white-space: nowrap; overflow-x: auto;">
-                        <div class="d-flex flex-nowrap align-items-center">
-                            <div class="d-flex align-items-baseline mr-4">
-                                <div class="text-muted f-12 mr-2">Total Leads Added</div>
-                                <div id="employee-total-leads-added" class="f-22 font-weight-bold">{{ number_format($summary['total_leads_added'] ?? 0) }}</div>
-                            </div>
-
-                            <div class="d-flex align-items-baseline mr-4">
-                                <div class="text-muted f-12 mr-2">Converted Leads</div>
-                                <div id="employee-converted-leads" class="f-22 font-weight-bold text-success">{{ number_format($summary['converted_leads'] ?? 0) }}</div>
-                            </div>
-
-                            <div class="d-flex align-items-baseline mr-4">
-                                <div class="text-muted f-12 mr-2">Lost Leads</div>
-                                <div id="employee-lost-leads" class="f-22 font-weight-bold text-danger">{{ number_format($summary['lost_leads'] ?? 0) }}</div>
-                            </div>
-
-                            <div class="d-flex align-items-baseline mr-4">
-                                <div class="text-muted f-12 mr-2">Active Leads</div>
-                                <div id="employee-active-leads" class="f-22 font-weight-bold text-primary">{{ number_format($summary['active_leads'] ?? 0) }}</div>
-                            </div>
-
-                            <div class="d-flex align-items-baseline">
-                                <div class="text-muted f-12 mr-2">Conversion %</div>
-                                <div id="employee-conversion-percentage" class="f-22 font-weight-bold">{{ number_format((float) ($summary['conversion_percentage'] ?? 0), 2) }}%</div>
-                            </div>
-                        </div>
-
-                        <div id="table-actions" class="ml-4 flex-shrink-0 d-flex align-items-center"></div>
-                    </div>
-                </x-cards.data>
-            </div>
-        </div>
-
         <div class="d-flex flex-column w-tables rounded mt-4 bg-white table-responsive">
             {!! $dataTable->table(['class' => 'table table-hover border-0 w-100']) !!}
         </div>
@@ -109,8 +133,6 @@
     @include('sections.datatable_js')
 
     <script type="text/javascript">
-        const employeeNumberFormatter = new Intl.NumberFormat('en-IN');
-
         function initEmployeeLeadDateRange() {
             const start = moment().clone().startOf('month');
             const end = moment();
@@ -122,18 +144,6 @@
                 endDate: end,
                 ranges: daterangeConfig
             }, cb);
-        }
-
-        function updateEmployeeSummary(summary) {
-            if (!summary) {
-                return;
-            }
-
-            $('#employee-total-leads-added').text(employeeNumberFormatter.format(Number(summary.total_leads_added || 0)));
-            $('#employee-converted-leads').text(employeeNumberFormatter.format(Number(summary.converted_leads || 0)));
-            $('#employee-lost-leads').text(employeeNumberFormatter.format(Number(summary.lost_leads || 0)));
-            $('#employee-active-leads').text(employeeNumberFormatter.format(Number(summary.active_leads || 0)));
-            $('#employee-conversion-percentage').text(Number(summary.conversion_percentage || 0).toFixed(2) + '%');
         }
 
         const showTable = () => {
@@ -177,8 +187,78 @@
             data['status_id'] = $('#status_id').val();
         });
 
-        $('#employee-lead-report-table').on('xhr.dt', function(e, settings, json) {
-            updateEmployeeSummary(json && json.summary ? json.summary : null);
+        function employeeActivityRequestData() {
+            const dateRangePicker = $('#datatableRange2').data('daterangepicker');
+
+            return {
+                startDate: dateRangePicker ? dateRangePicker.startDate.format('{{ company()->moment_date_format }}') : '',
+                endDate: dateRangePicker ? dateRangePicker.endDate.format('{{ company()->moment_date_format }}') : '',
+                employee: $('#employee_id').val(),
+                source_id: $('#source_id').val(),
+                status_id: $('#status_id').val()
+            };
+        }
+
+        $('body').off('click.employeeStatusChanges').on('click.employeeStatusChanges', '.js-view-status-changes', function() {
+            const url = $(this).data('url');
+            const $modal = $(MODAL_LG);
+            const $modalBody = $modal.find('.modal-body');
+            const $saveButton = $modal.find('.modal-footer .btn-primary');
+            const $modalDialog = $modal.find('.modal-dialog');
+            const requestData = employeeActivityRequestData();
+
+            $modal.find(MODAL_HEADING).html('Lead Activity');
+            $modalBody.html('<div class="text-center py-4"><i class="fa fa-spinner fa-spin mr-2"></i>Loading...</div>');
+            $modalDialog.addClass('employee-lead-updates-dialog');
+            $saveButton.addClass('d-none');
+            $modal.one('hidden.bs.modal', function() {
+                $modalDialog.removeClass('employee-lead-updates-dialog');
+                $saveButton.removeClass('d-none');
+            });
+            $modal.modal('show');
+
+            $.ajax({
+                url: url + '?' + $.param(requestData),
+                type: 'GET',
+                success: function(response) {
+                    if (response.title) {
+                        $modal.find(MODAL_HEADING).html(response.title);
+                    }
+
+                    $modalBody.html(response.html || '<div class="text-center py-4 text-muted">No lead updates found in the selected date range.</div>');
+                },
+                error: function() {
+                    $modalBody.html('<div class="alert alert-danger mb-0">Lead updates could not be loaded.</div>');
+                }
+            });
+        });
+
+        $('body').off('click.employeeActivityLoadMore').on('click.employeeActivityLoadMore', '.js-load-more-lead-activity', function() {
+            const $button = $(this);
+            const $activity = $button.closest('.employee-lead-activity');
+            const requestData = employeeActivityRequestData();
+            requestData.page = Number($button.data('page')) || 1;
+            requestData.per_page = 25;
+            requestData.append = 1;
+
+            $button.prop('disabled', true).text('Loading...');
+
+            $.ajax({
+                url: $button.data('url') + '?' + $.param(requestData),
+                type: 'GET',
+                success: function(response) {
+                    $activity.find('.employee-lead-activity-rows').append(response.html || '');
+
+                    if (response.has_more) {
+                        $button.data('page', response.next_page).prop('disabled', false).text('Load More');
+                    } else {
+                        $button.remove();
+                    }
+                },
+                error: function() {
+                    $button.prop('disabled', false).text('Load More');
+                }
+            });
         });
 
         $('#reset-filters').click(function() {

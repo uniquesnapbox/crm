@@ -564,40 +564,42 @@
                 </div>
 
                 <div id="bulk-step-2" class="bulk-section-card mb-3 bulk-wizard-step">
-                    <div class="card-header bg-white py-3 px-4">
-                        <h5 class="mb-1 f-w-600">Compose Message</h5>
-                        <div class="bulk-muted f-12">Choose a template or write your own WhatsApp message.</div>
-                    </div>
                     <div class="card-body p-4">
                         <div class="row">
                             <div class="col-lg-8">
-                                <div class="form-group">
-                                    <div class="d-flex align-items-center justify-content-between mb-2">
-                                        <label class="f-14 f-w-500 mb-0">Choose Template (Optional)</label>
-                                        <button type="button" class="btn btn-outline-primary btn-sm" id="open-template-modal">
-                                            + New Template
-                                        </button>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                                <label class="f-14 f-w-500 mb-0">Choose Template (Optional)</label>
+                                                <button type="button" class="btn btn-outline-primary btn-sm" id="open-template-modal">
+                                                    + New Template
+                                                </button>
+                                            </div>
+                                            <select class="form-control select-picker" id="template_id" data-live-search="true" data-size="8">
+                                                <option value="">-- Select Template --</option>
+                                                @foreach ($templates as $template)
+                                                    <option
+                                                        value="{{ $template->id }}"
+                                                        data-message="{{ e($template->message) }}"
+                                                        data-attachment-url="{{ e($template->attachment_url ?? '') }}"
+                                                        data-attachment-name="{{ e($template->attachment_name ?? '') }}"
+                                                        data-attachment-mime="{{ e($template->attachment_mime ?? '') }}"
+                                                        data-attachment-size="{{ e($template->attachment_size ?? '') }}"
+                                                    >
+                                                        {{ $template->name }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </div>
                                     </div>
-                                    <select class="form-control select-picker" id="template_id" data-live-search="true" data-size="8">
-                                        <option value="">-- Select Template --</option>
-                                        @foreach ($templates as $template)
-                                            <option
-                                                value="{{ $template->id }}"
-                                                data-message="{{ e($template->message) }}"
-                                                data-attachment-url="{{ e($template->attachment_url ?? '') }}"
-                                                data-attachment-name="{{ e($template->attachment_name ?? '') }}"
-                                                data-attachment-mime="{{ e($template->attachment_mime ?? '') }}"
-                                                data-attachment-size="{{ e($template->attachment_size ?? '') }}"
-                                            >
-                                                {{ $template->name }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
 
-                                <div class="form-group bulk-message-wrap">
-                                    <label class="f-14 f-w-500" for="campaign_name">Campaign Name</label>
-                                    <input type="text" class="form-control" id="campaign_name" placeholder="Bulk WhatsApp Campaign">
+                                    <div class="col-md-6">
+                                        <div class="form-group bulk-message-wrap">
+                                            <label class="f-14 f-w-500" for="campaign_name">Campaign Name</label>
+                                            <input type="text" class="form-control" id="campaign_name" placeholder="Bulk WhatsApp Campaign">
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div class="form-group bulk-message-wrap">
@@ -608,12 +610,6 @@
                                 <div class="form-group">
                                     <label class="f-14 f-w-500" for="bulk_attachment">Image / Photo Attachment (Optional)</label>
                                     <input type="file" class="form-control-file" id="bulk_attachment" accept="image/*">
-                                    <small class="bulk-muted d-block mt-1">JPEG, PNG, WEBP or GIF. The message text will be used as the caption.</small>
-                                    <div class="bulk-attachment-preview mt-2" id="bulk-attachment-preview">
-                                        <div class="text-muted f-12 border rounded p-3 bg-light">
-                                            No image selected. You can upload a photo or use a saved template attachment.
-                                        </div>
-                                    </div>
                                 </div>
 
                                 <div class="row">
@@ -641,13 +637,6 @@
                                 </div>
                             </div>
 
-                            <div class="col-lg-4 mt-4 mt-lg-0">
-                                <div class="bulk-confirmation">
-                                    <div class="f-w-600 mb-2">Message checklist</div>
-                                    <div class="bulk-muted f-13">Use placeholders such as <code>@{{name}}</code> and <code>@{{products_services}}</code> to personalize each message.</div>
-                                    <div class="bulk-muted f-13 mt-3">The next step will generate a recipient-by-recipient preview before sending.</div>
-                                </div>
-                            </div>
                         </div>
 
                         <div class="bulk-wizard-footer">
@@ -662,13 +651,6 @@
                 </div>
 
                 <div id="bulk-step-3" class="bulk-section-card mb-3 bulk-wizard-step">
-                    <div class="card-header bg-white py-3 px-4 d-flex align-items-center justify-content-between">
-                        <div>
-                            <h5 class="mb-1 f-w-600">Preview</h5>
-                            <div class="bulk-muted f-12">Check each recipient before sending.</div>
-                        </div>
-                        <div class="badge badge-light px-3 py-2" id="preview-count-badge">0 recipients</div>
-                    </div>
                     <div class="card-body p-0">
                         <div class="px-4 pt-4">
                             <div class="bulk-preview-attachment" id="preview-attachment-panel">
@@ -710,10 +692,6 @@
                 </div>
 
                 <div id="bulk-step-4" class="bulk-section-card mb-3 bulk-wizard-step">
-                    <div class="card-header bg-white py-3 px-4">
-                        <h5 class="mb-1 f-w-600">Final Confirmation</h5>
-                        <div class="bulk-muted f-12">Review the final recipient count and message before dispatching.</div>
-                    </div>
                     <div class="card-body p-4">
                         <div class="bulk-confirmation" id="final-confirmation-summary">
                             <div class="bulk-confirmation-row"><span class="bulk-muted">Recipients</span><strong id="confirm-recipient-count">0</strong></div>
@@ -1006,7 +984,6 @@
 
         function updateResolvedAttachmentPreview() {
             bulkWhatsAppState.currentAttachment = resolveCurrentAttachment();
-            renderAttachmentPreview('#bulk-attachment-preview', bulkWhatsAppState.currentAttachment, 'No image selected. You can upload a photo or use a saved template attachment.');
             renderAttachmentPreview('#preview-attachment-panel', bulkWhatsAppState.currentAttachment, 'Attachment preview will appear here if you upload a photo or choose a template with an image.');
 
             if (bulkWhatsAppState.currentAttachment) {
