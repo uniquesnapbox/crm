@@ -78,6 +78,7 @@ class LeadPerformanceReportService
         [$start, $end] = $this->activityUtcRange($request);
         $perPage = max(1, min((int) $request->input('per_page', 25), 100));
         $page = max(1, (int) $request->input('page', 1));
+        $summary = $this->employeeActivitySummary($employeeId, $request, $start, $end);
 
         $historyLeads = DB::table('lead_histories as history')
             ->where('history.company_id', company()->id)
@@ -119,6 +120,7 @@ class LeadPerformanceReportService
         if ($leadIds->isEmpty()) {
             return [
                 'rows' => collect(),
+                'summary' => $summary,
                 'has_more' => false,
                 'next_page' => null,
             ];
@@ -236,9 +238,55 @@ class LeadPerformanceReportService
 
         return [
             'rows' => $rows,
+            'summary' => $summary,
             'has_more' => $activityLeadPage->hasMorePages(),
             'next_page' => $activityLeadPage->hasMorePages() ? $activityLeadPage->currentPage() + 1 : null,
         ];
+    }
+
+    private function employeeActivitySummary(int $employeeId, $request, Carbon $start, Carbon $end): array
+    {
+        $summaryRows = DB::table('lead_histories as history')
+            ->where('history.company_id', company()->id)
+            ->where('history.created_by', $employeeId)
+            ->where('history.event_type', 'lead_field_updated')
+            ->whereIn('history.field_key', array_keys(self::LEAD_ACTIVITY_CHANGE_LABELS))
+            ->whereBetween('history.event_at', [$start, $end])
+            ->whereNotNull('history.new_value')
+            ->where('history.new_value', '<>', '')
+            ->where('history.new_value', '<>', '--')
+            ->select([
+                'history.field_key',
+                'history.new_value',
+            ])
+            ->selectRaw('COUNT(DISTINCT history.lead_id) as lead_count')
+            ->groupBy('history.field_key', 'history.new_value')
+            ->orderBy('history.field_key')
+            ->orderByDesc('lead_count')
+            ;
+        $this->applyActivityLeadFilters($summaryRows, $request, 'history.lead_id');
+        $summaryRows = $summaryRows->get();
+
+        $summary = [];
+        foreach (self::LEAD_ACTIVITY_CHANGE_LABELS as $field => $label) {
+            $items = $summaryRows
+                ->where('field_key', $field)
+                ->map(fn ($row) => [
+                    'value' => $row->new_value,
+                    'count' => (int) $row->lead_count,
+                ])
+                ->values()
+                ->all();
+
+            if (!empty($items)) {
+                $summary[] = [
+                    'label' => $label,
+                    'items' => $items,
+                ];
+            }
+        }
+
+        return $summary;
     }
 
     public function conversionDataQuery($request): Builder

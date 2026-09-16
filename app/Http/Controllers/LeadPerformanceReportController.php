@@ -48,6 +48,7 @@ class LeadPerformanceReportController extends AccountBaseController
         $viewData = [
             'employee' => $employeeUser,
             'rows' => $activity['rows'],
+            'summary' => $activity['summary'],
             'hasMore' => $activity['has_more'],
             'nextPage' => $activity['next_page'],
         ];
