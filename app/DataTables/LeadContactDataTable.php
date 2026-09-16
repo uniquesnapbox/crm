@@ -278,7 +278,13 @@ class LeadContactDataTable extends BaseDataTable
         // Keep the web table in the same order as the mobile API: newest
         // leads first. The created_at column is the 14th DataTable column
         // (zero-based index 13; check and hidden columns come first).
-        $dataTable = $this->setBuilder('lead-contact-table', 13)
+        $isBulkWhatsAppPage = request()->routeIs('whatsapp.bulk.index') || request()->is('account/whatsapp/bulk');
+
+        // The bulk WhatsApp view removes the Added By and Assigned To columns,
+        // so Created On moves from index 13 to index 11 in that view.
+        $orderBy = $isBulkWhatsAppPage ? 11 : 13;
+
+        $dataTable = $this->setBuilder('lead-contact-table', $orderBy)
             ->parameters([
                 'stateSave' => true,
                 'initComplete' => 'function () {
