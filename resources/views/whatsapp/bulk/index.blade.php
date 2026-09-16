@@ -566,7 +566,7 @@
                 <div id="bulk-step-2" class="bulk-section-card mb-3 bulk-wizard-step">
                     <div class="card-body p-4">
                         <div class="row">
-                            <div class="col-lg-8">
+                            <div class="col-lg-12">
                                 <div class="row">
                                     <div class="col-md-6">
                                         <div class="form-group">
@@ -608,8 +608,14 @@
                                 </div>
 
                                 <div class="form-group">
-                                    <label class="f-14 f-w-500" for="bulk_attachment">Image / Photo Attachment (Optional)</label>
-                                    <input type="file" class="form-control-file" id="bulk_attachment" accept="image/*">
+                                    <label class="f-14 f-w-500" for="bulk_attachment">Image / Audio / Video (Optional)</label>
+                                    <input type="file" class="form-control-file" id="bulk_attachment" accept="image/*,audio/*,video/*">
+                                </div>
+
+                                <div class="border rounded p-3 mb-3" id="bulk-live-preview" style="display: none;">
+                                    <div class="f-w-600 mb-2">Message Preview</div>
+                                    <div class="border rounded p-3 bg-light" id="bulk-live-message-preview" style="white-space: pre-wrap;"></div>
+                                    <div class="mt-3" id="bulk-live-attachment-preview"></div>
                                 </div>
 
                                 <div class="row">
@@ -655,7 +661,7 @@
                         <div class="px-4 pt-4">
                             <div class="bulk-preview-attachment" id="preview-attachment-panel">
                                 <div class="text-muted f-12 border rounded p-3 bg-light">
-                                    Attachment preview will appear here if you upload a photo or choose a template with an image.
+                                    Attachment preview will appear here if you upload an image, audio or video file.
                                 </div>
                             </div>
                         </div>
@@ -819,12 +825,12 @@
                         <textarea class="form-control" id="template-message" rows="8"></textarea>
                     </div>
                     <div class="form-group">
-                        <label class="f-14 f-w-500" for="template-attachment">Image / Photo Attachment (Optional)</label>
-                        <input type="file" class="form-control-file" id="template-attachment" accept="image/*">
-                        <small class="bulk-muted d-block mt-1">This image will be saved with the template and sent with the caption above.</small>
+                        <label class="f-14 f-w-500" for="template-attachment">Image / Audio / Video (Optional)</label>
+                        <input type="file" class="form-control-file" id="template-attachment" accept="image/*,audio/*,video/*">
+                        <small class="bulk-muted d-block mt-1">This media will be saved with the template and sent with the message.</small>
                         <div class="bulk-attachment-preview mt-2" id="template-attachment-preview">
                             <div class="text-muted f-12 border rounded p-3 bg-light">
-                                No template image selected.
+                                No template media selected.
                             </div>
                         </div>
                     </div>
@@ -949,7 +955,7 @@
                     resolve(String(event.target.result || ''));
                 };
                 reader.onerror = function() {
-                    reject(new Error('Unable to read selected image.'));
+                    reject(new Error('Unable to read selected media file.'));
                 };
                 reader.readAsDataURL(file);
             });
@@ -958,20 +964,33 @@
         function renderAttachmentPreview(targetSelector, attachment, emptyMessage) {
             if (!attachment || !attachment.url) {
                 $(targetSelector).html(
-                    '<div class="text-muted f-12 border rounded p-3 bg-light">' + escapeHtml(emptyMessage || 'No image selected.') + '</div>'
+                    '<div class="text-muted f-12 border rounded p-3 bg-light">' + escapeHtml(emptyMessage || 'No media selected.') + '</div>'
                 );
                 return;
             }
 
+            const mime = String(attachment.mime || '').toLowerCase();
             const sizeText = attachment.size ? ' (' + Math.round((attachment.size / 1024) * 10) / 10 + ' KB)' : '';
+            let mediaMarkup = '';
+
+            if (mime.indexOf('image/') === 0) {
+                mediaMarkup = '<img src="' + escapeHtml(attachment.url) + '" alt="attachment preview" style="width: 92px; height: 92px; object-fit: cover; border-radius: 12px; border: 1px solid #e2e8f0;">';
+            } else if (mime.indexOf('video/') === 0) {
+                mediaMarkup = '<video controls style="width: 180px; max-height: 120px; border-radius: 12px; border: 1px solid #e2e8f0;"><source src="' + escapeHtml(attachment.url) + '" type="' + escapeHtml(attachment.mime || 'video/*') + '"></video>';
+            } else if (mime.indexOf('audio/') === 0) {
+                mediaMarkup = '<audio controls style="width: 260px; max-width: 100%;"><source src="' + escapeHtml(attachment.url) + '" type="' + escapeHtml(attachment.mime || 'audio/*') + '"></audio>';
+            } else {
+                mediaMarkup = '<a href="' + escapeHtml(attachment.url) + '" target="_blank" rel="noopener">Open attachment</a>';
+            }
+
             $(targetSelector).html(
                 '<div class="border rounded p-2 bg-white">' +
                     '<div class="d-flex align-items-start" style="gap: 0.75rem;">' +
-                        '<img src="' + escapeHtml(attachment.url) + '" alt="attachment preview" style="width: 92px; height: 92px; object-fit: cover; border-radius: 12px; border: 1px solid #e2e8f0;">' +
+                        mediaMarkup +
                         '<div class="flex-grow-1">' +
                             '<div class="f-w-600">' + escapeHtml(attachment.name || 'Attachment') + '</div>' +
-                            '<div class="bulk-muted f-12 mt-1">' + escapeHtml(attachment.mime || 'image/*') + sizeText + '</div>' +
-                            '<div class="bulk-muted f-12 mt-2">This image will be sent with the message caption.</div>' +
+                            '<div class="bulk-muted f-12 mt-1">' + escapeHtml(attachment.mime || 'media') + sizeText + '</div>' +
+                            '<div class="bulk-muted f-12 mt-2">This media will be sent with the message.</div>' +
                         '</div>' +
                     '</div>' +
                 '</div>'
@@ -984,12 +1003,32 @@
 
         function updateResolvedAttachmentPreview() {
             bulkWhatsAppState.currentAttachment = resolveCurrentAttachment();
-            renderAttachmentPreview('#preview-attachment-panel', bulkWhatsAppState.currentAttachment, 'Attachment preview will appear here if you upload a photo or choose a template with an image.');
+            renderAttachmentPreview('#preview-attachment-panel', bulkWhatsAppState.currentAttachment, 'Attachment preview will appear here if you upload an image, audio or video file.');
+            updateLiveComposePreview();
 
             if (bulkWhatsAppState.currentAttachment) {
                 $('#confirm-attachment-text').text(bulkWhatsAppState.currentAttachment.name || 'Attachment selected');
             } else {
                 $('#confirm-attachment-text').text('No attachment selected');
+            }
+        }
+
+        function updateLiveComposePreview() {
+            const message = String($('#bulk_message').val() || '').trim();
+            const attachment = bulkWhatsAppState.currentAttachment;
+            const $preview = $('#bulk-live-preview');
+
+            if (!message && !attachment) {
+                $preview.hide();
+                return;
+            }
+
+            $preview.show();
+            $('#bulk-live-message-preview').text(message || 'No message text.');
+            $('#bulk-live-attachment-preview').empty();
+
+            if (attachment) {
+                renderAttachmentPreview('#bulk-live-attachment-preview', attachment, 'No media selected.');
             }
         }
 
@@ -1683,7 +1722,7 @@
                 bulkWhatsAppState.selectedTemplateAttachment = {
                     url: String(attachmentUrl),
                     name: attachmentName || 'Template attachment',
-                    mime: attachmentMime || 'image/*',
+                    mime: attachmentMime || 'media',
                     size: attachmentSize ? parseInt(attachmentSize, 10) : null
                 };
             } else {
@@ -1714,12 +1753,12 @@
                 bulkWhatsAppState.selectedUploadAttachment = {
                     url: dataUrl,
                     name: file.name,
-                    mime: file.type || 'image/*',
+                    mime: file.type || 'media',
                     size: file.size || null
                 };
             } catch (error) {
                 bulkWhatsAppState.selectedUploadAttachment = null;
-                showBulkAlert(error.message || 'Unable to read selected image.', 'warning');
+                showBulkAlert(error.message || 'Unable to read selected media file.', 'warning');
             }
 
             updateResolvedAttachmentPreview();
@@ -1734,7 +1773,7 @@
             const file = this.files && this.files[0] ? this.files[0] : null;
 
             if (!file) {
-                renderAttachmentPreview('#template-attachment-preview', null, 'No template image selected.');
+                renderAttachmentPreview('#template-attachment-preview', null, 'No template media selected.');
                 return;
             }
 
@@ -1743,11 +1782,11 @@
                 renderAttachmentPreview('#template-attachment-preview', {
                     url: dataUrl,
                     name: file.name,
-                    mime: file.type || 'image/*',
+                    mime: file.type || 'media',
                     size: file.size || null
-                }, 'No template image selected.');
+                }, 'No template media selected.');
             } catch (error) {
-                showBulkAlert(error.message || 'Unable to read selected template image.', 'warning');
+                showBulkAlert(error.message || 'Unable to read selected template media.', 'warning');
             }
         });
 
@@ -1780,7 +1819,7 @@
             $('#template-name').val('');
             $('#template-message').val($('#bulk_message').val());
             $('#template-attachment').val('');
-            renderAttachmentPreview('#template-attachment-preview', null, 'No template image selected.');
+            renderAttachmentPreview('#template-attachment-preview', null, 'No template media selected.');
             $('#template-modal').modal('show');
         });
 
@@ -1823,7 +1862,7 @@
                         bulkWhatsAppState.selectedTemplateAttachment = template.attachment_url ? {
                             url: template.attachment_url,
                             name: template.attachment_name || 'Template attachment',
-                            mime: template.attachment_mime || 'image/*',
+                            mime: template.attachment_mime || 'media',
                             size: template.attachment_size || null
                         } : null;
                         bulkWhatsAppState.selectedUploadAttachment = null;

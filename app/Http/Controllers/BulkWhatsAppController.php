@@ -145,7 +145,7 @@ class BulkWhatsAppController extends AccountBaseController
         if ($message === '' && !$hasAttachment) {
             return response()->json([
                 'status' => 'fail',
-                'message' => 'Please add a WhatsApp message or attach an image before previewing.',
+                'message' => 'Please add a WhatsApp message or attach media before previewing.',
             ], 422);
         }
 
@@ -180,7 +180,7 @@ class BulkWhatsAppController extends AccountBaseController
         if ($message === '' && !$hasAttachment) {
             return response()->json([
                 'status' => 'fail',
-                'message' => 'Please add a WhatsApp message or attach an image before sending.',
+                'message' => 'Please add a WhatsApp message or attach media before sending.',
             ], 422);
         }
 
@@ -259,7 +259,7 @@ class BulkWhatsAppController extends AccountBaseController
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:190'],
             'message' => ['nullable', 'string', 'max:5000'],
-            'attachment' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,gif,webp', 'max:5120'],
+            'attachment' => $this->attachmentValidationRules(),
         ]);
 
         $attachmentMeta = null;
@@ -273,7 +273,7 @@ class BulkWhatsAppController extends AccountBaseController
         if (blank($validated['message'] ?? '') && !$attachmentMeta) {
             return response()->json([
                 'status' => 'fail',
-                'message' => 'Template message or image attachment is required.',
+                'message' => 'Template message or media attachment is required.',
             ], 422);
         }
 
@@ -397,6 +397,12 @@ class BulkWhatsAppController extends AccountBaseController
         BulkWhatsAppService $bulkService,
         bool $includeDelay = false
     ): array {
+        if ($request->hasFile('attachment')) {
+            $request->validate([
+                'attachment' => $this->attachmentValidationRules(),
+            ]);
+        }
+
         $leadIds = collect($request->input('lead_ids', []))
             ->filter(fn ($id) => is_numeric($id) && (int) $id > 0)
             ->map(fn ($id) => (int) $id)
@@ -624,5 +630,15 @@ class BulkWhatsAppController extends AccountBaseController
             ->first();
 
         return $setting?->resolved_whatsapp_session_key ?: preg_replace('/\D+/', '', (string) config('services.whatsapp_service.session', ''));
+    }
+
+    private function attachmentValidationRules(): array
+    {
+        return [
+            'nullable',
+            'file',
+            'mimes:jpg,jpeg,png,gif,webp,mp3,wav,ogg,m4a,aac,flac,mp4,webm,mov,avi,3gp',
+            'max:16384',
+        ];
     }
 }
