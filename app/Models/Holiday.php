@@ -78,20 +78,32 @@ class Holiday extends BaseModel
             return $holiday->get();
         }
 
-        $user = User::find($userId);
+        $user = User::withoutGlobalScope(ActiveScope::class)
+            ->with('employeeDetails')
+            ->find($userId);
 
-        $holiday = $holiday->where(function ($query) use ($user) {
-            $query->where(function ($subquery) use ($user) {
-                $subquery->where(function ($q) use ($user) {
-                    $q->where('department_id_json', 'like', '%"' . $user->employeeDetails->department_id . '"%')
+        if (is_null($user) || is_null($user->employeeDetails)) {
+            return $holiday
+                ->whereNull('department_id_json')
+                ->whereNull('designation_id_json')
+                ->whereNull('employment_type_json')
+                ->get();
+        }
+
+        $employeeDetails = $user->employeeDetails;
+
+        $holiday = $holiday->where(function ($query) use ($employeeDetails) {
+            $query->where(function ($subquery) use ($employeeDetails) {
+                $subquery->where(function ($q) use ($employeeDetails) {
+                    $q->where('department_id_json', 'like', '%"' . $employeeDetails->department_id . '"%')
                         ->orWhereNull('department_id_json');
                 });
-                $subquery->where(function ($q) use ($user) {
-                    $q->where('designation_id_json', 'like', '%"' . $user->employeeDetails->designation_id . '"%')
+                $subquery->where(function ($q) use ($employeeDetails) {
+                    $q->where('designation_id_json', 'like', '%"' . $employeeDetails->designation_id . '"%')
                         ->orWhereNull('designation_id_json');
                 });
-                $subquery->where(function ($q) use ($user) {
-                    $q->where('employment_type_json', 'like', '%"' . $user->employeeDetails->employment_type . '"%')
+                $subquery->where(function ($q) use ($employeeDetails) {
+                    $q->where('employment_type_json', 'like', '%"' . $employeeDetails->employment_type . '"%')
                         ->orWhereNull('employment_type_json');
                 });
             });
