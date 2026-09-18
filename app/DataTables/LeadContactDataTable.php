@@ -100,9 +100,6 @@ class LeadContactDataTable extends BaseDataTable
                         <div class="media-body">
                     <h5 class="mb-0 f-13 "><a href="' . route('lead-contact.show', [$row->id]) . '" class="js-lead-contact-open">' . $client_name . '</a></h5>
                     <p class="mb-0">' . $label . '</p>
-                    <p class="mb-0 f-12 text-dark-grey">
-                    '.$row->company_name.'
-                </p>
                     </div>
                   ';
         });
@@ -110,7 +107,7 @@ class LeadContactDataTable extends BaseDataTable
         $datatables->editColumn('created_at', fn($row) => $row->created_at?->translatedFormat($this->company->date_format));
         $datatables->smart(false);
         $datatables->setRowId(fn($row) => 'row-' . $row->id);
-        $datatables->setRowClass('lead-table-row');
+        $datatables->setRowClass(fn($row) => 'lead-table-row lead-status-color-' . ltrim($this->leadStatusColor($row), '#'));
         $datatables->removeColumn('client_id');
         $datatables->removeColumn('source');
 
@@ -200,19 +197,29 @@ class LeadContactDataTable extends BaseDataTable
             $leadContact = $leadContact->where('leads.updated_at', '<=', $endDate . ' 23:59:59');
         }
 
-        if ($this->request()->category_id != 'all' && $this->request()->category_id != '') {
+        if ($this->request()->category_id === '__blank__') {
+            $leadContact = $leadContact->whereNull('leads.category_id');
+        } elseif ($this->request()->category_id != 'all' && $this->request()->category_id != '') {
             $leadContact = $leadContact->where('category_id', $this->request()->category_id);
         }
 
-        if ($this->request()->source_id != 'all' && $this->request()->source_id != '') {
+        if ($this->request()->source_id === '__blank__') {
+            $leadContact = $leadContact->whereNull('leads.source_id');
+        } elseif ($this->request()->source_id != 'all' && $this->request()->source_id != '') {
             $leadContact = $leadContact->where('source_id', $this->request()->source_id);
         }
 
-        if ($this->request()->status_id != 'all' && $this->request()->status_id != '') {
+        if ($this->request()->status_id === '__blank__') {
+            $leadContact = $leadContact->whereNull('leads.status_id');
+        } elseif ($this->request()->status_id != 'all' && $this->request()->status_id != '') {
             $leadContact = $leadContact->where('leads.status_id', $this->request()->status_id);
         }
 
-        if ($this->request()->interest_level != 'all' && $this->request()->interest_level != '') {
+        if ($this->request()->interest_level === '__blank__') {
+            $leadContact = $leadContact->where(function ($query) {
+                $query->whereNull('leads.interest_level')->orWhere('leads.interest_level', '');
+            });
+        } elseif ($this->request()->interest_level != 'all' && $this->request()->interest_level != '') {
             $leadContact = $leadContact->where('leads.interest_level', $this->request()->interest_level);
         }
 
@@ -250,11 +257,15 @@ class LeadContactDataTable extends BaseDataTable
         }
 
         if ($this->viewLeadPermission == 'all' && $this->request()->filter_addedBy != 'all' && $this->request()->filter_addedBy != '') {
-            $leadContact = $leadContact->where('leads.added_by', $this->request()->filter_addedBy);
+            $leadContact = $this->request()->filter_addedBy === '__blank__'
+                ? $leadContact->whereNull('leads.added_by')
+                : $leadContact->where('leads.added_by', $this->request()->filter_addedBy);
         }
 
         if ($this->request()->filter_assignedTo != 'all' && $this->request()->filter_assignedTo != '') {
-            $leadContact = $leadContact->where('leads.assigned_to', $this->request()->filter_assignedTo);
+            $leadContact = $this->request()->filter_assignedTo === '__blank__'
+                ? $leadContact->whereNull('leads.assigned_to')->whereDoesntHave('assignees')
+                : $leadContact->where('leads.assigned_to', $this->request()->filter_assignedTo);
         }
         
         if ($this->request()->searchText != '') {
@@ -296,6 +307,12 @@ class LeadContactDataTable extends BaseDataTable
                         selector: \'[data-toggle="tooltip"]\'
                     });
                     $("#lead-contact-table .select-picker").selectpicker();
+                    $("#lead-contact-table tbody tr.lead-table-row").each(function() {
+                        const colorClass = (this.className.match(/lead-status-color-([0-9a-f]{3,8})/i) || [])[1];
+                        if (colorClass) {
+                            this.style.setProperty("--lead-status-color", "#" + colorClass);
+                        }
+                    });
                 }',
             ]);
 
@@ -326,9 +343,9 @@ class LeadContactDataTable extends BaseDataTable
             '#' => ['data' => 'DT_RowIndex', 'orderable' => false, 'searchable' => false, 'visible' => false, 'title' => '#'],
             __('app.id') => ['data' => 'id', 'name' => 'id', 'title' => __('app.id'), 'visible' => showId()],
             __('app.name') => ['data' => 'name', 'name' => 'name', 'exportable' => false, 'visible' => false,'title' => __('app.name')],
-            __('modules.leadContact.contactName') => ['data' => 'client_name', 'name' => 'leads.client_name', 'exportable' => true, 'title' => __('modules.leadContact.contactName')],
-            __('modules.lead.mobile') => ['data' => 'mobile', 'name' => 'leads.mobile', 'exportable' => true, 'title' => __('modules.lead.mobile')],
-            __('modules.lead.companyName') => ['data' => 'company_name', 'name' => 'company_name', 'exportable' => true, 'title' => __('modules.lead.companyName')],
+            'Leads' => ['data' => 'client_name', 'name' => 'leads.client_name', 'exportable' => true, 'title' => 'Leads'],
+            'Contacts' => ['data' => 'mobile', 'name' => 'leads.mobile', 'exportable' => true, 'title' => 'Contacts'],
+            'Company' => ['data' => 'company_name', 'name' => 'company_name', 'exportable' => true, 'title' => 'Company'],
             __('modules.lead.leadStatus') => ['data' => 'lead_status', 'name' => 'lead_status.type', 'title' => __('modules.lead.leadStatus')],
             __('Interest Level') => ['data' => 'interest_level', 'name' => 'leads.interest_level', 'title' => 'Interest Level'],
             __('app.email') . ' ' . __('modules.lead.email') => ['data' => 'export_email', 'name' => 'leads.client_email', 'title' => __('app.lead') . ' ' . __('modules.lead.email'), 'exportable' => true, 'visible' => false],
@@ -413,6 +430,22 @@ class LeadContactDataTable extends BaseDataTable
             $options .
             '</select>' .
             '</div>';
+    }
+
+    private function leadStatusColor($row): string
+    {
+        $color = trim((string) ($row->lead_status_color ?? ''));
+
+        if ($color === '') {
+            $color = match (strtolower(trim((string) ($row->contact_status ?? '')))) {
+                'connected' => '#16a34a',
+                'not_connected' => '#f59e0b',
+                'pending' => '#ca8a04',
+                default => '#8f9bb3',
+            };
+        }
+
+        return preg_match('/^#[0-9a-fA-F]{3,8}$/', $color) ? $color : '#8f9bb3';
     }
 
     private function renderInterestLevelColumn($row): string

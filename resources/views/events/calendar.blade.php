@@ -28,6 +28,17 @@
             border-radius: 999px;
             display: inline-block;
         }
+        .calendar-employee-filter {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: auto;
+        }
+        .calendar-employee-filter select { width: 200px; max-width: 100%; }
+        @media (max-width: 575px) {
+            .calendar-employee-filter { width: 100%; margin-left: 0; }
+            .calendar-employee-filter select { flex: 1; }
+        }
         .calendar-event-content {
             display: inline-flex;
             align-items: center;
@@ -72,7 +83,7 @@
 
 @section('content')
     <div class="content-wrapper">
-        <x-cards.data :title="__('app.menu.calendar')">
+        <x-cards.data>
             <div class="calendar-legend">
                 <div class="calendar-legend-item">
                     <span class="calendar-legend-dot" style="background:#16a34a;"></span>
@@ -93,6 +104,15 @@
                 <div class="calendar-legend-item">
                     <span class="calendar-legend-dot" style="background:#2563eb;"></span>
                     <span>Upcoming</span>
+                </div>
+                <div class="calendar-employee-filter">
+                    <label for="calendar-employee" class="mb-0">Employee</label>
+                    <select id="calendar-employee" class="form-control form-control-sm" aria-label="Filter calendar by assigned employee">
+                        <option value="all">All Employees</option>
+                        @foreach ($calendarEmployees as $employee)
+                            <option value="{{ $employee->id }}">{{ $employee->name }}</option>
+                        @endforeach
+                    </select>
                 </div>
             </div>
             <div id="calendar" aria-label="{{ __('app.menu.calendar') }}"></div>
@@ -194,6 +214,9 @@
             },
             events: {
                 url: "{{ route('crm.calendar.events') }}",
+                extraParams: function() {
+                    return { employee_id: document.getElementById('calendar-employee').value };
+                },
             },
             loading: function(isLoading) {
                 if (isLoading) {
@@ -250,6 +273,11 @@
 
                 return event ? eventDetailsHtml(event) : '';
             }
+        });
+
+        document.getElementById('calendar-employee').addEventListener('change', function() {
+            setCalendarEmptyState(false);
+            calendar.refetchEvents();
         });
 
         calendar.render();

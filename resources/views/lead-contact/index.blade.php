@@ -168,18 +168,19 @@
         }
 
         #lead-contact-table tbody tr.lead-table-row td {
-            padding-top: 8px !important;
-            padding-bottom: 8px !important;
+            padding-top: 2px !important;
+            padding-bottom: 2px !important;
             line-height: 1.2;
             vertical-align: middle;
         }
 
         #lead-contact-table tbody tr.lead-table-row {
             cursor: pointer;
+            background: #fff;
         }
 
-        #lead-contact-table tbody tr.lead-table-row:hover {
-            background: #f7fbff;
+        #lead-contact-table tbody tr.lead-table-row:hover td {
+            background: color-mix(in srgb, var(--lead-status-color, #8f9bb3) 45%, #fff) !important;
         }
 
         #lead-contact-table .lead-table-actions .btn {
@@ -385,8 +386,19 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
             };
         }
 
+        let lastLeadContactFilterState = null;
+
         $('#' + leadContactTableId).on('preXhr.dt', function(e, settings, data) {
-            Object.assign(data, getLeadContactFilters());
+            const filters = getLeadContactFilters();
+            const filterState = JSON.stringify(filters);
+
+            if (lastLeadContactFilterState !== null && lastLeadContactFilterState !== filterState) {
+                settings._iDisplayStart = 0;
+                data.start = 0;
+            }
+
+            lastLeadContactFilterState = filterState;
+            Object.assign(data, filters);
         });
 
         $('#' + leadContactTableId).on('page.dt length.dt', function() {

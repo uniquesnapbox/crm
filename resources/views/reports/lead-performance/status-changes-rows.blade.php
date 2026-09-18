@@ -46,7 +46,7 @@
 
 @foreach ($rows as $row)
     <tr>
-        <td>{{ $row['name'] ?: $emptyValue }}</td>
+        <td><a href="{{ route('lead-contact.show', $row['lead_id']) }}?tab=history" target="_blank" rel="noopener">{{ $row['name'] ?: $emptyValue }}</a></td>
         <td>{{ $row['number'] ?: $emptyValue }}</td>
         <td><span class="employee-lead-table-value is-category">{{ $row['category'] ?: $emptyValue }}</span></td>
         <td>
@@ -66,6 +66,19 @@
                 <span class="employee-lead-table-value is-date-current" title="Current">{{ $formatActivityDate($row['followup_date']['current']) }}</span>
                 <span class="employee-lead-table-value is-date-previous" title="Previous">{{ $formatActivityDate($row['followup_date']['previous']) }}</span>
             </div>
+        </td>
+        <td>
+            @foreach ($row['changes'] as $change)
+                <div class="border-bottom pb-2 mb-2">
+                    <strong>{{ $change->event_type === 'lead_field_updated' ? ucwords(str_replace('_', ' ', preg_replace('/_id$/', '', $change->field_key ?? ''))) : ucwords(str_replace('_', ' ', $change->event_type)) }}</strong>
+                    @if ($change->event_type === 'lead_field_updated')
+                        <div>Old: {{ $change->old_value ?? $emptyValue }} &rarr; New: {{ $change->new_value ?? $emptyValue }}</div>
+                    @elseif (str_starts_with($change->event_type, 'followup_'))
+                        <div>{{ $change->description }}</div>
+                    @endif
+                    <small class="text-muted">{{ Illuminate\Support\Carbon::parse($change->event_at, 'UTC')->timezone(company()->timezone)->format('d M Y, h:i:s A') }} ({{ company()->timezone }})</small>
+                </div>
+            @endforeach
         </td>
     </tr>
 @endforeach

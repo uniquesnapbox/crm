@@ -64,6 +64,12 @@ class LeadPerformanceReportService
             ->selectSub($this->employeeLeadsContactedQuery($request, $start, $end), 'leads_contacted')
             ->selectSub($this->employeeStatusChangedQuery($request, $start, $end), 'status_changed')
             ->selectSub($this->employeeFollowupsQuery($request, $start, $end), 'followups')
+            ->selectSub($this->employeeHistoryCountQuery($request, $start, $end, ['lead_field_updated']), 'detail_changes')
+            ->selectSub($this->employeeHistoryCountQuery($request, $start, $end, ['followup_created', 'followup_updated', 'followup_status_updated', 'followup_deleted']), 'followup_actions')
+            ->selectSub($this->employeeHistoryCountQuery($request, $start, $end, ['followup_updated', 'followup_status_updated'], true), 'followup_updated_leads')
+            ->selectSub($this->employeeHistoryCountQuery($request, $start, $end, ['followup_status_updated']), 'followup_status_changes')
+            ->selectSub($this->employeeHistoryCountQuery($request, $start, $end, ['note_created', 'note_updated', 'note_deleted']), 'note_actions')
+            ->selectSub($this->employeeWorkedLeadsQuery($request, $start, $end), 'worked_leads')
             ->orderBy('users.name');
 
         if ($request->filled('employee') && $request->employee !== 'all') {
@@ -91,6 +97,9 @@ class LeadPerformanceReportService
                         'followup_updated',
                         'followup_status_updated',
                         'followup_deleted',
+                        'note_created',
+                        'note_updated',
+                        'note_deleted',
                     ]);
             })
             ->select([
@@ -179,7 +188,16 @@ class LeadPerformanceReportService
             ->get()
             ->groupBy('lead_id');
 
-        $rows = $leadIds->map(function (int $leadId) use ($leads, $followups, $histories) {
+        $activityEvents = DB::table('lead_histories as history')
+            ->where('history.company_id', company()->id)
+            ->where('history.created_by', $employeeId)
+            ->whereIn('history.lead_id', $leadIds->all())
+            ->whereBetween('history.event_at', [$start, $end])
+            ->whereIn('history.event_type', ['lead_field_updated', 'followup_created', 'followup_updated', 'followup_status_updated', 'followup_deleted', 'note_created', 'note_updated', 'note_deleted'])
+            ->select('history.id', 'history.lead_id', 'history.event_type', 'history.field_key', 'history.old_value', 'history.new_value', 'history.event_at', 'history.description')
+            ->orderByDesc('history.event_at')->orderByDesc('history.id')->get()->groupBy('lead_id');
+
+        $rows = $leadIds->map(function (int $leadId) use ($leads, $followups, $histories, $activityEvents) {
             $lead = $leads->get($leadId);
             if (!$lead) {
                 return null;
@@ -218,6 +236,8 @@ class LeadPerformanceReportService
                 : null;
 
             return [
+                'lead_id' => $leadId,
+                'changes' => $activityEvents->get($leadId, collect()),
                 'name' => $lead->client_name ?: 'Lead #' . $lead->id,
                 'number' => $lead->mobile ?: ($lead->cell ?: $lead->office),
                 'category' => $lead->lead_category,
@@ -333,12 +353,46 @@ class LeadPerformanceReportService
             ->whereColumn('lead_histories.created_by', 'users.id')
             ->where('lead_histories.company_id', company()->id)
             ->where('lead_histories.event_type', 'lead_field_updated')
-            ->whereIn('lead_histories.field_key', self::LEAD_ACTIVITY_FIELDS)
             ->whereBetween('lead_histories.event_at', [$start, $end])
             ->selectRaw('COUNT(DISTINCT lead_histories.lead_id)');
 
         $this->applyActivityLeadFilters($query, $request, 'lead_histories.lead_id');
 
+        return $query;
+    }
+
+    private function employeeHistoryCountQuery($request, Carbon $start, Carbon $end, array $events, bool $uniqueLeads = false)
+    {
+        $query = DB::table('lead_histories')
+            ->whereColumn('lead_histories.created_by', 'users.id')
+            ->where('lead_histories.company_id', company()->id)
+            ->whereIn('lead_histories.event_type', $events)
+            ->whereBetween('lead_histories.event_at', [$start, $end])
+            ->selectRaw($uniqueLeads ? 'COUNT(DISTINCT lead_histories.lead_id)' : 'COUNT(*)');
+        $this->applyActivityLeadFilters($query, $request, 'lead_histories.lead_id');
+        return $query;
+    }
+
+    private function employeeWorkedLeadsQuery($request, Carbon $start, Carbon $end)
+    {
+        $query = DB::table('leads as worked_leads')
+            ->where('worked_leads.company_id', company()->id)
+            ->where(function ($activity) use ($start, $end) {
+                $activity->whereExists(function ($history) use ($start, $end) {
+                    $history->selectRaw('1')->from('lead_histories as worked_history')
+                        ->whereColumn('worked_history.lead_id', 'worked_leads.id')
+                        ->whereColumn('worked_history.created_by', 'users.id')
+                        ->where('worked_history.company_id', company()->id)
+                        ->whereIn('worked_history.event_type', ['lead_field_updated', 'followup_created', 'followup_updated', 'followup_status_updated', 'followup_deleted', 'note_created', 'note_updated', 'note_deleted'])
+                        ->whereBetween('worked_history.event_at', [$start, $end]);
+                })->orWhereExists(function ($followup) use ($start, $end) {
+                    $followup->selectRaw('1')->from('lead_follow_up as worked_followup')
+                        ->whereColumn('worked_followup.lead_id', 'worked_leads.id')
+                        ->whereColumn('worked_followup.added_by', 'users.id')
+                        ->whereBetween('worked_followup.created_at', [$start, $end]);
+                });
+            })->selectRaw('COUNT(*)');
+        $this->applyActivityLeadFilters($query, $request, 'worked_leads.id');
         return $query;
     }
 

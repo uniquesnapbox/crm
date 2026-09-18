@@ -66,6 +66,7 @@
                         <th>Lead Status</th>
                         <th>Interest Level</th>
                         <th>Follow-up Date</th>
+                        <th>Recorded Changes (Old / New / Time)</th>
                     </tr>
                 </thead>
                 <tbody class="employee-lead-activity-rows">

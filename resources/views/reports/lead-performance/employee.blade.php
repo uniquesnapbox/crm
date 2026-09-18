@@ -229,6 +229,7 @@
 
 @section('content')
     <div class="content-wrapper">
+        <p class="text-muted mb-2">Leads Worked counts each lead once across detail changes, follow-ups and notes. Lead Details Updated counts lead fields; Follow-up Updated Leads counts follow-up changes. Action columns count every saved action in the selected date range. Open View for the lead-by-lead change history.</p>
         <div class="d-flex flex-column w-tables rounded mt-4 bg-white table-responsive">
             {!! $dataTable->table(['class' => 'table table-hover border-0 w-100']) !!}
         </div>
@@ -240,7 +241,7 @@
 
     <script type="text/javascript">
         function initEmployeeLeadDateRange() {
-            const start = moment().clone().startOf('month');
+            const start = moment().clone().startOf('day');
             const end = moment();
 
             $('#datatableRange2').daterangepicker({
@@ -250,10 +251,11 @@
                 endDate: end,
                 ranges: daterangeConfig
             }, cb);
+            $('#datatableRange2').val(start.format('{{ company()->moment_date_format }}') + ' @lang("app.to") ' + end.format('{{ company()->moment_date_format }}'));
         }
 
         const showTable = () => {
-            window.LaravelDataTables["employee-lead-report-table"].draw(false);
+            window.LaravelDataTables["employee-lead-report-table"].draw();
         };
 
         $(function() {

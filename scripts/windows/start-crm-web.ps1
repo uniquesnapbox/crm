@@ -32,6 +32,8 @@ if (-not (Test-Path $PhpPath)) {
 
 Set-Location $ProjectRoot
 
+& (Join-Path $PSScriptRoot 'start-crm-database.ps1') -ProjectRoot $ProjectRoot
+
 while ($true) {
     try {
         $webProcess = Start-Process `

@@ -118,6 +118,7 @@
                 <div class="select-others">
                     <select class="form-control select-picker" id="filter_category_id" data-live-search="true" data-container="body" data-size="8">
                         <option value="all">@lang('app.all')</option>
+                        <option value="__blank__">-- (Blank)</option>
                         @foreach ($categories as $category)
                             <option value="{{ $category->id }}">{{ $category->category_name }}</option>
                         @endforeach
@@ -132,6 +133,7 @@
                 <div class="select-others">
                     <select class="form-control select-picker" id="filter_status_id" data-live-search="true" data-container="body" data-size="8">
                         <option value="all">@lang('app.all')</option>
+                        <option value="__blank__">-- (Blank)</option>
                         @foreach ($statuses as $status)
                             <option value="{{ $status->id }}">{{ $status->type }}</option>
                         @endforeach
@@ -146,6 +148,7 @@
                 <div class="select-others">
                     <select class="form-control select-picker" id="filter_interest_level" data-container="body" data-size="8">
                         <option value="all">@lang('app.all')</option>
+                        <option value="__blank__">-- (Blank)</option>
                         <option value="low" data-content="<span><i class='fa fa-circle mr-2' style='color:#64748b'></i>Low</span>">Low</option>
                         <option value="medium" data-content="<span><i class='fa fa-circle mr-2' style='color:#2563eb'></i>Medium</span>">Medium</option>
                         <option value="high" data-content="<span><i class='fa fa-circle mr-2' style='color:#ea580c'></i>High</span>">High</option>
@@ -161,6 +164,7 @@
                 <div class="select-others">
                     <select class="form-control select-picker" id="filter_source_id" data-live-search="true" data-container="body" data-size="8">
                         <option value="all">@lang('app.all')</option>
+                        <option value="__blank__">-- (Blank)</option>
                         @foreach ($sources as $source)
                             <option value="{{ $source->id }}">{{ $source->type }}</option>
                         @endforeach
@@ -175,6 +179,7 @@
                 <div class="select-others">
                 <select class="form-control select-picker" id="filter_addedBy" data-live-search="true" data-container="body" data-size="8">
                     <option value="all">@lang('app.all')</option>
+                    <option value="__blank__">-- (Blank)</option>
                     @foreach ($employees as $item)
                         <x-user-option :user="$item"  />
                     @endforeach
@@ -189,6 +194,7 @@
                 <div class="select-others">
                 <select class="form-control select-picker" id="filter_assigned_to" data-live-search="true" data-container="body" data-size="8">
                     <option value="all">@lang('app.all')</option>
+                    <option value="__blank__">-- (Blank)</option>
                     @foreach ($employees as $item)
                         <x-user-option :user="$item" />
                     @endforeach

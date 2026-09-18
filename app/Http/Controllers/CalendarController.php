@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\LeadFollowUp;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -29,6 +30,8 @@ class CalendarController extends AccountBaseController
      */
     public function index()
     {
+        $this->calendarEmployees = User::allEmployees(null, false, null, company()->id);
+
         return view('events.calendar', $this->data);
     }
 
@@ -39,6 +42,16 @@ class CalendarController extends AccountBaseController
     {
         $user = auth()->user();
         [$rangeStart, $rangeEnd] = $this->calendarRange($request);
+        $employeeId = $request->input('employee_id');
+
+        if ($employeeId !== null && $employeeId !== '' && $employeeId !== 'all') {
+            $request->validate(['employee_id' => ['required', 'integer', 'min:1']]);
+            $employees = User::allEmployees(null, false, null, company()->id);
+            abort_unless($employees->contains('id', (int) $employeeId), 422, 'Invalid employee selected.');
+            $employeeId = (int) $employeeId;
+        } else {
+            $employeeId = null;
+        }
 
         $followups = LeadFollowUp::query()
             ->select([
@@ -55,7 +68,16 @@ class CalendarController extends AccountBaseController
             // FullCalendar's end value is exclusive.
             ->where('next_follow_up_date', '>=', $rangeStart)
             ->where('next_follow_up_date', '<', $rangeEnd)
-            ->whereHas('lead', fn ($leadQuery) => $leadQuery->accessibleTo($user))
+            ->whereHas('lead', function ($leadQuery) use ($user, $employeeId) {
+                $leadQuery->accessibleTo($user);
+
+                if ($employeeId !== null) {
+                    $leadQuery->where(function ($assignmentQuery) use ($employeeId) {
+                        $assignmentQuery->where('assigned_to', $employeeId)
+                            ->orWhereHas('assignees', fn ($assigneeQuery) => $assigneeQuery->whereKey($employeeId));
+                    });
+                }
+            })
             ->orderBy('next_follow_up_date')
             ->orderBy('id')
             ->get();
