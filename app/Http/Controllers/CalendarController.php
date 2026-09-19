@@ -78,7 +78,6 @@ class CalendarController extends AccountBaseController
                 if ($employeeId !== null) {
                     $leadQuery->where(function ($assignmentQuery) use ($employeeId) {
                         $assignmentQuery->where('assigned_to', $employeeId)
-                            ->orWhere('added_by', $employeeId)
                             ->orWhereHas('assignees', fn ($assigneeQuery) => $assigneeQuery->whereKey($employeeId));
                     });
                 }
