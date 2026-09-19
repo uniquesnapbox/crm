@@ -81,7 +81,7 @@ class LeadNoteController extends AccountBaseController
     public function store(StoreLeadNote $request)
     {
         abort_403(!in_array(user()->permission('add_lead_note'), ['all', 'added', 'both']));
-        abort_403(!Lead::findOrFail($request->lead_id)->isAssignedTo(user()));
+        abort_403(!Lead::findOrFail($request->lead_id)->isResponsibleFor(user()));
 
         $this->employees = User::allEmployees();
 
@@ -117,7 +117,7 @@ class LeadNoteController extends AccountBaseController
         $this->pageTitle = __('app.editLeadNote');
 
         $this->note = LeadNote::findOrFail($id);
-        abort_403(!Lead::findOrFail($this->note->lead_id)->isAssignedTo(user()));
+        abort_403(!Lead::findOrFail($this->note->lead_id)->isResponsibleFor(user()));
         $editClientNotePermission = user()->permission('view_lead_note');
         $memberIds = $this->note->members->pluck('user_id')->toArray(); /** @phpstan-ignore-line */
 
@@ -146,7 +146,7 @@ class LeadNoteController extends AccountBaseController
     {
         $note = LeadNote::findOrFail($id);
         abort_403(!in_array(user()->permission('edit_lead_note'), ['all', 'added', 'owned', 'both']));
-        abort_403(!Lead::findOrFail($note->lead_id)->isAssignedTo(user()));
+        abort_403(!Lead::findOrFail($note->lead_id)->isResponsibleFor(user()));
         $note->title = $request->title;
         $note->details = trim_editor((string) $request->details);
         $note->type = $request->type;
@@ -178,7 +178,7 @@ class LeadNoteController extends AccountBaseController
     {
         $this->note = LeadNote::findOrFail($id);
         abort_403(!in_array(user()->permission('delete_lead_note'), ['all', 'added', 'owned', 'both']));
-        abort_403(!Lead::findOrFail($this->note->lead_id)->isAssignedTo(user()));
+        abort_403(!Lead::findOrFail($this->note->lead_id)->isResponsibleFor(user()));
         $this->deletePermission = user()->permission('delete_lead_note');
         $memberIds = $this->note->members->pluck('user_id')->toArray(); /** @phpstan-ignore-line */
 

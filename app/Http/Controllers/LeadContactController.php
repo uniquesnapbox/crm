@@ -1497,7 +1497,7 @@ class LeadContactController extends AccountBaseController
         abort_403(!in_array($this->addFollowUpPermission, ['all', 'added', 'owned', 'both']));
 
         $this->leadContact = Lead::findOrFail($leadId);
-        abort_403(!$this->canAccessAssignedLead($this->leadContact));
+        abort_403(!$this->canAccessResponsibleLead($this->leadContact));
         $this->leadId = $leadId;
 
         return view('lead-contact.followups.create', $this->data);
@@ -1509,7 +1509,7 @@ class LeadContactController extends AccountBaseController
         abort_403(!in_array($this->addFollowUpPermission, ['all', 'added', 'owned', 'both']));
 
         $lead = Lead::findOrFail($request->lead_id);
-        abort_403(!$this->canAccessAssignedLead($lead));
+        abort_403(!$this->canAccessResponsibleLead($lead));
 
         $startTime = $this->normalizeCompanyTimeValue($request->start_time);
         $request->merge(['start_time' => $startTime]);
@@ -2036,15 +2036,15 @@ class LeadContactController extends AccountBaseController
         return $lead?->isAccessibleBy(user()) ?? false;
     }
 
-    private function canAccessAssignedLead(?Lead $lead): bool
+    private function canAccessResponsibleLead(?Lead $lead): bool
     {
-        return $lead?->isAssignedTo(user()) ?? false;
+        return $lead?->isResponsibleFor(user()) ?? false;
     }
 
     private function canModifyAssignedLead(?Lead $lead): bool
     {
         return $this->isAdminUser()
-            || ($this->canAccessAssignedLead($lead)
+            || ($this->canAccessResponsibleLead($lead)
                 && in_array(user()->permission('edit_lead'), ['all', 'added', 'owned', 'both'], true));
     }
 
@@ -2054,7 +2054,7 @@ class LeadContactController extends AccountBaseController
             return false;
         }
 
-        if (!$this->canAccessAssignedLead($followUp->lead)) {
+        if (!$this->canAccessResponsibleLead($followUp->lead)) {
             return false;
         }
 
@@ -2069,7 +2069,7 @@ class LeadContactController extends AccountBaseController
             return false;
         }
 
-        if (!$this->canAccessAssignedLead($followUp->lead)) {
+        if (!$this->canAccessResponsibleLead($followUp->lead)) {
             return false;
         }
 

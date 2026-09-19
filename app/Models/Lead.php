@@ -266,6 +266,13 @@ class Lead extends BaseModel
             || $this->assignees()->whereKey($user->id)->exists();
     }
 
+    public function isResponsibleFor(User $user): bool
+    {
+        return $user->hasRole('admin')
+            || (int) $this->added_by === (int) $user->id
+            || $this->isAssignedTo($user);
+    }
+
     public function getIsConvertedAttribute(): bool
     {
         return !is_null($this->client_id) || !is_null($this->converted_at);
