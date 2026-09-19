@@ -5,15 +5,7 @@
     <style>
         #calendar { max-width: 100%; margin: 0 auto; }
         .calendar-legend {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-            align-items: center;
-            margin-bottom: 16px;
-            padding: 10px 12px;
-            border: 1px solid #e5e7eb;
-            border-radius: 10px;
-            background: #fff;
+            display: none;
         }
         .calendar-legend-item {
             display: inline-flex;
@@ -32,10 +24,31 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            margin-left: auto;
+            margin-left: 12px;
         }
-        .calendar-employee-filter select { width: 200px; max-width: 100%; }
+        .calendar-employee-filter select { width: 170px; max-width: 100%; }
+        .calendar-toolbar-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: 10px;
+        }
+        .calendar-toolbar-status .calendar-legend-item {
+            gap: 0;
+            margin: 0;
+        }
+        #calendar .fc-header-toolbar {
+            flex-wrap: nowrap;
+            gap: 8px;
+        }
+        #calendar .fc-toolbar-chunk {
+            display: flex;
+            align-items: center;
+            min-width: 0;
+        }
         @media (max-width: 575px) {
+            #calendar .fc-header-toolbar { flex-wrap: wrap; }
+            .calendar-toolbar-status { margin-left: 0; }
             .calendar-employee-filter { width: 100%; margin-left: 0; }
             .calendar-employee-filter select { flex: 1; }
         }
@@ -87,26 +100,20 @@
             <div class="calendar-legend">
                 <div class="calendar-legend-item">
                     <span class="calendar-legend-dot" style="background:#16a34a;"></span>
-                    <span>Completed</span>
                 </div>
                 <div class="calendar-legend-item">
                     <span class="calendar-legend-dot" style="background:#dc2626;"></span>
-                    <span>Overdue (not completed)</span>
                 </div>
                 <div class="calendar-legend-item">
                     <span class="calendar-legend-dot" style="background:#6b7280;"></span>
-                    <span>Canceled</span>
                 </div>
                 <div class="calendar-legend-item">
                     <span class="calendar-legend-dot" style="background:#eab308;"></span>
-                    <span>Today (pending)</span>
                 </div>
                 <div class="calendar-legend-item">
                     <span class="calendar-legend-dot" style="background:#2563eb;"></span>
-                    <span>Upcoming</span>
                 </div>
                 <div class="calendar-employee-filter">
-                    <label for="calendar-employee" class="mb-0">Employee</label>
                     <select id="calendar-employee" class="form-control form-control-sm" aria-label="Filter calendar by assigned employee">
                         <option value="all" @selected(is_null($defaultCalendarEmployeeId))>All Employees</option>
                         @foreach ($calendarEmployees as $employee)
@@ -281,6 +288,28 @@
         });
 
         calendar.render();
+
+        const calendarToolbar = calendarEl.querySelector('.fc-header-toolbar');
+        const calendarLegend = document.querySelector('.calendar-legend');
+        if (calendarToolbar && calendarLegend) {
+            const toolbarChunks = calendarToolbar.querySelectorAll('.fc-toolbar-chunk');
+            const statusGroup = document.createElement('div');
+            statusGroup.className = 'calendar-toolbar-status';
+
+            calendarLegend.querySelectorAll('.calendar-legend-item').forEach((item) => {
+                statusGroup.appendChild(item);
+            });
+
+            const employeeFilter = calendarLegend.querySelector('.calendar-employee-filter');
+            if (toolbarChunks[0]) {
+                toolbarChunks[0].appendChild(statusGroup);
+            }
+            if (employeeFilter && toolbarChunks.length > 1) {
+                toolbarChunks[toolbarChunks.length - 1].appendChild(employeeFilter);
+            }
+
+            calendarLegend.remove();
+        }
 
     </script>
 @endpush
