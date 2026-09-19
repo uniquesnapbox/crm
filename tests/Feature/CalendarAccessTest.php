@@ -14,6 +14,22 @@ class CalendarAccessTest extends TestCase
 
     private const VIEWABLE_PERMISSION_TYPES = ['all', 'added', 'owned', 'both'];
 
+    public function test_employee_calendar_defaults_filter_to_logged_in_employee(): void
+    {
+        $employee = $this->findNonAdminUser(fn (User $user): bool => $user->hasRole('employee')
+            && $this->hasCalendarPermissions($user));
+
+        if (!$employee) {
+            $this->markTestSkipped('No employee with calendar permissions is available.');
+        }
+
+        $this->actingAs($employee)
+            ->get(route('calendar.index'))
+            ->assertOk()
+            ->assertViewHas('defaultCalendarEmployeeId', $employee->id)
+            ->assertSee('value="' . $employee->id . '" selected', false);
+    }
+
     public function test_user_without_lead_view_permission_cannot_access_calendar_or_events(): void
     {
         $user = $this->findNonAdminUser(function (User $candidate): bool {

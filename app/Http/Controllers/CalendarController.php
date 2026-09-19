@@ -30,7 +30,11 @@ class CalendarController extends AccountBaseController
      */
     public function index()
     {
+        $user = auth()->user();
         $this->calendarEmployees = User::allEmployees(null, false, null, company()->id);
+        $this->defaultCalendarEmployeeId = !$user->hasRole('admin') && $user->hasRole('employee')
+            ? $user->id
+            : null;
 
         return view('events.calendar', $this->data);
     }

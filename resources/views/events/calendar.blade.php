@@ -108,9 +108,9 @@
                 <div class="calendar-employee-filter">
                     <label for="calendar-employee" class="mb-0">Employee</label>
                     <select id="calendar-employee" class="form-control form-control-sm" aria-label="Filter calendar by assigned employee">
-                        <option value="all">All Employees</option>
+                        <option value="all" @selected(is_null($defaultCalendarEmployeeId))>All Employees</option>
                         @foreach ($calendarEmployees as $employee)
-                            <option value="{{ $employee->id }}">{{ $employee->name }}</option>
+                            <option value="{{ $employee->id }}" @selected((int) $defaultCalendarEmployeeId === (int) $employee->id)>{{ $employee->name }}</option>
                         @endforeach
                     </select>
                 </div>
