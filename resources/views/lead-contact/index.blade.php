@@ -98,6 +98,116 @@
             letter-spacing: 0.01em;
         }
 
+        .lead-contact-toolbar #table-actions .btn,
+        .lead-contact-toolbar > .select-box .bootstrap-select > .dropdown-toggle,
+        .lead-contact-toolbar > .ml-auto .more-filters > .js-open-more-filter {
+            background-color: #082b78 !important;
+            border-color: #082b78 !important;
+            color: #fff !important;
+            border: 1px solid #082b78 !important;
+            border-radius: 5px !important;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+
+        .lead-contact-toolbar #table-actions .btn:hover,
+        .lead-contact-toolbar #table-actions .btn:focus,
+        .lead-contact-toolbar > .select-box .bootstrap-select > .dropdown-toggle:hover,
+        .lead-contact-toolbar > .select-box .bootstrap-select > .dropdown-toggle:focus,
+        .lead-contact-toolbar > .ml-auto .more-filters > .js-open-more-filter:hover,
+        .lead-contact-toolbar > .ml-auto .more-filters > .js-open-more-filter:focus {
+            background-color: #f4511e !important;
+            border-color: #f4511e !important;
+            color: #fff !important;
+        }
+
+        .lead-contact-toolbar > .ml-auto .more-filters > .js-open-more-filter {
+            min-height: 32px;
+            padding: 0 11px;
+            line-height: 30px;
+        }
+
+        .lead-contact-toolbar > .ml-auto .more-filters > .js-open-more-filter i {
+            color: #fff !important;
+        }
+
+        .lead-contact-toolbar #datatableRange {
+            background-color: #082b78 !important;
+            border: 1px solid #082b78 !important;
+            border-radius: 5px;
+            color: #fff !important;
+        }
+
+        .lead-contact-toolbar .task-search .input-group {
+            background-color: #082b78 !important;
+            border: 1px solid #082b78;
+            border-radius: 5px !important;
+        }
+
+        .lead-contact-toolbar .task-search .input-group-text,
+        .lead-contact-toolbar .task-search .form-control {
+            background-color: transparent !important;
+            border-color: transparent !important;
+            color: #fff !important;
+        }
+
+        .lead-contact-toolbar #datatableRange::placeholder,
+        .lead-contact-toolbar .task-search .form-control::placeholder {
+            color: rgba(255, 255, 255, 0.88) !important;
+            opacity: 1;
+        }
+
+        .lead-contact-toolbar .task-search .input-group i {
+            color: #fff !important;
+        }
+
+        .lead-contact-toolbar #datatableRange:hover,
+        .lead-contact-toolbar .task-search .input-group:focus-within,
+        .lead-contact-toolbar .task-search .input-group:hover,
+        .lead-contact-toolbar #datatableRange:focus {
+            background-color: #f4511e !important;
+            border-color: #f4511e !important;
+            box-shadow: 0 0 0 2px rgba(244, 81, 30, 0.12);
+        }
+
+        .lead-contact-toolbar .task-search .input-group:hover,
+        .lead-contact-toolbar .task-search .input-group:focus-within {
+            background-color: #f4511e !important;
+        }
+
+        .lead-contact-toolbar .more-filter-tab .bootstrap-select > .dropdown-toggle,
+        .lead-contact-toolbar .more-filter-tab .btn-secondary {
+            background-color: #082b78 !important;
+            border-color: #082b78 !important;
+            color: #fff !important;
+        }
+
+        .lead-contact-toolbar .more-filter-tab .bootstrap-select > .dropdown-toggle:hover,
+        .lead-contact-toolbar .more-filter-tab .bootstrap-select > .dropdown-toggle:focus,
+        .lead-contact-toolbar .more-filter-tab .bootstrap-select.show > .dropdown-toggle,
+        .lead-contact-toolbar .more-filter-tab .btn-secondary:hover,
+        .lead-contact-toolbar .more-filter-tab .btn-secondary:focus {
+            background-color: #f4511e !important;
+            border-color: #f4511e !important;
+            color: #fff !important;
+        }
+
+        .lead-contact-toolbar .more-filter-tab h3,
+        .lead-contact-toolbar .more-filter-tab label,
+        .lead-contact-toolbar .more-filter-tab .close {
+            color: #082b78 !important;
+        }
+
+        .lead-contact-toolbar .more-filter-tab .close:hover,
+        .lead-contact-toolbar .more-filter-tab .close:focus {
+            color: #f4511e !important;
+        }
+
+        .lead-contact-toolbar .more-filter-tab .dropdown-item.active,
+        .lead-contact-toolbar .more-filter-tab .dropdown-item:active {
+            background-color: #f4511e !important;
+            color: #fff !important;
+        }
+
         .lead-contact-actions .dropdown-menu {
             min-width: 210px;
             margin-top: 6px;
@@ -168,8 +278,8 @@
         }
 
         #lead-contact-table tbody tr.lead-table-row td {
-            padding-top: 2px !important;
-            padding-bottom: 2px !important;
+            padding-top: 3px !important;
+            padding-bottom: 3px !important;
             line-height: 1.2;
             vertical-align: middle;
         }
@@ -200,13 +310,7 @@
         }
 
         #lead-contact-table .lead-assignee-list {
-            max-width: 190px;
-            margin-bottom: 4px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            color: #4f6fad;
-            font-size: 11px;
+            display: none;
         }
 
         .content-wrapper.lead-contact-page {
