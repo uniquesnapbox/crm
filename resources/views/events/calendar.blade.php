@@ -15,8 +15,8 @@
             color: #4b5563;
         }
         .calendar-legend-dot {
-            width: 10px;
-            height: 10px;
+            width: 13px;
+            height: 13px;
             border-radius: 999px;
             display: inline-block;
         }
@@ -45,6 +45,26 @@
             display: flex;
             align-items: center;
             min-width: 0;
+        }
+        #calendar .fc-header-toolbar .fc-button,
+        .calendar-employee-filter select {
+            height: 32px;
+            min-height: 32px;
+            font-size: 13px;
+            line-height: 30px;
+            box-sizing: border-box;
+        }
+        #calendar .fc-header-toolbar .fc-button {
+            padding-top: 0;
+            padding-bottom: 0;
+        }
+        #calendar .fc-toolbar-title {
+            margin: 0;
+            font-size: 14px;
+            line-height: 32px;
+        }
+        .calendar-toolbar-status {
+            height: 32px;
         }
         @media (max-width: 575px) {
             #calendar .fc-header-toolbar { flex-wrap: wrap; }
