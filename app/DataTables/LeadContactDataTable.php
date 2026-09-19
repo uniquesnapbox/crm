@@ -297,7 +297,8 @@ class LeadContactDataTable extends BaseDataTable
 
         $dataTable = $this->setBuilder('lead-contact-table', $orderBy)
             ->parameters([
-                'stateSave' => true,
+                'stateSave' => false,
+                'pageLength' => 25,
                 'initComplete' => 'function () {
                    window.LaravelDataTables["lead-contact-table"].buttons().container()
                     .appendTo("#table-actions")
