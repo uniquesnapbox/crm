@@ -422,10 +422,20 @@
             .lead-contact-toolbar .more-filter-tab h3 {
                 font-size: 12px !important;
                 font-weight: 700 !important;
+                font-family: Arial, sans-serif !important;
             }
 
             .lead-contact-toolbar .more-filter-tab label {
                 font-size: 10px !important;
+                display: block !important;
+                margin-bottom: 4px !important;
+                line-height: 12px !important;
+                font-family: Arial, sans-serif !important;
+                font-weight: 400 !important;
+            }
+
+            .lead-contact-toolbar .more-filter-tab .more-filter-items {
+                margin-bottom: 10px !important;
             }
 
             .lead-contact-toolbar .more-filter-tab .select-filter,
@@ -438,6 +448,7 @@
                 max-width: 150px !important;
                 height: 25px !important;
                 min-height: 25px !important;
+                flex: 0 0 150px !important;
             }
 
             .lead-contact-toolbar .more-filter-tab .bootstrap-select > .dropdown-toggle,
@@ -445,10 +456,61 @@
                 padding: 2px 8px !important;
                 font-size: 10px !important;
                 line-height: 19px !important;
+                font-family: Arial, sans-serif !important;
+                font-weight: 600 !important;
+            }
+
+            .lead-contact-toolbar .more-filter-tab .filter-option-inner-inner,
+            .lead-contact-toolbar .more-filter-tab .bootstrap-select .dropdown-menu,
+            .lead-contact-toolbar .more-filter-tab .bootstrap-select .dropdown-item {
+                font-family: Arial, sans-serif !important;
+                font-size: 10px !important;
+                line-height: 19px !important;
+            }
+
+            .lead-contact-toolbar .more-filter-tab .bootstrap-select > .dropdown-toggle,
+            .lead-contact-toolbar .more-filter-tab .bootstrap-select .filter-option,
+            .lead-contact-toolbar .more-filter-tab .bootstrap-select .filter-option-inner,
+            .lead-contact-toolbar .more-filter-tab .bootstrap-select .filter-option-inner-inner {
+                color: #fff !important;
+                font-family: Arial, sans-serif !important;
+                font-size: 10px !important;
+                font-weight: 600 !important;
+                line-height: 19px !important;
+                text-align: left !important;
+                text-transform: none !important;
+            }
+
+            /* Bootstrap-select menus are appended to body, so keep their
+               mobile option typography consistent with the filter controls. */
+            .bootstrap-select .dropdown-menu,
+            .bootstrap-select .dropdown-menu .dropdown-item,
+            .bootstrap-select .dropdown-menu .dropdown-item span,
+            .bootstrap-select .dropdown-menu .no-results,
+            .bootstrap-select .bs-searchbox input {
+                font-family: Arial, sans-serif !important;
+                font-size: 10px !important;
+                line-height: 19px !important;
             }
 
             .lead-contact-toolbar .more-filter-tab .select-filter.mb-4 {
-                margin-bottom: 10px !important;
+                margin-bottom: 0 !important;
+            }
+
+            .lead-contact-toolbar .more-filter-tab .more-filter-items {
+                margin: 0 0 10px !important;
+                padding: 0 !important;
+                display: flex !important;
+                align-items: center !important;
+                gap: 6px !important;
+            }
+
+            .lead-contact-toolbar .more-filter-tab .more-filter-items > label {
+                flex: 0 0 78px !important;
+                width: 78px !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                white-space: nowrap !important;
             }
 
             .lead-contact-toolbar #table-actions {
@@ -712,6 +774,9 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
                 source_id: $('#filter_source_id').val(),
                 status_id: $('#filter_status_id').val(),
                 interest_level: $('#filter_interest_level').val(),
+                filter_country: $('#filter_country').val(),
+                filter_state: $('#filter_state').val(),
+                filter_district: $('#filter_district').val(),
                 date_filter_on: $('#date_filter_on').val(),
                 duplicate_leads: $('#filter_duplicate_leads').val(),
                 filter_addedBy: $('#filter_addedBy').val(),

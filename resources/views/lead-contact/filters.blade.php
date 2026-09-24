@@ -91,6 +91,58 @@
     <!-- MORE FILTERS START -->
     <x-filters.more-filter-box>
 
+        @php
+            $selectedLeadCountry = request('filter_country') ?: 'India';
+            $selectedLeadState = request('filter_state') ?: 'Assam';
+        @endphp
+        <div class="more-filter-items">
+            <label class="f-14 text-dark-grey mb-12 text-capitalize" for="filter_country">Country</label>
+            <div class="select-filter mb-4">
+                <div class="select-others">
+                    <select class="form-control select-picker" id="filter_country" data-live-search="true" data-container="body" data-size="8">
+                        <option value="all" @selected($selectedLeadCountry === 'all')>@lang('app.all')</option>
+                        <option value="__blank__">-- (Blank)</option>
+                        @foreach ($leadCountries ?? [] as $country)
+                            <option value="{{ $country->nicename }}" @selected($selectedLeadCountry === $country->nicename)>{{ $country->nicename }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="more-filter-items">
+            <label class="f-14 text-dark-grey mb-12 text-capitalize" for="filter_state">State</label>
+            <div class="select-filter mb-4">
+                <div class="select-others">
+                    <select class="form-control select-picker" id="filter_state" data-live-search="true" data-container="body" data-size="8">
+                        <option value="all" @selected($selectedLeadState === 'all')>@lang('app.all')</option>
+                        <option value="__blank__">-- (Blank)</option>
+                        @if (!collect($leadStates ?? [])->contains('Assam'))
+                            <option value="Assam" @selected($selectedLeadState === 'Assam')>Assam</option>
+                        @endif
+                        @foreach ($leadStates ?? [] as $state)
+                            <option value="{{ $state }}" @selected($selectedLeadState === $state)>{{ $state }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="more-filter-items">
+            <label class="f-14 text-dark-grey mb-12 text-capitalize" for="filter_district">District</label>
+            <div class="select-filter mb-4">
+                <div class="select-others">
+                    <select class="form-control select-picker" id="filter_district" data-live-search="true" data-container="body" data-size="8">
+                        <option value="all">@lang('app.all')</option>
+                        <option value="__blank__">-- (Blank)</option>
+                        @foreach ($leadDistricts ?? [] as $district)
+                            <option value="{{ $district }}">{{ $district }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+        </div>
+
         <div class="more-filter-items">
             <label class="f-14 text-dark-grey mb-12 text-capitalize" for="date_filter_on">@lang('app.dateFilterOn')</label>
             <div class="select-filter mb-4">

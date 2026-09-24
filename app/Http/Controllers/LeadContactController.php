@@ -73,6 +73,21 @@ class LeadContactController extends AccountBaseController
             $this->employees = User::allEmployees();
             $this->assignableEmployees = User::allEmployees(null, true, null, company()->id);
             $this->canBulkAssignLead = $this->canManageLeadAssignment();
+            $this->leadCountries = collect(countries())->sortBy('nicename')->values();
+            $this->leadStates = Lead::query()
+                ->where('company_id', company()->id)
+                ->whereNotNull('state')
+                ->where('state', '!=', '')
+                ->distinct()
+                ->orderBy('state')
+                ->pluck('state');
+            $this->leadDistricts = Lead::query()
+                ->where('company_id', company()->id)
+                ->whereNotNull('district')
+                ->where('district', '!=', '')
+                ->distinct()
+                ->orderBy('district')
+                ->pluck('district');
         }
 
         return $dataTable->render('lead-contact.index', $this->data);

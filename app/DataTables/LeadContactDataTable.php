@@ -223,6 +223,16 @@ class LeadContactDataTable extends BaseDataTable
             $leadContact = $leadContact->where('leads.interest_level', $this->request()->interest_level);
         }
 
+        foreach (['country', 'state', 'district'] as $locationField) {
+            $filterValue = $this->request()->input('filter_' . $locationField, 'all');
+
+            if ($filterValue === '__blank__') {
+                $leadContact = $leadContact->whereNull('leads.' . $locationField);
+            } elseif ($filterValue !== 'all' && $filterValue !== '') {
+                $leadContact = $leadContact->where('leads.' . $locationField, $filterValue);
+            }
+        }
+
         if ($this->request()->input('duplicate_leads', 'all') === 'duplicates') {
             $leadContact = $leadContact
                 ->whereNotNull('leads.mobile_normalized')
