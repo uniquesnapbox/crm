@@ -7,6 +7,9 @@
         --crm-border: #dbe4f1;
         --crm-primary: #2c6ff3;
         --crm-shadow: 0 8px 24px rgba(22, 44, 87, 0.08);
+        max-width: 100%;
+        min-width: 0;
+        overflow-x: clip;
     }
 
     .lead-profile-shell .lead-hero {
@@ -535,6 +538,12 @@
 
 
     @media (max-width: 768px) {
+        .lead-profile-shell {
+            width: 100%;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+        }
+
         .lead-profile-shell .col-12,
         .lead-profile-shell .col-xl-6 {
             padding-left: 8px;
@@ -591,11 +600,12 @@
         }
 
         .lead-profile-shell .latest-note-popover {
-            left: 0;
+            left: 50%;
             top: calc(100% + 12px);
-            width: min(320px, calc(100vw - 32px));
+            width: min(320px, calc(100vw - 24px));
+            max-width: calc(100vw - 24px);
             padding: 10px 11px;
-            transform: translateY(0);
+            transform: translateX(-50%);
             animation: latestNotePopoverInMobile 0.4s cubic-bezier(0.22, 1, 0.36, 1);
         }
 
@@ -645,7 +655,7 @@
         }
 
         .lead-profile-shell .latest-note-popover-wrap.is-collapsed .latest-note-popover {
-            transform: translateY(-5px);
+            transform: translateX(-50%) translateY(-5px);
         }
 
         .lead-profile-shell .lead-company {
@@ -877,8 +887,8 @@
                         <div class="lead-name-row">
                             <h3 class="lead-name">{{ $leadContact->client_name ?: '--' }}</h3>
                             @if ($latestNote)
-                                <span class="latest-note-popover-wrap">
-                                    <button type="button" class="latest-note-bubble" aria-expanded="true"
+                                <span class="latest-note-popover-wrap is-collapsed">
+                                    <button type="button" class="latest-note-bubble" aria-expanded="false"
                                         aria-controls="latest-note-popover-{{ $leadContact->id }}"
                                         aria-label="Show latest note for {{ $leadContact->client_name }}">
                                         <i class="fa fa-comment-alt"></i>
@@ -1281,13 +1291,14 @@
                         <div class="lead-profile-row"><p class="lead-label">@lang('modules.client.officePhoneNumber')</p><div class="lead-value-wrap"><p class="mb-0 text-dark">{{ $leadContact->office ?? '--' }}</p></div></div>
                     @endif
 
-                    <div class="lead-location-grid">
+                    <div class="lead-profile-row lead-location-layout">
+                        <p class="lead-label">@lang('app.country')</p>
+                        <div class="lead-location-grid">
                     @if ($canInlineQuickEdit)
                         <div class="lead-profile-row lead-location-row">
-                            <p class="lead-label">@lang('app.country')</p>
                             <div class="lead-value-wrap w-100">
                                 <div class="lead-inline-select-group">
-                                    <select class="form-control select-picker js-lead-inline-field js-lead-inline-select" id="lead-country" name="country" data-live-search="true"
+                                    <select class="form-control js-lead-inline-field js-lead-inline-select" id="lead-country" name="country"
                                         data-field="country" data-url="{{ $quickUpdateUrl }}" data-prev-value="{{ $leadContact->country ?? '' }}">
                                         <option value="">--</option>
                                         @foreach ($countries as $countryItem)
@@ -1301,16 +1312,15 @@
                             </div>
                         </div>
                     @else
-                        <div class="lead-profile-row lead-location-row"><p class="lead-label">@lang('app.country')</p><div class="lead-value-wrap"><p class="mb-0 text-dark">{{ $leadContact->country ?? '--' }}</p></div></div>
+                        <div class="lead-profile-row lead-location-row"><div class="lead-value-wrap"><p class="mb-0 text-dark">{{ $leadContact->country ?? '--' }}</p></div></div>
                     @endif
 
                     @foreach ([['state', 'State'], ['district', 'District']] as [$locationField, $locationLabel])
                         @if ($canInlineQuickEdit)
                             <div class="lead-profile-row lead-location-row">
-                                <p class="lead-label">{{ $locationLabel }}</p>
                                 <div class="lead-value-wrap w-100">
                                     @if (in_array($locationField, ['state', 'district'], true))
-                                        <select class="form-control select-picker js-lead-inline-field js-lead-location-select" id="lead-{{ $locationField }}"
+                                        <select class="form-control js-lead-inline-field js-lead-location-select" id="lead-{{ $locationField }}"
                                             name="{{ $locationField }}" data-field="{{ $locationField }}" data-url="{{ $quickUpdateUrl }}"
                                             data-prev-value="{{ $leadContact->{$locationField} ?? '' }}" data-current-value="{{ $leadContact->{$locationField} ?? '' }}"
                                             @disabled($locationField === 'district')>
@@ -1326,9 +1336,10 @@
                                 </div>
                             </div>
                         @else
-                            <div class="lead-profile-row lead-location-row"><p class="lead-label">{{ $locationLabel }}</p><div class="lead-value-wrap"><p class="mb-0 text-dark">{{ $leadContact->{$locationField} ?? '--' }}</p></div></div>
+                            <div class="lead-profile-row lead-location-row"><div class="lead-value-wrap"><p class="mb-0 text-dark">{{ $leadContact->{$locationField} ?? '--' }}</p></div></div>
                         @endif
                     @endforeach
+                        </div>
                     </div>
 
                     @if ($canInlineQuickEdit)
@@ -1997,10 +2008,9 @@
             if (selectedValue && values.indexOf(selectedValue) >= 0) {
                 $select.val(selectedValue);
             }
-            $select.prop('disabled', false).selectpicker('refresh');
+            $select.prop('disabled', false);
         }).fail(function() {
             $select.empty().append($('<option>', { value: '', text: 'Unable to load options' })).prop('disabled', true);
-            $select.selectpicker('refresh');
         });
     }
 
@@ -2010,8 +2020,8 @@
         const $district = $('#lead-district');
 
         if (country.toLowerCase() !== 'india') {
-            $state.empty().append($('<option>', { value: '', text: 'Select State' })).prop('disabled', true).selectpicker('refresh');
-            $district.empty().append($('<option>', { value: '', text: 'Select District' })).prop('disabled', true).selectpicker('refresh');
+            $state.empty().append($('<option>', { value: '', text: 'Select State' })).prop('disabled', true);
+            $district.empty().append($('<option>', { value: '', text: 'Select District' })).prop('disabled', true);
             return;
         }
 
@@ -2024,7 +2034,7 @@
     function loadLeadDistricts(state, selectedDistrict) {
         const $district = $('#lead-district');
         if (!state) {
-            $district.empty().append($('<option>', { value: '', text: 'Select District' })).prop('disabled', true).selectpicker('refresh');
+            $district.empty().append($('<option>', { value: '', text: 'Select District' })).prop('disabled', true);
             return;
         }
 
@@ -2042,15 +2052,6 @@
         loadLeadStates('');
     });
 
-    // The profile is loaded through AJAX, so these three selects may miss the
-    // layout-wide selectpicker initializer. Initialize them exactly once.
-    $('.lead-location-grid select.select-picker').each(function() {
-        const $select = $(this);
-        if ($select.parent('.bootstrap-select').length === 0 && typeof $select.selectpicker === 'function') {
-            $select.selectpicker();
-        }
-    });
-
     loadLeadStates($('#lead-state').data('current-value') || '');
 
     syncProfileCountryToCode();
@@ -2058,51 +2059,47 @@
 </script>
 
 <style>
+    .lead-card .lead-location-layout {
+        align-items: center;
+    }
+
     .lead-card .lead-location-row {
-        display: flex;
-        float: none;
+        display: block;
         box-sizing: border-box;
         width: 100%;
-        flex-direction: column;
-        padding: 0 4px;
-        margin: 0;
+        min-width: 0;
+        padding: 0;
+        margin: 0 !important;
     }
 
     .lead-card .lead-location-grid {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 0;
+        gap: 8px;
         width: 100%;
+        min-width: 0;
         margin: 0;
     }
 
-    .lead-card .lead-location-row .lead-label,
     .lead-card .lead-location-row .lead-value-wrap {
         width: 100% !important;
-    }
-
-    .lead-card .lead-location-row .lead-value-wrap {
         min-width: 0 !important;
-        flex: 1 1 auto;
     }
 
-    .lead-card .lead-location-row .lead-label {
-        display: none;
-    }
-
-    .lead-card .lead-location-row .form-control,
-    .lead-card .lead-location-row .bootstrap-select > .dropdown-toggle {
+    .lead-card .lead-location-row select.form-control {
+        display: block;
+        width: 100%;
         height: 36px;
         min-height: 36px;
-        padding-top: 6px;
-        padding-bottom: 6px;
+        padding: 6px 24px 6px 9px;
+        font-size: 13px;
         border-radius: 8px;
         border: 1px solid #cbd5e1;
+        background-color: #fff;
         box-shadow: none;
     }
 
-    .lead-card .lead-location-row .form-control:focus,
-    .lead-card .lead-location-row .bootstrap-select > .dropdown-toggle:focus {
+    .lead-card .lead-location-row select.form-control:focus {
         border-color: #80bdff;
         box-shadow: 0 0 0 0.1rem rgba(0, 123, 255, 0.12);
         outline: none;
@@ -2112,22 +2109,9 @@
         width: 100%;
     }
 
-    .lead-card .lead-location-row .bootstrap-select,
-    .lead-card .lead-location-row .bootstrap-select > .dropdown-toggle {
-        display: block;
-        width: 100% !important;
-    }
-
     @media (max-width: 768px) {
         .lead-card .lead-location-grid {
-            display: block;
-        }
-
-        .lead-card .lead-location-row {
-            display: flex;
-            float: none;
-            width: 100%;
-            padding: 0;
+            gap: 6px;
         }
     }
 </style>
