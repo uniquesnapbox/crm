@@ -261,8 +261,237 @@
         }
 
         @media (max-width: 991.98px) {
+            .lead-contact-toolbar {
+                display: flex !important;
+                align-items: center;
+                flex-wrap: nowrap !important;
+                gap: 8px;
+                overflow-x: auto;
+                overflow-y: visible;
+                white-space: nowrap;
+                padding: 8px 10px !important;
+                background: #fff;
+            }
+
+            .lead-contact-toolbar > * {
+                flex: 0 0 auto !important;
+                width: auto !important;
+            }
+
+            .lead-contact-toolbar .select-box,
+            .lead-contact-toolbar .more-filters {
+                width: auto !important;
+            }
+
+            .lead-contact-toolbar .lead-contact-date-filter {
+                padding: 0 !important;
+                border: 0 !important;
+            }
+
+            .lead-contact-toolbar .lead-contact-date-filter .select-status,
+            .lead-contact-toolbar .lead-contact-date-filter #datatableRange {
+                width: 198px;
+            }
+
+            .lead-contact-toolbar .lead-contact-date-filter #datatableRange {
+                height: 38px;
+                min-height: 38px;
+                padding: 0 12px !important;
+                border: 1px solid rgba(8, 43, 120, 0.25) !important;
+                border-radius: 7px !important;
+                background: #082b78 !important;
+                color: #fff !important;
+                font-size: 13px;
+                font-weight: 600;
+                letter-spacing: 0.01em;
+                box-shadow: 0 3px 8px rgba(8, 43, 120, 0.16);
+            }
+
+            .lead-contact-toolbar .lead-contact-date-filter #datatableRange:focus,
+            .lead-contact-toolbar .lead-contact-date-filter #datatableRange:hover {
+                border-color: #f4511e !important;
+                background: #0b347f !important;
+                box-shadow: 0 0 0 3px rgba(244, 81, 30, 0.12), 0 3px 8px rgba(8, 43, 120, 0.16);
+            }
+
+            .lead-contact-mobile-title {
+                display: none !important;
+            }
+
+            .lead-contact-toolbar .lead-contact-filter-label {
+                display: none !important;
+            }
+
+            .lead-contact-toolbar .lead-contact-type-filter {
+                display: none !important;
+            }
+
+            .lead-contact-toolbar #search-text-field::placeholder {
+                color: transparent !important;
+            }
+
+            .lead-contact-toolbar .more-filters .js-open-more-filter {
+                font-size: 0 !important;
+            }
+
+            .lead-contact-toolbar .more-filters .js-open-more-filter .filter_icon {
+                margin-right: 0 !important;
+                font-size: 14px !important;
+            }
+
+            .lead-contact-toolbar .task-search {
+                flex: 0 0 42px !important;
+                width: 42px !important;
+                padding: 4px 0 !important;
+            }
+
+            .lead-contact-toolbar .task-search > div,
+            .lead-contact-toolbar .task-search .input-group {
+                width: 42px !important;
+                min-width: 42px !important;
+                margin: 0 !important;
+                height: 38px;
+                border-radius: 7px !important;
+                box-shadow: 0 3px 8px rgba(8, 43, 120, 0.16);
+            }
+
+            .lead-contact-toolbar .task-search .input-group {
+                overflow: hidden;
+            }
+
+            .lead-contact-toolbar .task-search .form-control {
+                display: none !important;
+            }
+
+            .lead-contact-toolbar .task-search.is-expanded {
+                flex-basis: 210px !important;
+                width: 210px !important;
+            }
+
+            .lead-contact-toolbar .task-search.is-expanded > div,
+            .lead-contact-toolbar .task-search.is-expanded .input-group {
+                width: 210px !important;
+            }
+
+            .lead-contact-toolbar .task-search.is-expanded .form-control {
+                display: block !important;
+                width: 168px !important;
+                opacity: 1 !important;
+            }
+
+            .lead-contact-toolbar .task-search .input-group-prepend {
+                margin: 0 !important;
+            }
+
+            .lead-contact-toolbar .task-search .input-group-text {
+                width: 42px;
+                height: 38px;
+                justify-content: center;
+                padding: 0 !important;
+                border-radius: 7px !important;
+            }
+
+            .lead-contact-toolbar > .ml-auto {
+                flex: 0 0 auto;
+                width: auto !important;
+            }
+
+            .lead-contact-toolbar .more-filters {
+                padding: 0 !important;
+            }
+
+            .lead-contact-toolbar .more-filters .js-open-more-filter {
+                display: flex !important;
+                align-items: center;
+                justify-content: center;
+                width: 42px;
+                height: 38px;
+                padding: 0 !important;
+                border-radius: 7px !important;
+                box-shadow: 0 3px 8px rgba(8, 43, 120, 0.16);
+            }
+
+            .lead-contact-toolbar .more-filters .js-open-more-filter.d-none {
+                display: none !important;
+            }
+
+            .lead-contact-toolbar .more-filters .js-open-more-filter.d-block {
+                display: flex !important;
+            }
+
+            .lead-contact-toolbar .more-filter-tab h3 {
+                font-size: 12px !important;
+                font-weight: 700 !important;
+            }
+
+            .lead-contact-toolbar .more-filter-tab label {
+                font-size: 10px !important;
+            }
+
+            .lead-contact-toolbar .more-filter-tab .select-filter,
+            .lead-contact-toolbar .more-filter-tab .select-others,
+            .lead-contact-toolbar .more-filter-tab .bootstrap-select,
+            .lead-contact-toolbar .more-filter-tab .bootstrap-select > .dropdown-toggle,
+            .lead-contact-toolbar .more-filter-tab .form-control {
+                width: 150px !important;
+                min-width: 150px !important;
+                max-width: 150px !important;
+                height: 25px !important;
+                min-height: 25px !important;
+            }
+
+            .lead-contact-toolbar .more-filter-tab .bootstrap-select > .dropdown-toggle,
+            .lead-contact-toolbar .more-filter-tab .form-control {
+                padding: 2px 8px !important;
+                font-size: 10px !important;
+                line-height: 19px !important;
+            }
+
+            .lead-contact-toolbar .more-filter-tab .select-filter.mb-4 {
+                margin-bottom: 10px !important;
+            }
+
             .lead-contact-toolbar #table-actions {
-                padding: 10px 12px;
+                display: inline-flex !important;
+                align-items: center;
+                width: fit-content;
+                padding: 0 !important;
+                overflow: hidden;
+                background-color: #082b78;
+                border-radius: 5px;
+            }
+
+            .lead-contact-toolbar #table-actions .lead-contact-actions-toggle,
+            .lead-contact-toolbar #table-actions .lead-contact-actions > button {
+                min-height: 38px;
+                height: 38px;
+                border: 0 !important;
+                border-radius: 0 !important;
+                box-shadow: none;
+            }
+
+            .lead-contact-toolbar #table-actions .lead-contact-actions-toggle {
+                padding-left: 12px;
+                padding-right: 12px;
+            }
+
+            .lead-contact-toolbar #table-actions .lead-contact-actions {
+                margin-left: 0 !important;
+            }
+
+            .lead-contact-toolbar #table-actions .lead-contact-actions > button {
+                padding-left: 11px;
+                padding-right: 11px;
+                background-color: #082b78 !important;
+                color: #fff !important;
+            }
+
+            .lead-contact-toolbar #table-actions {
+                padding: 0 !important;
+            }
+
+            .lead-contact-toolbar #table-actions .buttons-excel {
+                display: none !important;
             }
 
             .lead-contact-toolbar .select-box,
@@ -975,6 +1204,23 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
 
             leadContactHideBulkActions();
         };
+
+        // On mobile, keep the search control compact and expand it when the icon is tapped.
+        $(document).on('click.leadContactMobileSearch', '.lead-contact-toolbar .task-search .input-group-text', function() {
+            const $search = $(this).closest('.task-search');
+            $search.addClass('is-expanded');
+            window.setTimeout(function() {
+                $('#search-text-field').trigger('focus');
+            }, 0);
+        });
+
+        $(document).on('click.leadContactMobileSearch', function(event) {
+            const $search = $('.lead-contact-toolbar .task-search');
+
+            if (!$search.is(event.target) && $search.has(event.target).length === 0 && !$('#search-text-field').val()) {
+                $search.removeClass('is-expanded');
+            }
+        });
 
     </script>
 @endpush

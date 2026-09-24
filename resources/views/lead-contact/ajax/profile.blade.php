@@ -1281,8 +1281,9 @@
                         <div class="lead-profile-row"><p class="lead-label">@lang('modules.client.officePhoneNumber')</p><div class="lead-value-wrap"><p class="mb-0 text-dark">{{ $leadContact->office ?? '--' }}</p></div></div>
                     @endif
 
+                    <div class="lead-location-grid">
                     @if ($canInlineQuickEdit)
-                        <div class="lead-profile-row">
+                        <div class="lead-profile-row lead-location-row">
                             <p class="lead-label">@lang('app.country')</p>
                             <div class="lead-value-wrap w-100">
                                 <div class="lead-inline-select-group">
@@ -1295,15 +1296,40 @@
                                             </option>
                                         @endforeach
                                     </select>
-                                    <button type="button" class="btn-inline-add js-inline-create-option"
-                                        data-fixed="1" data-message="Country list is managed globally." title="Fixed list">+</button>
                                 </div>
                                 <small class="text-muted d-none js-inline-save-state"></small>
                             </div>
                         </div>
                     @else
-                        <div class="lead-profile-row"><p class="lead-label">@lang('app.country')</p><div class="lead-value-wrap"><p class="mb-0 text-dark">{{ $leadContact->country ?? '--' }}</p></div></div>
+                        <div class="lead-profile-row lead-location-row"><p class="lead-label">@lang('app.country')</p><div class="lead-value-wrap"><p class="mb-0 text-dark">{{ $leadContact->country ?? '--' }}</p></div></div>
                     @endif
+
+                    @foreach ([['state', 'State'], ['district', 'District']] as [$locationField, $locationLabel])
+                        @if ($canInlineQuickEdit)
+                            <div class="lead-profile-row lead-location-row">
+                                <p class="lead-label">{{ $locationLabel }}</p>
+                                <div class="lead-value-wrap w-100">
+                                    @if (in_array($locationField, ['state', 'district'], true))
+                                        <select class="form-control select-picker js-lead-inline-field js-lead-location-select" id="lead-{{ $locationField }}"
+                                            name="{{ $locationField }}" data-field="{{ $locationField }}" data-url="{{ $quickUpdateUrl }}"
+                                            data-prev-value="{{ $leadContact->{$locationField} ?? '' }}" data-current-value="{{ $leadContact->{$locationField} ?? '' }}"
+                                            @disabled($locationField === 'district')>
+                                            <option value="">Select {{ $locationLabel }}</option>
+                                        </select>
+                                    @else
+                                        <input type="text" class="form-control js-lead-inline-field" id="lead-{{ $locationField }}"
+                                            name="{{ $locationField }}" data-field="{{ $locationField }}" data-url="{{ $quickUpdateUrl }}"
+                                            data-prev-value="{{ $leadContact->{$locationField} ?? '' }}" value="{{ $leadContact->{$locationField} ?? '' }}"
+                                            placeholder="Area">
+                                    @endif
+                                    <small class="text-muted d-none js-inline-save-state"></small>
+                                </div>
+                            </div>
+                        @else
+                            <div class="lead-profile-row lead-location-row"><p class="lead-label">{{ $locationLabel }}</p><div class="lead-value-wrap"><p class="mb-0 text-dark">{{ $leadContact->{$locationField} ?? '--' }}</p></div></div>
+                        @endif
+                    @endforeach
+                    </div>
 
                     @if ($canInlineQuickEdit)
                         <div class="lead-profile-row">
@@ -1947,6 +1973,161 @@
         updateProfileMobilePrefix();
     });
 
+    function loadLocationOptions(url, payload, $select, selectedValue, emptyText) {
+        $select.prop('disabled', true).empty().append($('<option>', { value: '', text: 'Loading...' }));
+
+        return $.ajax({
+            url: url,
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(payload),
+            headers: { 'Accept': 'application/json' }
+        }).done(function(response) {
+            const sourceValues = Array.isArray(response.data)
+                ? response.data
+                : (response.data && Array.isArray(response.data.states) ? response.data.states : []);
+            const values = sourceValues
+                .map(function(item) { return typeof item === 'string' ? item : item.name; }).filter(Boolean)
+
+            $select.empty().append($('<option>', { value: '', text: emptyText }));
+            values.forEach(function(value) {
+                $select.append($('<option>', { value: value, text: value }));
+            });
+
+            if (selectedValue && values.indexOf(selectedValue) >= 0) {
+                $select.val(selectedValue);
+            }
+            $select.prop('disabled', false).selectpicker('refresh');
+        }).fail(function() {
+            $select.empty().append($('<option>', { value: '', text: 'Unable to load options' })).prop('disabled', true);
+            $select.selectpicker('refresh');
+        });
+    }
+
+    function loadLeadStates(selectedState) {
+        const country = String($('#lead-country').val() || '').trim();
+        const $state = $('#lead-state');
+        const $district = $('#lead-district');
+
+        if (country.toLowerCase() !== 'india') {
+            $state.empty().append($('<option>', { value: '', text: 'Select State' })).prop('disabled', true).selectpicker('refresh');
+            $district.empty().append($('<option>', { value: '', text: 'Select District' })).prop('disabled', true).selectpicker('refresh');
+            return;
+        }
+
+        loadLocationOptions('https://countriesnow.space/api/v0.1/countries/states', { country: country }, $state, selectedState, 'Select State')
+            .done(function() {
+                loadLeadDistricts($state.val(), $('#lead-district').data('current-value') || '');
+            });
+    }
+
+    function loadLeadDistricts(state, selectedDistrict) {
+        const $district = $('#lead-district');
+        if (!state) {
+            $district.empty().append($('<option>', { value: '', text: 'Select District' })).prop('disabled', true).selectpicker('refresh');
+            return;
+        }
+
+        loadLocationOptions('https://countriesnow.space/api/v0.1/countries/state/cities', { country: 'India', state: state }, $district, selectedDistrict, 'Select District');
+    }
+
+    $('body').off('change.leadLocationState').on('change.leadLocationState', '#lead-state', function() {
+        const $district = $('#lead-district');
+        $district.data('current-value', '');
+        loadLeadDistricts($(this).val(), '');
+        queueInlineAutosave($(this), DROPDOWN_AUTO_SAVE_DELAY_MS);
+    });
+
+    $('body').off('change.leadLocationCountry').on('change.leadLocationCountry', '#lead-country', function() {
+        loadLeadStates('');
+    });
+
+    // The profile is loaded through AJAX, so these three selects may miss the
+    // layout-wide selectpicker initializer. Initialize them exactly once.
+    $('.lead-location-grid select.select-picker').each(function() {
+        const $select = $(this);
+        if ($select.parent('.bootstrap-select').length === 0 && typeof $select.selectpicker === 'function') {
+            $select.selectpicker();
+        }
+    });
+
+    loadLeadStates($('#lead-state').data('current-value') || '');
+
     syncProfileCountryToCode();
     updateProfileMobilePrefix();
 </script>
+
+<style>
+    .lead-card .lead-location-row {
+        display: flex;
+        float: none;
+        box-sizing: border-box;
+        width: 100%;
+        flex-direction: column;
+        padding: 0 4px;
+        margin: 0;
+    }
+
+    .lead-card .lead-location-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0;
+        width: 100%;
+        margin: 0;
+    }
+
+    .lead-card .lead-location-row .lead-label,
+    .lead-card .lead-location-row .lead-value-wrap {
+        width: 100% !important;
+    }
+
+    .lead-card .lead-location-row .lead-value-wrap {
+        min-width: 0 !important;
+        flex: 1 1 auto;
+    }
+
+    .lead-card .lead-location-row .lead-label {
+        display: none;
+    }
+
+    .lead-card .lead-location-row .form-control,
+    .lead-card .lead-location-row .bootstrap-select > .dropdown-toggle {
+        height: 36px;
+        min-height: 36px;
+        padding-top: 6px;
+        padding-bottom: 6px;
+        border-radius: 8px;
+        border: 1px solid #cbd5e1;
+        box-shadow: none;
+    }
+
+    .lead-card .lead-location-row .form-control:focus,
+    .lead-card .lead-location-row .bootstrap-select > .dropdown-toggle:focus {
+        border-color: #80bdff;
+        box-shadow: 0 0 0 0.1rem rgba(0, 123, 255, 0.12);
+        outline: none;
+    }
+
+    .lead-card .lead-location-row .lead-inline-select-group {
+        width: 100%;
+    }
+
+    .lead-card .lead-location-row .bootstrap-select,
+    .lead-card .lead-location-row .bootstrap-select > .dropdown-toggle {
+        display: block;
+        width: 100% !important;
+    }
+
+    @media (max-width: 768px) {
+        .lead-card .lead-location-grid {
+            display: block;
+        }
+
+        .lead-card .lead-location-row {
+            display: flex;
+            float: none;
+            width: 100%;
+            padding: 0;
+        }
+    }
+</style>

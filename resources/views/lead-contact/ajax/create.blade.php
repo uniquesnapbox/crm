@@ -295,6 +295,14 @@ $assignLeadPermission = in_array('admin', user_roles()) || user()->permission('a
                         </x-forms.select>
                     </div>
 
+                    <div class="col-lg-3 col-md-6">
+                        <x-forms.text fieldLabel="State" fieldName="state" fieldId="state" fieldPlaceholder="Enter state" field-label-inside="true" />
+                    </div>
+
+                    <div class="col-lg-3 col-md-6">
+                        <x-forms.text fieldLabel="District" fieldName="district" fieldId="district" fieldPlaceholder="Enter district" field-label-inside="true" />
+                    </div>
+
                     <div class="col-md-12">
                         <div class="form-group my-3">
                             <div class="d-flex justify-content-between align-items-center">

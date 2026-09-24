@@ -789,7 +789,9 @@ class LeadContactController extends AccountBaseController
             $leadContact->cell = $request->cell;
         }
         $leadContact->office = $request->office;
-        // city, state, postal_code removed
+        $leadContact->state = $request->state;
+        $leadContact->district = $request->district;
+        $leadContact->area = $request->area;
         $leadContact->country = $request->country ?: 'India';
         $leadContact->mobile = $this->normalizeMobileByCountry($request->mobile, $request->country);
         $leadContact->mobile_normalized = LeadMobile::normalize($leadContact->mobile);
@@ -952,7 +954,18 @@ class LeadContactController extends AccountBaseController
             $leadContact->office = $request->input('office');
         }
 
-        // city, state, postal_code removed
+        if ($request->exists('state')) {
+            $leadContact->state = $request->input('state');
+        }
+
+        if ($request->exists('district')) {
+            $leadContact->district = $request->input('district');
+        }
+
+        if ($request->exists('area')) {
+            $leadContact->area = $request->input('area');
+        }
+
         if ($request->exists('country')) {
             $leadContact->country = $request->input('country') ?: 'India';
         }
@@ -1124,7 +1137,7 @@ class LeadContactController extends AccountBaseController
             $value = $value === '' ? null : $value;
         }
 
-        if (in_array($field, ['company_name', 'website', 'office', 'country'], true)) {
+        if (in_array($field, ['company_name', 'website', 'office', 'country', 'state', 'district', 'area'], true)) {
             $value = $value === '' ? null : mb_substr((string) $value, 0, 191);
         }
 

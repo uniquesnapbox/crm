@@ -235,7 +235,7 @@
 
         @yield('filter-section')
 
-        <x-app-title class="d-block d-lg-none" :pageTitle="$pageTitle"></x-app-title>
+        <x-app-title class="d-block d-lg-none {{ request()->routeIs('lead-contact.index') ? 'lead-contact-mobile-title' : '' }}" :pageTitle="$pageTitle"></x-app-title>
 
         @yield('content')
 

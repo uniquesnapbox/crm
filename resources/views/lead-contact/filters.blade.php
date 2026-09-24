@@ -37,8 +37,8 @@
     </div>
 
     <!-- DATE START -->
-    <div class="select-box d-flex pr-1 border-right-grey border-right-grey-sm-0">
-        <p class="mb-0 pr-1 f-14 text-dark-grey d-flex align-items-center">@lang('app.duration')</p>
+    <div class="lead-contact-date-filter select-box d-flex pr-1 border-right-grey border-right-grey-sm-0">
+        <p class="lead-contact-filter-label mb-0 pr-1 f-14 text-dark-grey d-flex align-items-center">@lang('app.duration')</p>
         <div class="select-status d-flex">
             <input type="text" class="position-relative text-dark form-control border-0 p-2 text-left f-14 f-w-500 border-additional-grey"
                 id="datatableRange" placeholder="@lang('placeholders.dateRange')">
@@ -51,8 +51,8 @@
     @endphp
 
     <!-- CLIENT START -->
-    <div class="select-box d-flex py-2 px-lg-1 px-md-1 px-0 border-right-grey border-right-grey-sm-0">
-        <p class="mb-0 pr-1 f-14 text-dark-grey d-flex align-items-center">@lang('modules.invoices.type')</p>
+    <div class="lead-contact-type-filter select-box d-flex py-2 px-lg-1 px-md-1 px-0 border-right-grey border-right-grey-sm-0">
+        <p class="lead-contact-filter-label mb-0 pr-1 f-14 text-dark-grey d-flex align-items-center">@lang('modules.invoices.type')</p>
         <div class="select-status">
             <select class="form-control select-picker" name="type" id="type">
                 <option {{ $selectedType == 'lead' ? 'selected' : '' }} value="lead">@lang('modules.lead.lead')

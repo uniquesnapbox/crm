@@ -299,7 +299,13 @@ $editMobileLocal = (str_starts_with($rawEditMobile, '91') && strlen($rawEditMobi
                         </x-forms.select>
                     </div>
 
-                    {{-- Removed state, city, postal_code fields as per task --}}
+                    <div class="col-lg-3 col-md-6">
+                        <x-forms.text fieldLabel="State" fieldName="state" fieldId="state" fieldPlaceholder="Enter state" :fieldValue="$leadContact->state" field-label-inside="true" />
+                    </div>
+
+                    <div class="col-lg-3 col-md-6">
+                        <x-forms.text fieldLabel="District" fieldName="district" fieldId="district" fieldPlaceholder="Enter district" :fieldValue="$leadContact->district" field-label-inside="true" />
+                    </div>
 
                     <div class="col-md-12">
                         <div class="form-group my-3">

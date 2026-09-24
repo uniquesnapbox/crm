@@ -76,6 +76,9 @@ class StoreRequest extends CoreRequest
         $rules['contact_status_reason'] = 'nullable|string|max:5000';
         $rules['products_services'] = 'nullable|string|max:5000';
         $rules['country'] = 'nullable|string|max:191';
+        $rules['state'] = 'nullable|string|max:191';
+        $rules['district'] = 'nullable|string|max:191';
+        $rules['area'] = 'nullable|string|max:191';
         $rules['website'] = 'nullable|max:191';
         $rules['office'] = 'nullable|max:191';
         $rules['followup_date'] = 'nullable|date_format:"' . company()->date_format . '"';
