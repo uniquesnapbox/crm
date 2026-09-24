@@ -2076,7 +2076,8 @@
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 8px;
-        width: 100%;
+        flex: 1 1 0;
+        width: auto;
         min-width: 0;
         margin: 0;
     }
