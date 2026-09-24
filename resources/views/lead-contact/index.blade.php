@@ -89,6 +89,48 @@
                 flex: 0 0 auto;
                 padding-right: 12px;
             }
+
+            .lead-contact-toolbar .more-filter-tab .more-filter-items {
+                display: grid !important;
+                grid-template-columns: 92px minmax(0, 1fr);
+                align-items: center;
+                gap: 8px;
+                margin: 0 0 12px !important;
+                padding: 0 20px !important;
+            }
+
+            .lead-contact-toolbar .more-filter-tab .more-filter-items > label {
+                width: auto !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                font-size: 12px !important;
+                line-height: 1.2 !important;
+                white-space: nowrap;
+            }
+
+            .lead-contact-toolbar .more-filter-tab .more-filter-items > .select-filter,
+            .lead-contact-toolbar .more-filter-tab .more-filter-items .select-others,
+            .lead-contact-toolbar .more-filter-tab .more-filter-items .bootstrap-select,
+            .lead-contact-toolbar .more-filter-tab .more-filter-items .form-control {
+                width: 100% !important;
+                min-width: 0 !important;
+                max-width: none !important;
+            }
+
+            .lead-contact-toolbar .more-filter-tab .more-filter-items > .select-filter {
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            .lead-contact-toolbar .more-filter-tab .more-filter-items .bootstrap-select > .dropdown-toggle,
+            .lead-contact-toolbar .more-filter-tab .more-filter-items select.form-control {
+                height: 34px !important;
+                min-height: 34px !important;
+                padding-top: 5px !important;
+                padding-bottom: 5px !important;
+                font-size: 12px !important;
+                border-radius: 6px !important;
+            }
         }
 
         .lead-contact-actions-toggle {
