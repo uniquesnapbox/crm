@@ -281,7 +281,7 @@
 
 @push('scripts')
     <script>
-        $('#type, #filter_assigned_to, #filter_category_id, #filter_status_id, #filter_interest_level, #filter_source_id, #date_filter_on, #filter_duplicate_leads, #min, #max, #filter_addedBy')
+        $('#type, #filter_assigned_to, #filter_category_id, #filter_status_id, #filter_interest_level, #filter_source_id, #filter_country, #filter_state, #filter_district, #date_filter_on, #filter_duplicate_leads, #min, #max, #filter_addedBy')
             .on('change keyup', function() {
                 if ($('#type').val() != "lead") {
                     $('#reset-filters').removeClass('d-none');
@@ -308,6 +308,15 @@
                     $('#reset-filters').removeClass('d-none');
                     showTable();
                 } else if ($('#filter_duplicate_leads').val() != "all") {
+                    $('#reset-filters').removeClass('d-none');
+                    showTable();
+                } else if ($('#filter_country').val() != "all") {
+                    $('#reset-filters').removeClass('d-none');
+                    showTable();
+                } else if ($('#filter_state').val() != "all") {
+                    $('#reset-filters').removeClass('d-none');
+                    showTable();
+                } else if ($('#filter_district').val() != "all") {
                     $('#reset-filters').removeClass('d-none');
                     showTable();
                 } else if ($('#filter_addedBy').val() != "all") {
