@@ -92,8 +92,8 @@
     <x-filters.more-filter-box>
 
         @php
-            $selectedLeadCountry = request('filter_country') ?: 'India';
-            $selectedLeadState = request('filter_state') ?: 'Assam';
+            $selectedLeadCountry = request('filter_country') ?: 'all';
+            $selectedLeadState = request('filter_state') ?: 'all';
         @endphp
         <div class="more-filter-items">
             <label class="f-14 text-dark-grey mb-12 text-capitalize" for="filter_country">Country</label>
@@ -117,9 +117,6 @@
                     <select class="form-control select-picker" id="filter_state" data-live-search="true" data-container="body" data-size="8">
                         <option value="all" @selected($selectedLeadState === 'all')>@lang('app.all')</option>
                         <option value="__blank__">-- (Blank)</option>
-                        @if (!collect($leadStates ?? [])->contains('Assam'))
-                            <option value="Assam" @selected($selectedLeadState === 'Assam')>Assam</option>
-                        @endif
                         @foreach ($leadStates ?? [] as $state)
                             <option value="{{ $state }}" @selected($selectedLeadState === $state)>{{ $state }}</option>
                         @endforeach
