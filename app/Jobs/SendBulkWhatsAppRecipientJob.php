@@ -19,6 +19,8 @@ class SendBulkWhatsAppRecipientJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    private const MAX_TRANSIENT_ATTEMPTS = 30;
+
     public int $tries = 1;
 
     public function __construct(public int $recipientId)
@@ -73,13 +75,38 @@ class SendBulkWhatsAppRecipientJob implements ShouldQueue
                 (string) $recipient->phone,
                 (string) $recipient->rendered_message,
                 $sessionKey,
-                $attachment
+                $attachment,
+                'bulk-whatsapp:campaign:' . $campaign->id . ':recipient:' . $recipient->id
             );
 
             $responseData = (array) ($gatewayService->getLastResponseData() ?? []);
 
             if (!$sent) {
                 $error = (string) ($gatewayService->getLastError() ?: 'Unable to send WhatsApp message.');
+
+                // A duplicate campaign processor may have completed this recipient
+                // while this request was in flight. Never overwrite a sent row.
+                $recipient->refresh();
+                if ($recipient->status === 'sent') {
+                    $campaign->refreshProgress();
+                    return;
+                }
+
+                if (($gatewayService->shouldRetryLastFailure() || $this->isTransientConnectionError($error))
+                    && (int) $recipient->attempt_count < self::MAX_TRANSIENT_ATTEMPTS) {
+                    $recipient->forceFill([
+                        'status' => 'pending',
+                        'error_message' => 'Temporary WhatsApp connection issue; retrying automatically. ' . $error,
+                        'response_data' => $responseData ?: null,
+                    ])->saveQuietly();
+
+                    $campaign->forceFill([
+                        'last_error' => $error,
+                    ])->saveQuietly();
+                    $campaign->refreshProgress();
+                    return;
+                }
+
                 $bulkService->markRecipientFailed($recipient, $error, $responseData);
                 $this->storeLeadLog($recipient, null, 'failed', $error);
                 $campaign->refreshProgress();
@@ -106,10 +133,46 @@ class SendBulkWhatsAppRecipientJob implements ShouldQueue
             $campaign->refreshProgress();
         } catch (Throwable $exception) {
             $error = $exception->getMessage();
+
+            $recipient->refresh();
+            if ($recipient->status === 'sent') {
+                $campaign->refreshProgress();
+                return;
+            }
+
+            if ($this->isTransientConnectionError($error)
+                && (int) $recipient->attempt_count < self::MAX_TRANSIENT_ATTEMPTS) {
+                $recipient->forceFill([
+                    'status' => 'pending',
+                    'error_message' => 'Temporary WhatsApp connection issue; retrying automatically. ' . $error,
+                ])->saveQuietly();
+                return;
+            }
+
             $bulkService->markRecipientFailed($recipient, $error);
             $this->storeLeadLog($recipient, null, 'failed', $error);
             $campaign->refreshProgress();
         }
+    }
+
+    private function isTransientConnectionError(string $error): bool
+    {
+        $normalized = strtolower($error);
+
+        foreach ([
+            'session not ready',
+            'not ready',
+            'timeout',
+            'connection failed',
+            'connection reset',
+            'temporarily unavailable',
+        ] as $needle) {
+            if (str_contains($normalized, $needle)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function storeLeadLog(

@@ -197,36 +197,63 @@ class LeadContactDataTable extends BaseDataTable
             $leadContact = $leadContact->where('leads.updated_at', '<=', $endDate . ' 23:59:59');
         }
 
-        if ($this->request()->category_id === '__blank__') {
+        if (is_array($this->request()->category_id)) {
+            $leadContact = $this->applyMultiSelectFilter($leadContact, 'category_id', 'leads.category_id');
+        } elseif ($this->request()->category_id === '__blank__') {
             $leadContact = $leadContact->whereNull('leads.category_id');
         } elseif ($this->request()->category_id != 'all' && $this->request()->category_id != '') {
             $leadContact = $leadContact->where('category_id', $this->request()->category_id);
         }
 
-        if ($this->request()->source_id === '__blank__') {
+        if (is_array($this->request()->source_id)) {
+            $leadContact = $this->applyMultiSelectFilter($leadContact, 'source_id', 'leads.source_id');
+        } elseif ($this->request()->source_id === '__blank__') {
             $leadContact = $leadContact->whereNull('leads.source_id');
         } elseif ($this->request()->source_id != 'all' && $this->request()->source_id != '') {
             $leadContact = $leadContact->where('source_id', $this->request()->source_id);
         }
 
-        if ($this->request()->status_id === '__blank__') {
+        if (is_array($this->request()->status_id)) {
+            $leadContact = $this->applyMultiSelectFilter($leadContact, 'status_id', 'leads.status_id');
+        } elseif ($this->request()->status_id === '__blank__') {
             $leadContact = $leadContact->whereNull('leads.status_id');
         } elseif ($this->request()->status_id != 'all' && $this->request()->status_id != '') {
             $leadContact = $leadContact->where('leads.status_id', $this->request()->status_id);
         }
 
-        if ($this->request()->interest_level === '__blank__') {
-            $leadContact = $leadContact->where(function ($query) {
-                $query->whereNull('leads.interest_level')->orWhere('leads.interest_level', '');
+        $interestLevels = $this->request()->input('interest_level', 'all');
+        $interestLevels = is_array($interestLevels) ? $interestLevels : [$interestLevels];
+        $interestLevels = collect($interestLevels)
+            ->filter(fn ($value) => $value !== null && $value !== '')
+            ->values();
+
+        if ($interestLevels->isNotEmpty() && !$interestLevels->contains('all')) {
+            $includeBlankInterest = $interestLevels->contains('__blank__');
+            $selectedInterestLevels = $interestLevels
+                ->reject(fn ($value) => $value === '__blank__')
+                ->values()
+                ->all();
+
+            $leadContact = $leadContact->where(function ($query) use ($includeBlankInterest, $selectedInterestLevels) {
+                if ($selectedInterestLevels) {
+                    $query->whereIn('leads.interest_level', $selectedInterestLevels);
+                }
+
+                if ($includeBlankInterest) {
+                    $method = $selectedInterestLevels ? 'orWhere' : 'where';
+                    $query->{$method}(function ($blankQuery) {
+                        $blankQuery->whereNull('leads.interest_level')->orWhere('leads.interest_level', '');
+                    });
+                }
             });
-        } elseif ($this->request()->interest_level != 'all' && $this->request()->interest_level != '') {
-            $leadContact = $leadContact->where('leads.interest_level', $this->request()->interest_level);
         }
 
         foreach (['country', 'state', 'district'] as $locationField) {
             $filterValue = $this->request()->input('filter_' . $locationField, 'all');
 
-            if ($filterValue === '__blank__') {
+            if (is_array($filterValue)) {
+                $leadContact = $this->applyMultiSelectFilter($leadContact, 'filter_' . $locationField, 'leads.' . $locationField);
+            } elseif ($filterValue === '__blank__') {
                 $leadContact = $leadContact->whereNull('leads.' . $locationField);
             } elseif ($filterValue !== 'all' && $filterValue !== '') {
                 $leadContact = $leadContact->where('leads.' . $locationField, $filterValue);
@@ -266,13 +293,17 @@ class LeadContactDataTable extends BaseDataTable
             });
         }
 
-        if ($this->viewLeadPermission == 'all' && $this->request()->filter_addedBy != 'all' && $this->request()->filter_addedBy != '') {
+        if ($this->viewLeadPermission == 'all' && is_array($this->request()->filter_addedBy)) {
+            $leadContact = $this->applyMultiSelectFilter($leadContact, 'filter_addedBy', 'leads.added_by');
+        } elseif ($this->viewLeadPermission == 'all' && $this->request()->filter_addedBy != 'all' && $this->request()->filter_addedBy != '') {
             $leadContact = $this->request()->filter_addedBy === '__blank__'
                 ? $leadContact->whereNull('leads.added_by')
                 : $leadContact->where('leads.added_by', $this->request()->filter_addedBy);
         }
 
-        if ($this->request()->filter_assignedTo != 'all' && $this->request()->filter_assignedTo != '') {
+        if (is_array($this->request()->filter_assignedTo)) {
+            $leadContact = $this->applyMultiSelectFilter($leadContact, 'filter_assignedTo', 'leads.assigned_to');
+        } elseif ($this->request()->filter_assignedTo != 'all' && $this->request()->filter_assignedTo != '') {
             $leadContact = $this->request()->filter_assignedTo === '__blank__'
                 ? $leadContact->whereNull('leads.assigned_to')->whereDoesntHave('assignees')
                 : $leadContact->where('leads.assigned_to', $this->request()->filter_assignedTo);
@@ -396,6 +427,38 @@ class LeadContactDataTable extends BaseDataTable
             || ($this->editLeadPermission == 'both' && (user()->id == $row->added_by || user()->id == $row->assigned_to))
             || user()->id == $row->added_by
             || user()->id == $row->assigned_to;
+    }
+
+    private function applyMultiSelectFilter($query, string $inputName, string $column)
+    {
+        $values = $this->request()->input($inputName, 'all');
+        $values = is_array($values) ? $values : [$values];
+        $values = collect($values)
+            ->filter(fn ($value) => $value !== null && $value !== '')
+            ->values();
+
+        if ($values->isEmpty() || $values->contains('all')) {
+            return $query;
+        }
+
+        $includeBlank = $values->contains('__blank__');
+        $selectedValues = $values
+            ->reject(fn ($value) => $value === '__blank__')
+            ->values()
+            ->all();
+
+        return $query->where(function ($nestedQuery) use ($column, $includeBlank, $selectedValues) {
+            if ($selectedValues) {
+                $nestedQuery->whereIn($column, $selectedValues);
+            }
+
+            if ($includeBlank) {
+                $method = $selectedValues ? 'orWhere' : 'where';
+                $nestedQuery->{$method}(function ($blankQuery) use ($column) {
+                    $blankQuery->whereNull($column)->orWhere($column, '');
+                });
+            }
+        });
     }
 
     private function renderLeadStatusColumn($row): string

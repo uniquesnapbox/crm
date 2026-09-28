@@ -190,6 +190,11 @@ function hasAttachmentPayload(body) {
   return hasData || hasUrl;
 }
 
+function isAudioAttachment(body) {
+  const mimeType = String(body?.attachment?.mimeType || "").trim().toLowerCase();
+  return mimeType.startsWith("audio/");
+}
+
 function isApiKeyAllowed(incomingApiKey) {
   if (!config.apiKey) {
     return true;
@@ -604,6 +609,7 @@ app.post("/messages/send", requireApiKey, async (req, res) => {
   const to = String(body.to || "").trim();
   const message = String(body.message || "").trim();
   const hasAttachment = hasAttachmentPayload(body);
+  const sendAudioTextSeparately = hasAttachment && isAudioAttachment(body) && message !== "";
   const channelKey = String(body.channelKey || config.defaultSession).trim() || config.defaultSession;
   const idempotencyKey = buildIdempotencyKey(body);
 
@@ -619,7 +625,11 @@ app.post("/messages/send", requireApiKey, async (req, res) => {
   }
 
   const existing = idempotencyStore.get(idempotencyKey);
-  if (existing && existing.result) {
+  if (
+    existing &&
+    existing.result &&
+    (!sendAudioTextSeparately || existing.result.captionSentSeparately === true)
+  ) {
     logger.info("Duplicate send request resolved by idempotency key", {
       idempotencyKey,
       channelKey,
@@ -656,15 +666,43 @@ app.post("/messages/send", requireApiKey, async (req, res) => {
       });
     }
 
-    const result = await manager.sendMessage({
+    let textResult = existing?.textResult || null;
+
+    if (sendAudioTextSeparately && !textResult) {
+      textResult = await manager.sendMessage({
+        to,
+        message,
+        channelKey,
+        attachment: null
+      });
+
+      // Persist partial progress so a media retry does not duplicate the text.
+      idempotencyStore.set(idempotencyKey, {
+        createdAt: existing?.createdAt || Date.now(),
+        textResult,
+        result: existing?.result || null
+      });
+      persistIdempotencyStore();
+    }
+
+    let result = existing?.result || await manager.sendMessage({
       to,
-      message,
+      message: sendAudioTextSeparately ? "" : message,
       channelKey,
       attachment: hasAttachment ? body.attachment : null
     });
 
+    if (sendAudioTextSeparately) {
+      result = {
+        ...result,
+        captionSentSeparately: true,
+        textMessageId: textResult?.id || null
+      };
+    }
+
     idempotencyStore.set(idempotencyKey, {
-      createdAt: Date.now(),
+      createdAt: existing?.createdAt || Date.now(),
+      textResult,
       result
     });
     persistIdempotencyStore();

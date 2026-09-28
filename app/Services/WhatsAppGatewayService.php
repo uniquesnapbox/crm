@@ -28,6 +28,15 @@ class WhatsAppGatewayService
         return $this->lastHttpStatus;
     }
 
+    public function shouldRetryLastFailure(): bool
+    {
+        if (in_array($this->lastHttpStatus, [408, 425, 429, 500, 502, 503, 504], true)) {
+            return true;
+        }
+
+        return $this->isRetryableError((string) $this->lastError);
+    }
+
     public function isConfigured(): bool
     {
         return filled(config('services.whatsapp_service.base_url'));

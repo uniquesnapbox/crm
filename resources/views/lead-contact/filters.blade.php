@@ -281,7 +281,92 @@
 
 @push('scripts')
     <script>
-        $('#type, #filter_assigned_to, #filter_category_id, #filter_status_id, #filter_interest_level, #filter_source_id, #filter_country, #filter_state, #filter_district, #date_filter_on, #filter_duplicate_leads, #min, #max, #filter_addedBy')
+        const indiaLeadFilterStates = [
+            'Andaman and Nicobar Islands', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar',
+            'Chandigarh', 'Chhattisgarh', 'Dadra and Nagar Haveli and Daman and Diu', 'Delhi', 'Goa',
+            'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jammu and Kashmir', 'Jharkhand', 'Karnataka',
+            'Kerala', 'Ladakh', 'Lakshadweep', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya',
+            'Mizoram', 'Nagaland', 'Odisha', 'Puducherry', 'Punjab', 'Rajasthan', 'Sikkim',
+            'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal'
+        ];
+        const initialLeadStateOptions = $('#filter_state option').map(function() {
+            return { value: this.value, text: $(this).text() };
+        }).get();
+        const initialLeadDistrictOptions = $('#filter_district option').map(function() {
+            return { value: this.value, text: $(this).text() };
+        }).get();
+
+        function replaceLeadLocationFilterOptions($select, options, selectedValue) {
+            $select.empty();
+            options.forEach(function(option) {
+                $select.append($('<option>', { value: option.value, text: option.text }));
+            });
+            $select.val(selectedValue || 'all').prop('disabled', false).selectpicker('refresh');
+        }
+
+        function defaultLeadLocationOptions(values) {
+            return [
+                { value: 'all', text: @json(__('app.all')) },
+                { value: '__blank__', text: '-- (Blank)' }
+            ].concat(values.map(function(value) {
+                return { value: value, text: value };
+            }));
+        }
+
+        function loadLeadFilterDistricts(country, state) {
+            const $district = $('#filter_district');
+
+            if (country !== 'India' || !state || state === 'all' || state === '__blank__') {
+                replaceLeadLocationFilterOptions($district, initialLeadDistrictOptions, 'all');
+                return;
+            }
+
+            $district.empty()
+                .append($('<option>', { value: 'all', text: 'Loading...' }))
+                .val('all')
+                .prop('disabled', true)
+                .selectpicker('refresh');
+
+            $.ajax({
+                url: 'https://countriesnow.space/api/v0.1/countries/state/cities',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ country: country, state: state }),
+                headers: { 'Accept': 'application/json' }
+            }).done(function(response) {
+                const districts = Array.isArray(response.data) ? response.data.filter(Boolean) : [];
+                replaceLeadLocationFilterOptions($district, defaultLeadLocationOptions(districts), 'all');
+            }).fail(function() {
+                replaceLeadLocationFilterOptions($district, initialLeadDistrictOptions, 'all');
+            });
+        }
+
+        $('#filter_country').on('change', function() {
+            const country = $(this).val();
+            const $state = $('#filter_state');
+
+            if (country === 'India') {
+                replaceLeadLocationFilterOptions($state, defaultLeadLocationOptions(indiaLeadFilterStates), 'all');
+            } else {
+                replaceLeadLocationFilterOptions($state, initialLeadStateOptions, 'all');
+            }
+
+            replaceLeadLocationFilterOptions($('#filter_district'), initialLeadDistrictOptions, 'all');
+            $('#reset-filters').toggleClass('d-none', country === 'all');
+            showTable();
+        });
+
+        $('#filter_state').on('change', function() {
+            const country = $('#filter_country').val();
+            const state = $(this).val();
+
+            replaceLeadLocationFilterOptions($('#filter_district'), initialLeadDistrictOptions, 'all');
+            $('#reset-filters').toggleClass('d-none', country === 'all' && state === 'all');
+            showTable();
+            loadLeadFilterDistricts(country, state);
+        });
+
+        $('#type, #filter_assigned_to, #filter_category_id, #filter_status_id, #filter_interest_level, #filter_source_id, #filter_district, #date_filter_on, #filter_duplicate_leads, #min, #max, #filter_addedBy')
             .on('change keyup', function() {
                 if ($('#type').val() != "lead") {
                     $('#reset-filters').removeClass('d-none');
@@ -344,6 +429,8 @@
             $('#type').val('lead');
             $('.filter-box #status').val('not finished');
             $('.filter-box #date_filter_on').val('created_at');
+            replaceLeadLocationFilterOptions($('#filter_state'), initialLeadStateOptions, 'all');
+            replaceLeadLocationFilterOptions($('#filter_district'), initialLeadDistrictOptions, 'all');
             $('.filter-box .select-picker').selectpicker("refresh");
             $('#reset-filters').addClass('d-none');
             showTable();

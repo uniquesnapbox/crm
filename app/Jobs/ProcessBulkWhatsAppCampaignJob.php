@@ -6,20 +6,28 @@ use App\Models\BulkWhatsAppCampaign;
 use App\Services\BulkWhatsAppService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
 use Throwable;
 
-class ProcessBulkWhatsAppCampaignJob implements ShouldQueue
+class ProcessBulkWhatsAppCampaignJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 1;
 
+    public int $uniqueFor = 300;
+
     public function __construct(public int $campaignId)
     {
+    }
+
+    public function uniqueId(): string
+    {
+        return 'bulk-whatsapp-campaign:' . $this->campaignId;
     }
 
     public function middleware(): array

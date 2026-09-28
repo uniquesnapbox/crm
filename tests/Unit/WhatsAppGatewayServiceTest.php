@@ -150,4 +150,35 @@ class WhatsAppGatewayServiceTest extends TestCase
         $this->assertCount(2, $keys);
         $this->assertSame($keys[0], $keys[1]);
     }
+
+    public function test_it_exposes_session_not_ready_as_a_retryable_failure(): void
+    {
+        Http::fake([
+            'http://whatsapp.test/messages/send' => Http::response([
+                'success' => false,
+                'error' => 'Session 7099481497 not ready',
+            ], 503),
+        ]);
+
+        $service = app(WhatsAppGatewayService::class);
+
+        $this->assertFalse($service->sendMessage('917035624149', 'Hello', '7099481497'));
+        $this->assertTrue($service->shouldRetryLastFailure());
+        $this->assertSame(503, $service->getLastHttpStatus());
+    }
+
+    public function test_it_does_not_retry_an_invalid_recipient_failure(): void
+    {
+        Http::fake([
+            'http://whatsapp.test/messages/send' => Http::response([
+                'success' => false,
+                'error' => 'Invalid recipient number',
+            ], 422),
+        ]);
+
+        $service = app(WhatsAppGatewayService::class);
+
+        $this->assertFalse($service->sendMessage('917035624149', 'Hello', '7099481497'));
+        $this->assertFalse($service->shouldRetryLastFailure());
+    }
 }

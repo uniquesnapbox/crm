@@ -44,6 +44,21 @@ class BulkWhatsAppController extends AccountBaseController
             $this->products = Product::query()->select('id', 'name')->orderBy('name')->get();
             $this->employees = User::allEmployees();
             $this->assignableEmployees = User::allEmployees(null, true, null, company()->id);
+            $this->leadCountries = collect(countries())->sortBy('nicename')->values();
+            $this->leadStates = Lead::query()
+                ->where('company_id', company()->id)
+                ->whereNotNull('state')
+                ->where('state', '!=', '')
+                ->distinct()
+                ->orderBy('state')
+                ->pluck('state');
+            $this->leadDistricts = Lead::query()
+                ->where('company_id', company()->id)
+                ->whereNotNull('district')
+                ->where('district', '!=', '')
+                ->distinct()
+                ->orderBy('district')
+                ->pluck('district');
             $this->templates = BulkWhatsAppTemplate::query()
                 ->select('id', 'name', 'message', 'attachment_path', 'attachment_name', 'attachment_mime', 'attachment_size', 'is_active')
                 ->where('is_active', true)
@@ -502,6 +517,10 @@ class BulkWhatsAppController extends AccountBaseController
             'status_id' => $request->input('status_id'),
             'interest_level' => $request->input('interest_level'),
             'products_services' => $request->input('products_services', []),
+            'filter_country' => $request->input('filter_country'),
+            'filter_state' => $request->input('filter_state'),
+            'filter_district' => $request->input('filter_district'),
+            'duplicate_leads' => $request->input('duplicate_leads'),
             'filter_addedBy' => $request->input('filter_addedBy'),
             'filter_assignedTo' => $request->input('filter_assignedTo'),
             'date_filter_on' => $request->input('date_filter_on'),

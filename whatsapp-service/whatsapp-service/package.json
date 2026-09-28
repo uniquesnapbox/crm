@@ -5,6 +5,8 @@
   "main": "src/server.js",
   "type": "commonjs",
   "scripts": {
+    "postinstall": "node patch-whatsapp-web.js",
+    "patch:whatsapp-web": "node patch-whatsapp-web.js",
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "test": "node --test test/*.test.js"

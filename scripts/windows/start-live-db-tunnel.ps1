@@ -3,7 +3,7 @@ $key = "C:\Users\USER\.ssh\crm_live_db_tunnel"
 
 while ($true) {
     & $ssh -i $key -N `
-        -L "13306:127.0.0.1:3306" `
+        -L "127.0.0.1:13307:127.0.0.1:3306" `
         -o "BatchMode=yes" `
         -o "ExitOnForwardFailure=yes" `
         -o "ServerAliveInterval=30" `

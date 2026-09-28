@@ -279,6 +279,165 @@
             padding-left: 0 !important;
         }
 
+        /* Keep the Bulk WhatsApp filter drawer visually identical to Leads. */
+        .bulk-toolbar .more-filter-tab .bootstrap-select > .dropdown-toggle,
+        .bulk-toolbar .more-filter-tab .btn-secondary {
+            background-color: #082b78 !important;
+            border-color: #082b78 !important;
+            color: #fff !important;
+        }
+
+        .bulk-toolbar .more-filter-tab .bootstrap-select > .dropdown-toggle:hover,
+        .bulk-toolbar .more-filter-tab .bootstrap-select > .dropdown-toggle:focus,
+        .bulk-toolbar .more-filter-tab .bootstrap-select.show > .dropdown-toggle,
+        .bulk-toolbar .more-filter-tab .btn-secondary:hover,
+        .bulk-toolbar .more-filter-tab .btn-secondary:focus {
+            background-color: #f4511e !important;
+            border-color: #f4511e !important;
+            color: #fff !important;
+        }
+
+        .bulk-toolbar .more-filter-tab h3,
+        .bulk-toolbar .more-filter-tab label,
+        .bulk-toolbar .more-filter-tab .close {
+            color: #082b78 !important;
+        }
+
+        .bulk-toolbar .more-filter-tab .close:hover,
+        .bulk-toolbar .more-filter-tab .close:focus {
+            color: #f4511e !important;
+        }
+
+        .bulk-toolbar .more-filter-tab .dropdown-item.active,
+        .bulk-toolbar .more-filter-tab .dropdown-item:active {
+            background-color: #f4511e !important;
+            color: #fff !important;
+        }
+
+        @media (min-width: 992px) {
+            .bulk-toolbar .more-filter-tab .more-filter-items {
+                display: grid !important;
+                grid-template-columns: 92px minmax(0, 1fr);
+                align-items: center;
+                gap: 8px;
+                margin: 0 0 12px !important;
+                padding: 0 20px !important;
+            }
+
+            .bulk-toolbar .more-filter-tab .more-filter-items > label {
+                width: auto !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                font-size: 12px !important;
+                line-height: 1.2 !important;
+                white-space: nowrap;
+            }
+
+            .bulk-toolbar .more-filter-tab .more-filter-items > .select-filter,
+            .bulk-toolbar .more-filter-tab .more-filter-items .select-others,
+            .bulk-toolbar .more-filter-tab .more-filter-items .bootstrap-select,
+            .bulk-toolbar .more-filter-tab .more-filter-items .form-control {
+                width: 100% !important;
+                min-width: 0 !important;
+                max-width: none !important;
+            }
+
+            .bulk-toolbar .more-filter-tab .more-filter-items > .select-filter {
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            .bulk-toolbar .more-filter-tab .more-filter-items .bootstrap-select > .dropdown-toggle,
+            .bulk-toolbar .more-filter-tab .more-filter-items select.form-control {
+                height: 34px !important;
+                min-height: 34px !important;
+                padding-top: 5px !important;
+                padding-bottom: 5px !important;
+                font-size: 12px !important;
+                border-radius: 6px !important;
+            }
+        }
+
+        @media (max-width: 991.98px) {
+            .bulk-toolbar .more-filter-tab h3 {
+                font-family: Arial, sans-serif !important;
+                font-size: 12px !important;
+                font-weight: 700 !important;
+            }
+
+            .bulk-toolbar .more-filter-tab label {
+                display: block !important;
+                margin-bottom: 4px !important;
+                font-family: Arial, sans-serif !important;
+                font-size: 10px !important;
+                font-weight: 400 !important;
+                line-height: 12px !important;
+            }
+
+            .bulk-toolbar .more-filter-tab .select-filter,
+            .bulk-toolbar .more-filter-tab .select-others,
+            .bulk-toolbar .more-filter-tab .bootstrap-select,
+            .bulk-toolbar .more-filter-tab .bootstrap-select > .dropdown-toggle,
+            .bulk-toolbar .more-filter-tab .form-control {
+                width: 150px !important;
+                min-width: 150px !important;
+                max-width: 150px !important;
+                height: 25px !important;
+                min-height: 25px !important;
+                flex: 0 0 150px !important;
+            }
+
+            .bulk-toolbar .more-filter-tab .bootstrap-select > .dropdown-toggle,
+            .bulk-toolbar .more-filter-tab .form-control {
+                padding: 2px 8px !important;
+                font-family: Arial, sans-serif !important;
+                font-size: 10px !important;
+                font-weight: 600 !important;
+                line-height: 19px !important;
+            }
+
+            .bulk-toolbar .more-filter-tab .filter-option-inner-inner,
+            .bulk-toolbar .more-filter-tab .bootstrap-select .dropdown-menu,
+            .bulk-toolbar .more-filter-tab .bootstrap-select .dropdown-item {
+                font-family: Arial, sans-serif !important;
+                font-size: 10px !important;
+                line-height: 19px !important;
+            }
+
+            .bulk-toolbar .more-filter-tab .bootstrap-select > .dropdown-toggle,
+            .bulk-toolbar .more-filter-tab .bootstrap-select .filter-option,
+            .bulk-toolbar .more-filter-tab .bootstrap-select .filter-option-inner,
+            .bulk-toolbar .more-filter-tab .bootstrap-select .filter-option-inner-inner {
+                color: #fff !important;
+                font-family: Arial, sans-serif !important;
+                font-size: 10px !important;
+                font-weight: 600 !important;
+                line-height: 19px !important;
+                text-align: left !important;
+                text-transform: none !important;
+            }
+
+            .bulk-toolbar .more-filter-tab .select-filter.mb-4 {
+                margin-bottom: 0 !important;
+            }
+
+            .bulk-toolbar .more-filter-tab .more-filter-items {
+                display: flex !important;
+                align-items: center !important;
+                gap: 6px !important;
+                margin: 0 0 10px !important;
+                padding: 0 !important;
+            }
+
+            .bulk-toolbar .more-filter-tab .more-filter-items > label {
+                flex: 0 0 78px !important;
+                width: 78px !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                white-space: nowrap !important;
+            }
+        }
+
         .bulk-filter-connection {
             display: inline-flex;
             align-items: center;
@@ -385,6 +544,45 @@
 
         <x-filters.more-filter-box>
             <div class="more-filter-items">
+                <label class="f-14 text-dark-grey mb-12 text-capitalize" for="filter_country">Country</label>
+                <div class="select-filter mb-4">
+                    <select class="form-control select-picker" id="filter_country" multiple data-live-search="true" data-container="body" data-size="8" title="All">
+                        <option value="all">@lang('app.all')</option>
+                        <option value="__blank__">-- (Blank)</option>
+                        @foreach ($leadCountries ?? [] as $country)
+                            <option value="{{ $country->nicename }}">{{ $country->nicename }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+
+            <div class="more-filter-items">
+                <label class="f-14 text-dark-grey mb-12 text-capitalize" for="filter_state">State</label>
+                <div class="select-filter mb-4">
+                    <select class="form-control select-picker" id="filter_state" multiple data-live-search="true" data-container="body" data-size="8" title="All">
+                        <option value="all">@lang('app.all')</option>
+                        <option value="__blank__">-- (Blank)</option>
+                        @foreach ($leadStates ?? [] as $state)
+                            <option value="{{ $state }}">{{ $state }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+
+            <div class="more-filter-items">
+                <label class="f-14 text-dark-grey mb-12 text-capitalize" for="filter_district">District</label>
+                <div class="select-filter mb-4">
+                    <select class="form-control select-picker" id="filter_district" multiple data-live-search="true" data-container="body" data-size="8" title="All">
+                        <option value="all">@lang('app.all')</option>
+                        <option value="__blank__">-- (Blank)</option>
+                        @foreach ($leadDistricts ?? [] as $district)
+                            <option value="{{ $district }}">{{ $district }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+
+            <div class="more-filter-items">
                 <label class="f-14 text-dark-grey mb-12 text-capitalize" for="date_filter_on">@lang('app.dateFilterOn')</label>
                 <div class="select-filter mb-4">
                     <select class="form-control select-picker" name="date_filter_on" id="date_filter_on">
@@ -395,10 +593,21 @@
             </div>
 
             <div class="more-filter-items">
+                <label class="f-14 text-dark-grey mb-12 text-capitalize" for="filter_duplicate_leads">Duplicate Leads</label>
+                <div class="select-filter mb-4">
+                    <select class="form-control select-picker" name="duplicate_leads" id="filter_duplicate_leads">
+                        <option value="all">@lang('app.all')</option>
+                        <option value="duplicates">Duplicate Leads</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="more-filter-items">
                 <label class="f-14 text-dark-grey mb-12 text-capitalize" for="filter_category_id">@lang('modules.lead.leadCategory')</label>
                 <div class="select-filter mb-4">
-                    <select class="form-control select-picker" id="filter_category_id" data-live-search="true" data-container="body" data-size="8">
+                    <select class="form-control select-picker" id="filter_category_id" multiple data-live-search="true" data-container="body" data-size="8" title="All">
                         <option value="all">@lang('app.all')</option>
+                        <option value="__blank__">-- (Blank)</option>
                         @foreach ($categories as $category)
                             <option value="{{ $category->id }}">{{ $category->category_name }}</option>
                         @endforeach
@@ -420,8 +629,9 @@
             <div class="more-filter-items">
                 <label class="f-14 text-dark-grey mb-12 text-capitalize" for="filter_status_id">@lang('modules.lead.leadStatus')</label>
                 <div class="select-filter mb-4">
-                    <select class="form-control select-picker" id="filter_status_id" data-live-search="true" data-container="body" data-size="8">
+                    <select class="form-control select-picker" id="filter_status_id" multiple data-live-search="true" data-container="body" data-size="8" title="All">
                         <option value="all">@lang('app.all')</option>
+                        <option value="__blank__">-- (Blank)</option>
                         @foreach ($statuses as $status)
                             <option value="{{ $status->id }}">{{ $status->type }}</option>
                         @endforeach
@@ -432,8 +642,9 @@
             <div class="more-filter-items">
                 <label class="f-14 text-dark-grey mb-12 text-capitalize" for="filter_interest_level">Interest Level</label>
                 <div class="select-filter mb-4">
-                    <select class="form-control select-picker" id="filter_interest_level" data-container="body" data-size="8">
+                    <select class="form-control select-picker" id="filter_interest_level" multiple data-live-search="true" data-container="body" data-size="8" title="All">
                         <option value="all">@lang('app.all')</option>
+                        <option value="__blank__">-- (Blank)</option>
                         <option value="low">Low</option>
                         <option value="medium">Medium</option>
                         <option value="high">High</option>
@@ -445,8 +656,9 @@
             <div class="more-filter-items">
                 <label class="f-14 text-dark-grey mb-12 text-capitalize" for="filter_source_id">@lang('modules.lead.leadSource')</label>
                 <div class="select-filter mb-4">
-                    <select class="form-control select-picker" id="filter_source_id" data-live-search="true" data-container="body" data-size="8">
+                    <select class="form-control select-picker" id="filter_source_id" multiple data-live-search="true" data-container="body" data-size="8" title="All">
                         <option value="all">@lang('app.all')</option>
+                        <option value="__blank__">-- (Blank)</option>
                         @foreach ($sources as $source)
                             <option value="{{ $source->id }}">{{ $source->type }}</option>
                         @endforeach
@@ -457,8 +669,9 @@
             <div class="more-filter-items">
                 <label class="f-14 text-dark-grey mb-12 text-capitalize" for="filter_addedBy">@lang('app.addedBy')</label>
                 <div class="select-filter mb-4">
-                    <select class="form-control select-picker" id="filter_addedBy" data-live-search="true" data-container="body" data-size="8">
+                    <select class="form-control select-picker" id="filter_addedBy" multiple data-live-search="true" data-container="body" data-size="8" title="All">
                         <option value="all">@lang('app.all')</option>
+                        <option value="__blank__">-- (Blank)</option>
                         @foreach ($employees as $item)
                             <x-user-option :user="$item" />
                         @endforeach
@@ -469,8 +682,9 @@
             <div class="more-filter-items">
                 <label class="f-14 text-dark-grey mb-12 text-capitalize" for="filter_assigned_to">@lang('modules.tasks.assignTo')</label>
                 <div class="select-filter mb-4">
-                    <select class="form-control select-picker" id="filter_assigned_to" data-live-search="true" data-container="body" data-size="8">
+                    <select class="form-control select-picker" id="filter_assigned_to" multiple data-live-search="true" data-container="body" data-size="8" title="All">
                         <option value="all">@lang('app.all')</option>
+                        <option value="__blank__">-- (Blank)</option>
                         @foreach ($employees as $item)
                             <x-user-option :user="$item" />
                         @endforeach
@@ -874,6 +1088,69 @@
             logsTemplate: @json(route('whatsapp.bulk.logs', ['campaign' => '__CAMPAIGN__']))
         };
 
+        const indiaBulkLeadFilterStates = [
+            'Andaman and Nicobar Islands', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar',
+            'Chandigarh', 'Chhattisgarh', 'Dadra and Nagar Haveli and Daman and Diu', 'Delhi', 'Goa',
+            'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jammu and Kashmir', 'Jharkhand', 'Karnataka',
+            'Kerala', 'Ladakh', 'Lakshadweep', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya',
+            'Mizoram', 'Nagaland', 'Odisha', 'Puducherry', 'Punjab', 'Rajasthan', 'Sikkim',
+            'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal'
+        ];
+        const initialBulkLeadStateOptions = $('#filter_state option').map(function() {
+            return { value: this.value, text: $(this).text() };
+        }).get();
+        const initialBulkLeadDistrictOptions = $('#filter_district option').map(function() {
+            return { value: this.value, text: $(this).text() };
+        }).get();
+
+        function replaceBulkLeadLocationOptions($select, options, selectedValue) {
+            $select.empty();
+            options.forEach(function(option) {
+                $select.append($('<option>', { value: option.value, text: option.text }));
+            });
+            const normalizedSelection = Array.isArray(selectedValue)
+                ? selectedValue
+                : [selectedValue || 'all'];
+            $select.val(normalizedSelection).prop('disabled', false).selectpicker('refresh');
+        }
+
+        function defaultBulkLeadLocationOptions(values) {
+            return [
+                { value: 'all', text: @json(__('app.all')) },
+                { value: '__blank__', text: '-- (Blank)' }
+            ].concat(values.map(function(value) {
+                return { value: value, text: value };
+            }));
+        }
+
+        function loadBulkLeadFilterDistricts(country, state) {
+            const $district = $('#filter_district');
+
+            if (country !== 'India' || !state || state === 'all' || state === '__blank__') {
+                replaceBulkLeadLocationOptions($district, initialBulkLeadDistrictOptions, 'all');
+                return;
+            }
+
+            $district.empty()
+                .append($('<option>', { value: 'all', text: 'Loading...' }))
+                .val('all')
+                .prop('disabled', true)
+                .selectpicker('refresh');
+
+            $.ajax({
+                url: 'https://countriesnow.space/api/v0.1/countries/state/cities',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ country: country, state: state }),
+                headers: { 'Accept': 'application/json' }
+            }).done(function(response) {
+                const districts = Array.isArray(response.data) ? response.data.filter(Boolean) : [];
+                replaceBulkLeadLocationOptions($district, defaultBulkLeadLocationOptions(districts), 'all');
+            }).fail(function() {
+                replaceBulkLeadLocationOptions($district, initialBulkLeadDistrictOptions, 'all');
+            });
+        }
+
         function bulkRoute(template, id) {
             return template.replace('__CAMPAIGN__', id);
         }
@@ -1145,13 +1422,17 @@
                 campaign_name: $('#campaign_name').val(),
                 message: $('#bulk_message').val(),
                 type: $('#type').val(),
-                category_id: $('#filter_category_id').val(),
-                source_id: $('#filter_source_id').val(),
-                status_id: $('#filter_status_id').val(),
-                interest_level: $('#filter_interest_level').val(),
+                category_id: normalizedMultiFilter('#filter_category_id'),
+                source_id: normalizedMultiFilter('#filter_source_id'),
+                status_id: normalizedMultiFilter('#filter_status_id'),
+                interest_level: normalizedInterestLevelFilter(),
                 products_services: $('#filter_products_services').val() || [],
-                filter_addedBy: $('#filter_addedBy').val(),
-                filter_assignedTo: $('#filter_assigned_to').val(),
+                filter_country: normalizedMultiFilter('#filter_country'),
+                filter_state: normalizedMultiFilter('#filter_state'),
+                filter_district: normalizedMultiFilter('#filter_district'),
+                duplicate_leads: $('#filter_duplicate_leads').val(),
+                filter_addedBy: normalizedMultiFilter('#filter_addedBy'),
+                filter_assignedTo: normalizedMultiFilter('#filter_assigned_to'),
                 date_filter_on: $('#date_filter_on').val(),
                 startDate: $('#datatableRange').val(),
                 endDate: null
@@ -1423,6 +1704,43 @@
             }
         });
 
+        function normalizedInterestLevelFilter() {
+            let values = $('#filter_interest_level').val() || [];
+            values = Array.isArray(values) ? values : [values];
+
+            if (values.length === 0) {
+                $('#filter_interest_level').val(['all']).selectpicker('refresh');
+                return ['all'];
+            }
+
+            if (values.length > 1 && values.includes('all')) {
+                values = values.filter(function(value) {
+                    return value !== 'all';
+                });
+                $('#filter_interest_level').val(values).selectpicker('refresh');
+            }
+
+            return values.length ? values : ['all'];
+        }
+
+        function normalizedMultiFilter(selector) {
+            let values = $(selector).val() || [];
+            values = Array.isArray(values) ? values : [values];
+
+            if (values.length === 0) {
+                return ['all'];
+            }
+
+            if (values.length > 1 && values.includes('all')) {
+                values = values.filter(function(value) {
+                    return value !== 'all';
+                });
+                $(selector).val(values).selectpicker('refresh');
+            }
+
+            return values.length ? values : ['all'];
+        }
+
         function currentLeadFilters() {
             const dateRangePicker = $('#datatableRange').data('daterangepicker');
             let startDate = $('#datatableRange').val();
@@ -1440,14 +1758,18 @@
                 endDate: endDate,
                 searchText: $('#search-text-field').val(),
                 type: $('#type').val(),
-                category_id: $('#filter_category_id').val(),
-                source_id: $('#filter_source_id').val(),
-                status_id: $('#filter_status_id').val(),
-                interest_level: $('#filter_interest_level').val(),
+                category_id: normalizedMultiFilter('#filter_category_id'),
+                source_id: normalizedMultiFilter('#filter_source_id'),
+                status_id: normalizedMultiFilter('#filter_status_id'),
+                interest_level: normalizedInterestLevelFilter(),
                 products_services: $('#filter_products_services').val() || [],
+                filter_country: normalizedMultiFilter('#filter_country'),
+                filter_state: normalizedMultiFilter('#filter_state'),
+                filter_district: normalizedMultiFilter('#filter_district'),
+                duplicate_leads: $('#filter_duplicate_leads').val(),
                 date_filter_on: $('#date_filter_on').val(),
-                filter_addedBy: $('#filter_addedBy').val(),
-                filter_assignedTo: $('#filter_assigned_to').val()
+                filter_addedBy: normalizedMultiFilter('#filter_addedBy'),
+                filter_assignedTo: normalizedMultiFilter('#filter_assigned_to')
             };
         }
 
@@ -1459,13 +1781,43 @@
             window.LaravelDataTables['lead-contact-table'].draw(false);
         }
 
-        $('#type, #filter_assigned_to, #filter_category_id, #filter_status_id, #filter_interest_level, #filter_source_id, #filter_products_services, #date_filter_on, #filter_addedBy')
+        function applyBulkLeadFilterChange() {
+            bulkWhatsAppState.selectedLeadIds.clear();
+            bulkWhatsAppState.previewRecipients = [];
+            updateSelectedCount();
+            showTable();
+            $('#reset-filters').removeClass('d-none');
+        }
+
+        $('#filter_country').on('change', function() {
+            const countries = $(this).val() || [];
+
+            if (countries.includes('India')) {
+                replaceBulkLeadLocationOptions(
+                    $('#filter_state'),
+                    defaultBulkLeadLocationOptions(indiaBulkLeadFilterStates),
+                    'all'
+                );
+            } else {
+                replaceBulkLeadLocationOptions($('#filter_state'), initialBulkLeadStateOptions, 'all');
+            }
+
+            replaceBulkLeadLocationOptions($('#filter_district'), initialBulkLeadDistrictOptions, 'all');
+            applyBulkLeadFilterChange();
+        });
+
+        $('#filter_state').on('change', function() {
+            const countries = $('#filter_country').val() || [];
+            const states = $(this).val() || [];
+
+            replaceBulkLeadLocationOptions($('#filter_district'), initialBulkLeadDistrictOptions, 'all');
+            applyBulkLeadFilterChange();
+            loadBulkLeadFilterDistricts(countries.length === 1 ? countries[0] : null, states.length === 1 ? states[0] : null);
+        });
+
+        $('#type, #filter_assigned_to, #filter_category_id, #filter_status_id, #filter_interest_level, #filter_source_id, #filter_products_services, #filter_district, #filter_duplicate_leads, #date_filter_on, #filter_addedBy')
             .on('change keyup', function() {
-                bulkWhatsAppState.selectedLeadIds.clear();
-                bulkWhatsAppState.previewRecipients = [];
-                updateSelectedCount();
-                showTable();
-                $('#reset-filters').removeClass('d-none');
+                applyBulkLeadFilterChange();
             });
 
         $('#search-text-field').on('keyup', function() {
@@ -1486,13 +1838,17 @@
 
         $('#reset-filters').on('click', function() {
             $('#type').val('lead');
-            $('#filter_category_id').val('all');
-            $('#filter_status_id').val('all');
-            $('#filter_interest_level').val('all');
-            $('#filter_source_id').val('all');
+            $('#filter_category_id').val(['all']);
+            $('#filter_status_id').val(['all']);
+            $('#filter_interest_level').val(['all']).selectpicker('refresh');
+            $('#filter_source_id').val(['all']);
             $('#filter_products_services').val([]);
-            $('#filter_addedBy').val('all');
-            $('#filter_assigned_to').val('all');
+            $('#filter_country').val(['all']);
+            replaceBulkLeadLocationOptions($('#filter_state'), initialBulkLeadStateOptions, 'all');
+            replaceBulkLeadLocationOptions($('#filter_district'), initialBulkLeadDistrictOptions, 'all');
+            $('#filter_duplicate_leads').val('all');
+            $('#filter_addedBy').val(['all']);
+            $('#filter_assigned_to').val(['all']);
             $('#date_filter_on').val('created_at');
             $('#search-text-field').val('');
             $('#datatableRange').val('');
