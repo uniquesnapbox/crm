@@ -653,15 +653,23 @@ app.post("/messages/send", requireApiKey, async (req, res) => {
   });
 
   try {
-    await manager.ensureClient(channelKey);
-    const sessionStatus = manager.getStatus(channelKey);
-    if (!isReadyStatus(sessionStatus)) {
+    try {
+      await manager.ensureReadyClient(channelKey);
+    } catch (readinessError) {
+      const sessionStatus = manager.getStatus(channelKey);
+      logger.warn("WhatsApp send blocked until session is ready", {
+        sessionKey: channelKey,
+        status: sessionStatus,
+        error: readinessError.message
+      });
+
       return res.status(503).json({
         success: false,
         error: `Session ${channelKey} not ready`,
         data: {
           sessionKey: channelKey,
-          status: sessionStatus
+          status: sessionStatus,
+          detail: readinessError.message
         }
       });
     }
@@ -729,7 +737,9 @@ app.post("/messages/send", requireApiKey, async (req, res) => {
     const msg = String(error.message || "Unknown error");
     const lower = msg.toLowerCase();
     const statusCode =
-      lower.includes("invalid recipient") || lower.includes("invalid recipient number")
+      lower.includes("invalid recipient")
+        || lower.includes("invalid recipient number")
+        || lower.includes("no lid for user")
         ? 422
         : lower.includes("not ready")
         ? 503

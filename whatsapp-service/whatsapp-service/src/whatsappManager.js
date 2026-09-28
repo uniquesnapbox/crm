@@ -1218,6 +1218,60 @@ class WhatsAppManager extends EventEmitter {
     return this.getClient(key);
   }
 
+  async ensureReadyClient(sessionKey, timeoutMs = 45000) {
+    if (this.shuttingDown) {
+      throw new Error("WhatsApp manager is shutting down");
+    }
+
+    const key = sessionKey || this.config.defaultSession;
+    const client = await this.ensureClient(key);
+
+    // whatsapp-web.js emits `ready` only after the authenticated client is
+    // usable. The DOM shape used by the optional readiness probe changes with
+    // WhatsApp Web releases, so do not reject a valid ready event because a
+    // cosmetic selector (for example #pane-side) is missing.
+    if (client && this.getStatus(key) === "ready") {
+      return client;
+    }
+
+    const inspection = await this.inspectClientReadiness(client);
+
+    if (inspection.ready) {
+      if (this.getStatus(key) !== "ready") {
+        this.markSessionReady(key, "send_readiness_probe", inspection);
+      }
+
+      return client;
+    }
+
+    logger.warn("WhatsApp send found a non-ready client; starting recovery", {
+      sessionKey: key,
+      cachedStatus: this.getStatus(key),
+      waState: inspection.waState,
+      page: inspection.page
+    });
+
+    if (this.getStatus(key) === "ready") {
+      this.status.set(key, "initializing");
+    }
+
+    const activeClient = this.getClient(key);
+    if (activeClient && ["authenticated", "initializing"].includes(this.getStatus(key))) {
+      this.scheduleReadyReconciliation(key, activeClient, "send_readiness_probe");
+
+      try {
+        await this.waitForStatus(key, "ready", Math.min(timeoutMs, 15000));
+        return this.getClient(key);
+      } catch (_) {
+        // Fall through to a full, single-flight client recovery.
+      }
+    }
+
+    const recoveredClient = await this.recoverClient(key, "send_not_ready");
+    await this.waitForStatus(key, "ready", timeoutMs);
+    return recoveredClient;
+  }
+
   getStatus(sessionKey) {
     const key = sessionKey || this.config.defaultSession;
     return this.status.get(key) || "unknown";
@@ -1471,7 +1525,7 @@ class WhatsAppManager extends EventEmitter {
 
   isTransientBrowserError(error) {
     const message = String(error?.message || error || "");
-    return /detached Frame|Execution context was destroyed|Target closed|Session closed/i.test(message);
+    return /detached Frame|Execution context was destroyed|Target closed|Session closed|Session .* not ready|No client initialized/i.test(message);
   }
 
   async recoverClient(sessionKey, reason) {

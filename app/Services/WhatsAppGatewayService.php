@@ -392,7 +392,6 @@ class WhatsAppGatewayService
             'connection reset',
             'temporarily unavailable',
             'cannot read properties of undefined',
-            'no lid for user',
         ] as $needle) {
             if (str_contains($normalized, $needle)) {
                 return true;
