@@ -10,7 +10,7 @@ $addLeadNotePermission = user()->permission('add_lead_note');
             <div id="table-actions" class="d-flex align-items-center">
                 @if ($addLeadNotePermission == 'all' || $addLeadNotePermission == 'added' || $addLeadNotePermission == 'both')
                     <x-forms.link-primary :link="route('lead-notes.create').'?lead='.$leadContact->id"
-                        class="mr-3 openRightModal" icon="plus">
+                        class="mr-3 js-open-lead-note-modal" icon="plus">
                         @lang('modules.client.createNote')
                     </x-forms.link-primary>
                 @endif

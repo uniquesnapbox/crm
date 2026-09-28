@@ -974,7 +974,7 @@
                     </span>
                 @endif
 
-                <a class="lead-action-tile openRightModal" href="{{ $noteCreateUrl }}">
+                <a class="lead-action-tile js-open-lead-note-modal" href="{{ $noteCreateUrl }}">
                     <span class="lead-action-icon" style="background:#8b5cf6;"><i class="fa fa-sticky-note"></i></span>
                     <div class="lead-action-label">Add Note</div>
                 </a>
@@ -1412,7 +1412,7 @@
                     @else
                         <p class="mb-3 text-muted">No notes added yet.</p>
                     @endif
-                    <a href="{{ $noteCreateUrl }}" class="btn btn-outline-primary btn-sm openRightModal"><i class="fa fa-plus mr-1"></i>Add Note</a>
+                    <a href="{{ $noteCreateUrl }}" class="btn btn-outline-primary btn-sm js-open-lead-note-modal"><i class="fa fa-plus mr-1"></i>Add Note</a>
                 </div>
             </div>
 
@@ -1484,6 +1484,23 @@
             }
             $(MODAL_LG + ' ' + MODAL_HEADING).html('...');
             $.ajaxModal(MODAL_LG, url);
+        });
+
+        $('body').off('click.leadNoteModalOpen').on('click.leadNoteModalOpen', '.js-open-lead-note-modal', function(event) {
+            event.preventDefault();
+            const url = $(this).data('url') || $(this).attr('href');
+            const $modal = $(MODAL_LG);
+
+            if (!url) {
+                return;
+            }
+
+            $modal.addClass('lead-note-compact-modal');
+            $.ajaxModal(MODAL_LG, url);
+        });
+
+        $(MODAL_LG).off('hidden.bs.modal.leadNote').on('hidden.bs.modal.leadNote', function() {
+            $(this).removeClass('lead-note-compact-modal');
         });
 
         $('body').off('click.leadInlineCreateOption').on('click.leadInlineCreateOption', '.js-inline-create-option', function() {
@@ -2059,6 +2076,14 @@
 </script>
 
 <style>
+    #modal-lg.lead-note-compact-modal .modal-dialog {
+        max-width: 560px;
+    }
+
+    #modal-lg.lead-note-compact-modal .modal-content {
+        border-radius: 10px;
+    }
+
     .lead-card .lead-location-layout {
         align-items: center;
     }

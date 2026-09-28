@@ -8,13 +8,6 @@
                 <input type="hidden" name="lead_id" value="{{ $leadId }}">
 
                 <div class="row px-4">
-
-                    <div class="col-md-6">
-                        <x-forms.text fieldId="title" :fieldLabel="__('modules.client.noteTitle')" fieldName="title"
-                            fieldRequired="true" :fieldPlaceholder="__('placeholders.note')">
-                        </x-forms.text>
-                    </div>
-
                     <div class="col-md-6 col-lg-6">
                         <div class="form-group my-3">
                             <x-forms.label fieldId="late_yes" :fieldLabel="__('modules.client.noteType')">

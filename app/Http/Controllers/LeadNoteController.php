@@ -86,7 +86,7 @@ class LeadNoteController extends AccountBaseController
         $this->employees = User::allEmployees();
 
         $note = new LeadNote();
-        $note->title = $request->title;
+        $note->title = $request->filled('title') ? trim((string) $request->title) : null;
         $note->lead_id = $request->lead_id;
         $note->details = trim_editor((string) $request->details);
         $note->type = $request->type;
@@ -147,7 +147,7 @@ class LeadNoteController extends AccountBaseController
         $note = LeadNote::findOrFail($id);
         abort_403(!in_array(user()->permission('edit_lead_note'), ['all', 'added', 'owned', 'both']));
         abort_403(!Lead::findOrFail($note->lead_id)->isResponsibleFor(user()));
-        $note->title = $request->title;
+        $note->title = $request->filled('title') ? trim((string) $request->title) : null;
         $note->details = trim_editor((string) $request->details);
         $note->type = $request->type;
         $note->ask_password = $request->ask_password ?: '';

@@ -8,16 +8,6 @@
                 <input type="hidden" name="lead_id" value="{{ $leadId }}">
 
                 <div class="row px-4">
-
-                    <div class="col-md-6">
-                        <x-forms.text fieldId="title" :fieldLabel="__('modules.client.noteTitle')" fieldName="title"
-                            fieldRequired="true" :fieldPlaceholder="__('placeholders.note')">
-                        </x-forms.text>
-                    </div>
-
-                </div>
-
-                <div class="row px-4">
                     <div class="col-md-12 col-lg-12">
                         <div class="form-group">
                             <x-forms.label class="my-3" fieldId="notes" :fieldLabel="__('modules.client.noteDetail')">

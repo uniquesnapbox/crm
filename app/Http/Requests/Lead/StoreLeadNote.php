@@ -25,7 +25,7 @@ class StoreLeadNote extends CoreRequest
     public function rules()
     {
         $rules = [
-            'title' => 'required',
+            'title' => 'nullable|string|max:191',
             'details' => 'required',
         ];
 
