@@ -513,6 +513,7 @@
                 <select class="form-control select-picker" name="type" id="type">
                     <option value="lead" @selected(request('type', 'lead') === 'lead')>@lang('modules.lead.lead')</option>
                     <option value="client" @selected(request('type') === 'client')>@lang('modules.lead.client')</option>
+                    <option value="other" @selected(request('type') === 'other')>Other Contacts</option>
                 </select>
             </div>
         </div>
@@ -761,6 +762,22 @@
                     <div class="card-body p-2 p-md-3">
                         <div class="d-flex flex-column w-100 rounded bg-white table-responsive">
                             {!! $dataTable->table(['class' => 'table table-hover border-0 w-100', 'id' => 'lead-contact-table']) !!}
+                        </div>
+
+                        <div id="other-contacts-panel" class="border rounded p-3 mt-3" style="display: none;">
+                            <div class="f-w-600 mb-1">Other WhatsApp Contacts</div>
+                            <div class="bulk-muted f-12 mb-3">Paste one number per line, or use: Name, Number. You can also upload a CSV/XLSX sheet.</div>
+                            <div class="row">
+                                <div class="col-md-7">
+                                    <label class="f-14 f-w-500" for="other_recipients">Paste names and numbers</label>
+                                    <textarea class="form-control" id="other_recipients" rows="7" placeholder="Rahul, 9876543210&#10;Neha, 919876543210&#10;919999999999"></textarea>
+                                </div>
+                                <div class="col-md-5">
+                                    <label class="f-14 f-w-500" for="recipient_file">Upload contact sheet</label>
+                                    <input type="file" class="form-control-file" id="recipient_file" accept=".csv,.txt,.xlsx,.xls">
+                                    <div class="bulk-muted f-12 mt-2">Recommended columns: <code>Name</code> and <code>Phone</code>/<code>Mobile</code>. Maximum 5,000 unique numbers.</div>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="bulk-wizard-footer">
@@ -1208,10 +1225,23 @@
         }
 
         function updateSelectedCount() {
-            $('#selected-count').text(bulkWhatsAppState.selectedLeadIds.size);
-            $('#selected-count-footer').text(bulkWhatsAppState.selectedLeadIds.size);
-            $('#summary-total').text(bulkWhatsAppState.selectedLeadIds.size);
-            $('#send-whatsapp').prop('disabled', bulkWhatsAppState.selectedLeadIds.size === 0);
+            const count = $('#type').val() === 'other' ? pastedOtherRecipientCount() : bulkWhatsAppState.selectedLeadIds.size;
+            $('#selected-count').text(count);
+            $('#selected-count-footer').text(count);
+            $('#summary-total').text(count);
+            $('#send-whatsapp').prop('disabled', count === 0);
+        }
+
+        function pastedOtherRecipientCount() {
+            return String($('#other_recipients').val() || '').split(/\r\n|\r|\n/)
+                .map(function(line) { return line.trim(); })
+                .filter(function(line) { return line !== ''; }).length;
+        }
+
+        function hasRecipientSelection() {
+            return $('#type').val() === 'other'
+                ? pastedOtherRecipientCount() > 0 || ($('#recipient_file')[0]?.files?.length || 0) > 0
+                : bulkWhatsAppState.selectedLeadIds.size > 0;
         }
 
         function setCampaignSummary(summary) {
@@ -1346,6 +1376,11 @@
                 formData.append('attachment', attachmentInput.files[0]);
             }
 
+            const recipientFile = document.getElementById('recipient_file');
+            if (recipientFile && recipientFile.files && recipientFile.files[0]) {
+                formData.append('recipient_file', recipientFile.files[0]);
+            }
+
             return formData;
         }
 
@@ -1422,6 +1457,7 @@
                 campaign_name: $('#campaign_name').val(),
                 message: $('#bulk_message').val(),
                 type: $('#type').val(),
+                manual_recipients: $('#other_recipients').val() || '',
                 category_id: normalizedMultiFilter('#filter_category_id'),
                 source_id: normalizedMultiFilter('#filter_source_id'),
                 status_id: normalizedMultiFilter('#filter_status_id'),
@@ -1628,7 +1664,7 @@
 
         function submitCampaign(endpoint, buttonSelector, onSuccess) {
             const selectedIds = selectedLeadIdsPayload();
-            if (selectedIds.length === 0) {
+            if (!hasRecipientSelection()) {
                 showBulkAlert('Please select at least one lead/contact.', 'warning');
                 return;
             }
@@ -1820,6 +1856,20 @@
                 applyBulkLeadFilterChange();
             });
 
+        function toggleBulkRecipientMode() {
+            const isOther = $('#type').val() === 'other';
+            $('#lead-contact-table_wrapper').toggle(!isOther);
+            $('#other-contacts-panel').toggle(isOther);
+            if (isOther) {
+                bulkWhatsAppState.selectedLeadIds.clear();
+            }
+            updateSelectedCount();
+        }
+
+        $('#type').on('change', toggleBulkRecipientMode);
+        $('#other_recipients, #recipient_file').on('input change', updateSelectedCount);
+        toggleBulkRecipientMode();
+
         $('#search-text-field').on('keyup', function() {
             bulkWhatsAppState.selectedLeadIds.clear();
             bulkWhatsAppState.previewRecipients = [];
@@ -1838,6 +1888,7 @@
 
         $('#reset-filters').on('click', function() {
             $('#type').val('lead');
+            toggleBulkRecipientMode();
             $('#filter_category_id').val(['all']);
             $('#filter_status_id').val(['all']);
             $('#filter_interest_level').val(['all']).selectpicker('refresh');
@@ -1867,7 +1918,7 @@
         });
 
         $('#step-1-next').on('click', function() {
-            if (bulkWhatsAppState.selectedLeadIds.size === 0) {
+            if (!hasRecipientSelection()) {
                 showBulkAlert('Please select at least one lead/contact before continuing.', 'warning');
                 return;
             }

@@ -26,14 +26,14 @@ class BulkWhatsAppService
     {
         $attachment = $this->templateAttachmentPayload($template);
 
-        return $leads->map(function (Lead $lead) use ($message, $template) {
-            $phone = $this->normalizePhone((string) ($lead->mobile ?: $lead->cell ?: $lead->office));
+        return $leads->map(function ($lead) use ($message, $template) {
+            $phone = $this->normalizePhone($this->contactPhone($lead));
             $renderedMessage = $this->renderMessage($message, $lead, $template);
 
             return [
-                'lead_id' => $lead->id,
-                'lead_name' => $lead->client_name,
-                'company_name' => $lead->company_name,
+                'lead_id' => $lead instanceof Lead ? $lead->id : null,
+                'lead_name' => $this->contactName($lead),
+                'company_name' => $lead instanceof Lead ? $lead->company_name : '',
                 'phone' => $phone ?: null,
                 'status' => $phone === '' ? 'missing_phone' : 'ready',
                 'preview_message' => $renderedMessage,
@@ -98,11 +98,11 @@ class BulkWhatsAppService
         ]);
 
         foreach ($leads as $lead) {
-            $phone = $this->normalizePhone((string) ($lead->mobile ?: $lead->cell ?: $lead->office));
+            $phone = $this->normalizePhone($this->contactPhone($lead));
             $campaign->recipients()->create([
                 'company_id' => $campaign->company_id,
-                'lead_id' => $lead->id,
-                'lead_name' => (string) $lead->client_name,
+                'lead_id' => $lead instanceof Lead ? $lead->id : null,
+                'lead_name' => $this->contactName($lead),
                 'phone' => $phone !== '' ? $phone : null,
                 'rendered_message' => $this->renderMessage($message, $lead, $template),
                 'status' => $phone === '' ? 'failed' : 'pending',
@@ -114,7 +114,7 @@ class BulkWhatsAppService
         return $campaign;
     }
 
-    public function renderMessage(string $message, Lead $lead, ?BulkWhatsAppTemplate $template = null): string
+    public function renderMessage(string $message, $lead, ?BulkWhatsAppTemplate $template = null): string
     {
         $templateSource = trim($message);
 
@@ -122,25 +122,42 @@ class BulkWhatsAppService
             $templateSource = trim((string) $template->message);
         }
 
+        $isLead = $lead instanceof Lead;
+        $name = $this->contactName($lead);
+        $mobile = $this->contactPhone($lead);
         $placeholders = [
-            '{{name}}' => (string) $lead->client_name,
-            '{{client_name}}' => (string) $lead->client_name,
-            '{{company}}' => (string) ($lead->company_name ?: optional($lead->company)->company_name ?: ''),
-            '{{company_name}}' => (string) ($lead->company_name ?: optional($lead->company)->company_name ?: ''),
-            '{{mobile}}' => (string) $lead->mobile,
-            '{{email}}' => (string) $lead->client_email,
-            '{{lead_id}}' => (string) $lead->id,
-            '{{status}}' => (string) ($lead->leadStatus?->type ?? $lead->contact_status ?? ''),
-            '{{source}}' => (string) ($lead->leadSource?->type ?? ''),
-            '{{category}}' => (string) ($lead->category?->category_name ?? ''),
-            '{{interest_level}}' => (string) $lead->interest_level,
-            '{{product}}' => (string) ($lead->products_services ?: ''),
-            '{{products_services}}' => (string) ($lead->products_services ?: ''),
-            '{{assigned_to}}' => (string) optional($lead->assignedTo)->name,
-            '{{added_by}}' => (string) optional($lead->addedBy)->name,
+            '{{name}}' => $name,
+            '{{client_name}}' => $name,
+            '{{company}}' => $isLead ? (string) ($lead->company_name ?: optional($lead->company)->company_name ?: '') : '',
+            '{{company_name}}' => $isLead ? (string) ($lead->company_name ?: optional($lead->company)->company_name ?: '') : '',
+            '{{mobile}}' => $mobile,
+            '{{email}}' => $isLead ? (string) $lead->client_email : '',
+            '{{lead_id}}' => $isLead ? (string) $lead->id : '',
+            '{{status}}' => $isLead ? (string) ($lead->leadStatus?->type ?? $lead->contact_status ?? '') : '',
+            '{{source}}' => $isLead ? (string) ($lead->leadSource?->type ?? '') : '',
+            '{{category}}' => $isLead ? (string) ($lead->category?->category_name ?? '') : '',
+            '{{interest_level}}' => $isLead ? (string) $lead->interest_level : '',
+            '{{product}}' => $isLead ? (string) ($lead->products_services ?: '') : '',
+            '{{products_services}}' => $isLead ? (string) ($lead->products_services ?: '') : '',
+            '{{assigned_to}}' => $isLead ? (string) optional($lead->assignedTo)->name : '',
+            '{{added_by}}' => $isLead ? (string) optional($lead->addedBy)->name : '',
         ];
 
         return trim(strtr($templateSource, $placeholders));
+    }
+
+    private function contactName($contact): string
+    {
+        return $contact instanceof Lead
+            ? (string) $contact->client_name
+            : trim((string) ($contact['name'] ?? $contact['phone'] ?? 'Other contact'));
+    }
+
+    private function contactPhone($contact): string
+    {
+        return $contact instanceof Lead
+            ? (string) ($contact->mobile ?: $contact->cell ?: $contact->office)
+            : (string) ($contact['phone'] ?? '');
     }
 
     public function storeUploadedAttachment(UploadedFile $file, string $directory): array

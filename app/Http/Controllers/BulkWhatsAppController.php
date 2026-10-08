@@ -18,6 +18,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class BulkWhatsAppController extends AccountBaseController
 {
@@ -439,12 +440,121 @@ class BulkWhatsAppController extends AccountBaseController
             || $request->hasFile('attachment')
             || ($template && filled($template->attachment_path));
 
-        $leads = $this->selectedLeads($leadIds);
+        $leads = $request->input('type') === 'other'
+            ? collect($this->manualRecipients($request))
+            : $this->selectedLeads($leadIds);
         $filters = $this->selectedFilters($request);
         $delayMinSeconds = max(1, (int) $request->input('delay_min_seconds', 8));
         $delayMaxSeconds = max($delayMinSeconds, (int) $request->input('delay_max_seconds', 20));
 
         return [$leads, $template, $message, $filters, $attachment, $hasAttachment, $delayMinSeconds, $delayMaxSeconds];
+    }
+
+    /** @return array<int, array{name:string, phone:string}> */
+    private function manualRecipients(Request $request): array
+    {
+        $rows = [];
+        $raw = trim((string) $request->input('manual_recipients', ''));
+
+        if ($raw !== '') {
+            $decoded = json_decode($raw, true);
+            if (is_array($decoded)) {
+                foreach ($decoded as $item) {
+                    if (is_array($item) && trim((string) ($item['phone'] ?? '')) !== '') {
+                        $rows[] = [
+                            'name' => trim((string) ($item['name'] ?? '')),
+                            'phone' => trim((string) $item['phone']),
+                        ];
+                    }
+                }
+            } else {
+                foreach (preg_split('/\r\n|\r|\n/', $raw) ?: [] as $line) {
+                    $line = trim($line);
+                    if ($line === '') {
+                        continue;
+                    }
+                    $parts = preg_split('/\s*[|,;\t]\s*/', $line);
+                    $phone = trim((string) end($parts));
+                    $name = count($parts) > 1 ? trim(implode(' ', array_slice($parts, 0, -1))) : '';
+                    $rows[] = ['name' => $name, 'phone' => $phone];
+                }
+            }
+        }
+
+        if ($request->hasFile('recipient_file') && $request->file('recipient_file')->isValid()) {
+            $file = $request->file('recipient_file');
+            $extension = strtolower($file->getClientOriginalExtension());
+            if (!in_array($extension, ['csv', 'txt', 'xlsx', 'xls'], true)) {
+                abort(422, 'Please upload a CSV, XLSX, XLS or TXT contact sheet.');
+            }
+
+            if (in_array($extension, ['xlsx', 'xls'], true)) {
+                $sheet = IOFactory::load($file->getRealPath())->getActiveSheet();
+                $sheetRows = $sheet->toArray(null, true, true, false);
+                $rows = array_merge($rows, $this->rowsFromSheet($sheetRows));
+            } else {
+                $contents = file_get_contents($file->getRealPath()) ?: '';
+                foreach (preg_split('/\r\n|\r|\n/', $contents) ?: [] as $line) {
+                    if (trim($line) === '') {
+                        continue;
+                    }
+                    $parts = str_getcsv($line);
+                    $phone = trim((string) end($parts));
+                    $name = count($parts) > 1 ? trim(implode(' ', array_slice($parts, 0, -1))) : '';
+                    $rows[] = ['name' => $name, 'phone' => $phone];
+                }
+            }
+        }
+
+        $seen = [];
+        return collect($rows)
+            ->map(fn ($row) => [
+                'name' => trim((string) ($row['name'] ?? '')),
+                'phone' => trim((string) ($row['phone'] ?? '')),
+            ])
+            ->filter(fn ($row) => $row['phone'] !== '')
+            ->filter(function ($row) use (&$seen) {
+                $key = preg_replace('/\D+/', '', $row['phone']);
+                if ($key === '' || isset($seen[$key])) {
+                    return false;
+                }
+                $seen[$key] = true;
+                return true;
+            })
+            ->take(5000)
+            ->values()
+            ->all();
+    }
+
+    private function rowsFromSheet(array $sheetRows): array
+    {
+        if ($sheetRows === []) {
+            return [];
+        }
+
+        $first = array_map(fn ($value) => strtolower(trim((string) $value)), $sheetRows[0]);
+        $phoneIndex = null;
+        $nameIndex = null;
+        foreach ($first as $index => $heading) {
+            if (in_array($heading, ['phone', 'mobile', 'mobile number', 'phone number', 'number', 'whatsapp'], true)) {
+                $phoneIndex = $index;
+            }
+            if (in_array($heading, ['name', 'contact name', 'client name'], true)) {
+                $nameIndex = $index;
+            }
+        }
+
+        $hasHeader = $phoneIndex !== null;
+        $phoneIndex ??= count($sheetRows[0]) > 1 ? 1 : 0;
+        $nameIndex ??= count($sheetRows[0]) > 1 ? 0 : null;
+        $dataRows = $hasHeader ? array_slice($sheetRows, 1) : $sheetRows;
+
+        return collect($dataRows)->map(function ($row) use ($phoneIndex, $nameIndex) {
+            return [
+                'name' => $nameIndex !== null ? trim((string) ($row[$nameIndex] ?? '')) : '',
+                'phone' => trim((string) ($row[$phoneIndex] ?? '')),
+            ];
+        })->all();
     }
 
     private function resolveAttachmentForRequest(Request $request, ?BulkWhatsAppTemplate $template, BulkWhatsAppService $bulkService, bool $persistUpload): ?array
