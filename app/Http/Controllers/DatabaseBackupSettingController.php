@@ -102,6 +102,45 @@ class DatabaseBackupSettingController extends AccountBaseController
         }
     }
 
+    public function createBackupAndDownload()
+    {
+        try {
+            $before = collect($this->getBackup())->pluck('file_path')->all();
+
+            Artisan::call('backup:run', [
+                '--only-db' => true,
+                '--disable-notifications' => true,
+            ]);
+
+            $backup = collect($this->getBackup())
+                ->reject(fn ($item) => in_array($item['file_path'], $before, true))
+                ->sortByDesc('last_modified')
+                ->first();
+
+            if (!$backup) {
+                throw new Exception('Backup file was not created.');
+            }
+
+            $disk = Storage::disk('localBackup');
+            $stream = $disk->getDriver()->readStream($backup['file_path']);
+
+            return response()->streamDownload(function () use ($stream) {
+                fpassthru($stream);
+                if (is_resource($stream)) {
+                    fclose($stream);
+                }
+            }, basename($backup['file_path']), [
+                'Content-Type' => 'application/zip',
+            ]);
+        } catch (Exception $e) {
+            Log::error('Unable to create and download database backup.', [
+                'exception' => $e,
+            ]);
+
+            return response('Unable to create database backup: ' . $e->getMessage(), 500);
+        }
+    }
+
     public function download($file_name)
     {
         $file = config('laravel-backup.backup.name') . '/backup/' . $file_name;

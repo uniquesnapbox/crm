@@ -212,6 +212,7 @@ Route::group(['middleware' => 'auth', 'prefix' => 'account/settings'], function 
 
     // Database Backup Settings
     Route::get('database-backup-settings/create-backup', [DatabaseBackupSettingController::class, 'createBackup'])->name('database-backup-settings.create_backup');
+    Route::get('database-backup-settings/create-backup-download', [DatabaseBackupSettingController::class, 'createBackupAndDownload'])->name('database-backup-settings.create_backup_download');
     Route::get('database-backup-settings/download/{file_name}', [DatabaseBackupSettingController::class, 'download'])->name('database-backup-settings.download');
     Route::get('database-backup-settings/delete/{file_name}', [DatabaseBackupSettingController::class, 'delete'])->name('database-backup-settings.delete');
     Route::resource('database-backup-settings', DatabaseBackupSettingController::class);

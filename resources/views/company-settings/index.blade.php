@@ -58,6 +58,9 @@
                 <!-- Buttons Start -->
                 <div class="w-100 border-top-grey">
                     <x-setting-form-actions>
+                        <x-forms.button-secondary id="take-database-backup" class="mr-3" icon="database">
+                            Take Database Backup
+                        </x-forms.button-secondary>
                         <x-forms.button-primary id="save-form" class="mr-3" icon="check">@lang('app.save')
                         </x-forms.button-primary>
                         </x-setting-form-actions>
@@ -85,6 +88,28 @@
                 buttonSelector: "#save-form",
                 data: $('#editSettings').serialize(),
             })
+        });
+
+        $('#take-database-backup').click(function () {
+            Swal.fire({
+                title: 'Create database backup?',
+                text: 'A backup of the current database will be created and saved locally.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Create Backup',
+                cancelButtonText: 'Cancel',
+                customClass: {
+                    confirmButton: 'btn btn-primary mr-2',
+                    cancelButton: 'btn btn-light'
+                },
+                buttonsStyling: false
+            }).then(function (result) {
+                if (!result.isConfirmed) {
+                    return;
+                }
+
+                window.location.href = "{{ route('database-backup-settings.create_backup_download') }}";
+            });
         });
     </script>
 @endpush
