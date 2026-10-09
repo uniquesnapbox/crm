@@ -43,7 +43,10 @@ class LeadNoteController extends AccountBaseController
         $this->view = 'lead-contact.notes.create';
 
         if (request()->ajax()) {
-            return $this->returnAjax($this->view);
+            // The Add Note link uses $.ajaxModal(), which loads the response
+            // as HTML. Returning the JSON wrapper here makes the modal render
+            // the escaped response body instead of the note form.
+            return view($this->view, $this->data);
         }
 
         return view('lead-contact.create', $this->data);
