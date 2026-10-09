@@ -2136,8 +2136,9 @@
                 bulkWhatsAppState.selectedTemplateAttachment = null;
             }
 
-            bulkWhatsAppState.selectedUploadAttachment = null;
-            $('#bulk_attachment').val('');
+            // Keep a manually selected upload when the template changes. A
+            // template attachment is only a fallback; the uploaded file wins
+            // and should not disappear without an explicit user action.
             updateResolvedAttachmentPreview();
 
             if (bulkWhatsAppState.currentStep >= 3) {
@@ -2272,8 +2273,6 @@
                             mime: template.attachment_mime || 'media',
                             size: template.attachment_size || null
                         } : null;
-                        bulkWhatsAppState.selectedUploadAttachment = null;
-                        $('#bulk_attachment').val('');
                         updateResolvedAttachmentPreview();
                     }
 

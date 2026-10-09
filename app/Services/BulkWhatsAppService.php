@@ -202,10 +202,11 @@ class BulkWhatsAppService
         }
 
         $binary = Storage::disk('public')->get($campaign->attachment_path);
+        $mimeType = $campaign->attachment_mime ?: 'application/octet-stream';
 
         return [
-            'data' => base64_encode($binary),
-            'mimeType' => $campaign->attachment_mime ?: 'image/jpeg',
+            'data' => 'data:' . $mimeType . ';base64,' . base64_encode($binary),
+            'mimeType' => $mimeType,
             'fileName' => $campaign->attachment_name ?: basename($campaign->attachment_path),
             'sendAsDocument' => false,
         ];
