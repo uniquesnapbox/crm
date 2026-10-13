@@ -76,6 +76,8 @@
 
 <script>
     $(document).ready(function() {
+        const leadNoteModal = '#myModal';
+        const leadNoteRightModal = '#task-detail-1';
 
         $("#selectEmployee").selectpicker({
             actionsBox: true,
@@ -109,13 +111,13 @@
                 data: $('#save-lead-note-data-form').serialize(),
                 success: function(response) {
                     if (response.status == 'success') {
-                        const modalOpen = $(MODAL_LG).hasClass('show') || $(MODAL_LG).hasClass('in');
-                        const rightModalOpen = $(RIGHT_MODAL).hasClass('show') || $(RIGHT_MODAL).hasClass('in');
+                        const modalOpen = $(leadNoteModal).hasClass('show') || $(leadNoteModal).hasClass('in');
+                        const rightModalOpen = $(leadNoteRightModal).hasClass('show') || $(leadNoteRightModal).hasClass('in');
                         const historyUrl = "{{ route('lead-contact.show', $leadId) }}?tab=history";
 
                         if (modalOpen || rightModalOpen) {
-                            $(MODAL_LG).modal('hide');
-                            $(RIGHT_MODAL).modal('hide');
+                            $(leadNoteModal).modal('hide');
+                            $(leadNoteRightModal).modal('hide');
                             window.location.href = historyUrl;
                             return;
                         }
@@ -131,6 +133,8 @@
                 '#private-note-details').addClass('d-none');
         })
 
-        init(RIGHT_MODAL);
+        if (typeof init === 'function') {
+            init(leadNoteRightModal);
+        }
     });
 </script>

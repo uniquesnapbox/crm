@@ -1460,6 +1460,12 @@
 
 <script>
     (function() {
+        // This profile is loaded through AJAX on some pages, where the layout's
+        // global modal constants are not available. Keep the profile actions
+        // working with the standard modal IDs in that case.
+        const leadProfileModal = '#myModal';
+        const leadProfileModalHeading = '#modelHeading';
+
         function updateContactStatusBadge() {
             const $field = $('.js-lead-inline-field[data-field="contact_status"]').first();
             const key = (($field.length ? $field.val() : '{{ $statusKey }}') || 'pending').toString();
@@ -1485,24 +1491,24 @@
             if (!url || url === 'javascript:;') {
                 return;
             }
-            $(MODAL_LG + ' ' + MODAL_HEADING).html('...');
-            $.ajaxModal(MODAL_LG, url);
+            $(leadProfileModal + ' ' + leadProfileModalHeading).html('...');
+            $.ajaxModal(leadProfileModal, url);
         });
 
         $('body').off('click.leadNoteModalOpen').on('click.leadNoteModalOpen', '.js-open-lead-note-modal', function(event) {
             event.preventDefault();
             const url = $(this).data('url') || $(this).attr('href');
-            const $modal = $(MODAL_LG);
+            const $modal = $(leadProfileModal);
 
             if (!url) {
                 return;
             }
 
             $modal.addClass('lead-note-compact-modal');
-            $.ajaxModal(MODAL_LG, url);
+            $.ajaxModal(leadProfileModal, url);
         });
 
-        $(MODAL_LG).off('hidden.bs.modal.leadNote').on('hidden.bs.modal.leadNote', function() {
+        $(leadProfileModal).off('hidden.bs.modal.leadNote').on('hidden.bs.modal.leadNote', function() {
             $(this).removeClass('lead-note-compact-modal');
         });
 
@@ -1522,7 +1528,7 @@
             }
 
             const sameOriginUrl = new URL(createUrl, window.location.origin);
-            const $modal = $(MODAL_LG);
+            const $modal = $(leadProfileModal);
 
             if (sameOriginUrl.origin !== window.location.origin) {
                 sameOriginUrl.protocol = window.location.protocol;
@@ -1544,7 +1550,7 @@
             }).done(function(html) {
                 $modal.find('.modal-content').html(html);
                 if (typeof init === 'function') {
-                    init(MODAL_LG);
+                    init(leadProfileModal);
                 }
             }).fail(function(xhr) {
                 let message = 'Unable to load this form. Please try again.';
