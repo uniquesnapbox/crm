@@ -34,7 +34,7 @@ class NotificationSettingController extends AccountBaseController
     public function index()
     {
         $tab = request('tab');
-        $allowedTabs = ['email-setting', 'whatsapp-setting'];
+        $allowedTabs = ['email-setting', 'whatsapp-setting', 'usnapnex-setting'];
 
         if (!in_array($tab, $allowedTabs, true)) {
             $tab = 'whatsapp-setting';
@@ -45,6 +45,8 @@ class NotificationSettingController extends AccountBaseController
             'status' => 'inactive',
             'base_url' => config('services.whatsapp_service.base_url'),
             'api_token' => null,
+            'api_driver' => config('services.whatsapp_service.driver', 'bridge'),
+            'api_session' => config('services.whatsapp_service.session', 'default'),
             'default_country_code' => null,
             'test_number' => null,
             'send_lead_created_message' => 'yes',
@@ -80,6 +82,10 @@ class NotificationSettingController extends AccountBaseController
         ]);
 
         switch ($tab) {
+        case 'usnapnex-setting':
+            $this->view = 'notification-settings.ajax.usnapnex-setting';
+            break;
+
         case 'whatsapp-setting':
             $this->view = 'notification-settings.ajax.whatsapp-setting';
             break;

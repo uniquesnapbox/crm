@@ -14,6 +14,10 @@ class UpdateRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'api_driver' => ['nullable', 'in:bridge,waha'],
+            'api_base_url' => ['nullable', 'url', 'max:255'],
+            'api_key' => ['nullable', 'string', 'max:500'],
+            'api_session' => ['nullable', 'regex:/^[A-Za-z0-9._-]+$/', 'max:100'],
             'lead_created_template' => ['nullable', 'string'],
             'lead_interest_template' => ['nullable', 'string'],
             'lead_followup_template' => ['nullable', 'string'],

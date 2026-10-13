@@ -49,6 +49,15 @@ class WhatsappNotificationSetting extends BaseModel
         return $this->resolved_whatsapp_session_key;
     }
 
+    public function getResolvedApiSessionAttribute(): string
+    {
+        $session = trim((string) ($this->api_session ?? ''));
+
+        return $session !== ''
+            ? $session
+            : (trim((string) config('services.whatsapp_service.session', 'default')) ?: 'default');
+    }
+
     public function getDeliveryStatusLabelAttribute(): string
     {
         return match ($this->last_delivery_status) {

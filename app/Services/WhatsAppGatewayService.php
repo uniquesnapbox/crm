@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\WhatsappNotificationSetting;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -39,13 +40,26 @@ class WhatsAppGatewayService
 
     public function isConfigured(): bool
     {
-        $configured = filled(config('services.whatsapp_service.base_url'));
+        $connection = $this->connectionConfig();
+        $configured = filled($connection['base_url']);
 
         if ($this->usesWaha()) {
-            return $configured && filled(config('services.whatsapp_service.api_key'));
+            return $configured && filled($connection['api_key']);
         }
 
         return $configured;
+    }
+
+    public function connectionDetails(): array
+    {
+        $connection = $this->connectionConfig();
+
+        return [
+            'driver' => $connection['driver'],
+            'baseUrl' => $connection['base_url'],
+            'session' => $connection['session'],
+            'apiKeyConfigured' => filled($connection['api_key']),
+        ];
     }
 
     public function sendMessage(
@@ -62,10 +76,11 @@ class WhatsAppGatewayService
 
         $this->lastResponseData = null;
         $this->lastHttpStatus = null;
-        $baseUrl = rtrim((string) config('services.whatsapp_service.base_url'), '/');
-        $apiKey = (string) config('services.whatsapp_service.api_key');
+        $connection = $this->connectionConfig();
+        $baseUrl = rtrim($connection['base_url'], '/');
+        $apiKey = $connection['api_key'];
         $session = $this->resolveSessionKey($sessionKey);
-        $timeout = (int) config('services.whatsapp_service.timeout', 30);
+        $timeout = $connection['timeout'];
         $timeout = max(10, min(60, $timeout));
         $phone = $this->normalizePhone($mobile);
         $payload = [
@@ -168,8 +183,9 @@ class WhatsAppGatewayService
         $this->lastResponseData = null;
         $this->lastHttpStatus = null;
 
-        $baseUrl = rtrim((string) config('services.whatsapp_service.base_url'), '/');
-        $apiKey = (string) config('services.whatsapp_service.api_key');
+        $connection = $this->connectionConfig();
+        $baseUrl = rtrim($connection['base_url'], '/');
+        $apiKey = $connection['api_key'];
         $session = $this->resolveSessionKey($sessionKey);
         $phone = $this->normalizePhone($mobile);
 
@@ -206,7 +222,7 @@ class WhatsAppGatewayService
         }
 
         try {
-            $response = $this->client($baseUrl, $apiKey, max(10, min(60, (int) config('services.whatsapp_service.timeout', 30))))
+            $response = $this->client($baseUrl, $apiKey, $connection['timeout'])
                 ->post($endpoint, $payload);
         } catch (ConnectionException $exception) {
             $this->lastError = 'WAHA connection failed: ' . $exception->getMessage();
@@ -231,8 +247,9 @@ class WhatsAppGatewayService
     public function getMessageHistory(string $mobile, ?string $sessionKey = null, int $limit = 100): array
     {
         if ($this->usesWaha()) {
-            $baseUrl = rtrim((string) config('services.whatsapp_service.base_url'), '/');
-            $apiKey = (string) config('services.whatsapp_service.api_key');
+            $connection = $this->connectionConfig();
+            $baseUrl = rtrim($connection['base_url'], '/');
+            $apiKey = $connection['api_key'];
             $session = $this->resolveSessionKey($sessionKey);
             $phone = $this->normalizePhone($mobile);
 
@@ -241,7 +258,7 @@ class WhatsAppGatewayService
             }
 
             try {
-                $response = $this->client($baseUrl, $apiKey, max(10, min(60, (int) config('services.whatsapp_service.timeout', 30))))
+                $response = $this->client($baseUrl, $apiKey, $connection['timeout'])
                     ->get('/api/' . rawurlencode($session) . '/chats/' . rawurlencode($phone . '@c.us') . '/messages', [
                         'limit' => max(1, min(200, $limit)),
                     ]);
@@ -254,11 +271,12 @@ class WhatsAppGatewayService
             }
         }
 
-        $baseUrl = rtrim((string) config('services.whatsapp_service.base_url'), '/');
-        $apiKey = (string) config('services.whatsapp_service.api_key');
+        $connection = $this->connectionConfig();
+        $baseUrl = rtrim($connection['base_url'], '/');
+        $apiKey = $connection['api_key'];
         $session = $this->resolveSessionKey($sessionKey);
         $phone = $this->normalizePhone($mobile);
-        $timeout = max(10, min(60, (int) config('services.whatsapp_service.timeout', 30)));
+        $timeout = $connection['timeout'];
 
         if ($baseUrl === '' || $phone === '') {
             return ['success' => false, 'error' => 'WhatsApp history service is not configured.', 'data' => null];
@@ -420,17 +438,52 @@ class WhatsAppGatewayService
         }
     }
 
+    private function connectionConfig(): array
+    {
+        $connection = [
+            'driver' => (string) config('services.whatsapp_service.driver', 'bridge'),
+            'base_url' => (string) config('services.whatsapp_service.base_url', ''),
+            'api_key' => (string) config('services.whatsapp_service.api_key', ''),
+            'session' => trim((string) config('services.whatsapp_service.session', 'default')) ?: 'default',
+            'timeout' => max(10, min(60, (int) config('services.whatsapp_service.timeout', 30))),
+        ];
+
+        try {
+            $company = function_exists('company') ? company() : null;
+            $companyId = $company?->id;
+
+            if ($companyId) {
+                $setting = WhatsappNotificationSetting::withoutGlobalScopes()
+                    ->where('company_id', $companyId)
+                    ->first();
+
+                if ($setting) {
+                    $connection['driver'] = trim((string) ($setting->api_driver ?? '')) ?: $connection['driver'];
+                    $connection['base_url'] = trim((string) ($setting->base_url ?? '')) ?: $connection['base_url'];
+                    $connection['api_key'] = trim((string) ($setting->api_token ?? '')) ?: $connection['api_key'];
+                    $connection['session'] = trim((string) ($setting->api_session ?? '')) ?: $connection['session'];
+                }
+            }
+        } catch (\Throwable) {
+            // Environment configuration remains the safe fallback for jobs
+            // running without a current company context.
+        }
+
+        return $connection;
+    }
+
     private function usesWaha(): bool
     {
-        return strtolower((string) config('services.whatsapp_service.driver', 'bridge')) === 'waha';
+        return strtolower((string) $this->connectionConfig()['driver']) === 'waha';
     }
 
     private function getWahaHealth(): array
     {
-        $baseUrl = rtrim((string) config('services.whatsapp_service.base_url'), '/');
-        $apiKey = (string) config('services.whatsapp_service.api_key');
+        $connection = $this->connectionConfig();
+        $baseUrl = rtrim($connection['base_url'], '/');
+        $apiKey = $connection['api_key'];
         $session = $this->resolveSessionKey();
-        $timeout = max(10, min(60, (int) config('services.whatsapp_service.timeout', 30)));
+        $timeout = $connection['timeout'];
 
         if ($baseUrl === '' || $apiKey === '') {
             return ['success' => false, 'error' => 'WAHA API URL or API key is not configured.', 'data' => null];
@@ -484,10 +537,11 @@ class WhatsAppGatewayService
 
     private function getWahaQr(?string $sessionKey = null): array
     {
-        $baseUrl = rtrim((string) config('services.whatsapp_service.base_url'), '/');
-        $apiKey = (string) config('services.whatsapp_service.api_key');
+        $connection = $this->connectionConfig();
+        $baseUrl = rtrim($connection['base_url'], '/');
+        $apiKey = $connection['api_key'];
         $session = $this->resolveSessionKey($sessionKey);
-        $timeout = max(10, min(60, (int) config('services.whatsapp_service.timeout', 30)));
+        $timeout = $connection['timeout'];
 
         if ($baseUrl === '' || $apiKey === '') {
             return ['success' => false, 'error' => 'WAHA API URL or API key is not configured.', 'data' => null];
@@ -600,7 +654,7 @@ class WhatsAppGatewayService
     {
         if ($this->usesWaha()) {
             $requested = trim((string) $sessionKey);
-            $configured = trim((string) config('services.whatsapp_service.session', 'default'));
+            $configured = $this->connectionConfig()['session'];
 
             if ($requested !== '' && !preg_match('/^\d+$/', $requested)) {
                 return $requested;
@@ -615,7 +669,7 @@ class WhatsAppGatewayService
             return $normalized;
         }
 
-        $fallback = trim((string) config('services.whatsapp_service.session', 'default'));
+        $fallback = $this->connectionConfig()['session'];
 
         return $fallback !== '' ? $fallback : 'default';
     }

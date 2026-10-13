@@ -33,6 +33,29 @@ class WhatsappSettingController extends AccountBaseController
             'company_id' => $companyId,
         ]);
 
+        if ($request->filled('api_driver')) {
+            $setting->api_driver = $request->input('api_driver');
+        }
+
+        if ($request->filled('api_base_url')) {
+            $setting->base_url = rtrim((string) $request->input('api_base_url'), '/');
+        }
+
+        if ($request->filled('api_key')) {
+            $setting->api_token = trim((string) $request->input('api_key'));
+        }
+
+        if ($request->filled('api_session')) {
+            $setting->api_session = trim((string) $request->input('api_session'));
+        }
+
+        if ($request->boolean('usnapnex_only')) {
+            $setting->status = 'active';
+            $setting->save();
+
+            return Reply::success(__('messages.updateSuccess'));
+        }
+
         $setting->status = 'active';
         $setting->send_lead_created_message = $request->has('send_lead_created_message') ? 'yes' : 'no';
         $setting->send_lead_interest_message = $request->has('send_lead_interest_message') ? 'yes' : 'no';
@@ -75,7 +98,8 @@ class WhatsappSettingController extends AccountBaseController
             'company_id' => $companyId,
         ]);
 
-        $sessionKey = $setting->resolved_whatsapp_session_key;
+        $connection = $gatewayService->connectionDetails();
+        $sessionKey = $connection['session'];
 
         $forceRefresh = request()->boolean('refresh');
 
@@ -108,9 +132,9 @@ class WhatsappSettingController extends AccountBaseController
                 'image' => $qrImage,
             ],
             'sessionKey' => $sessionKey,
-            'baseUrl' => config('services.whatsapp_service.base_url'),
-            'driver' => config('services.whatsapp_service.driver', 'bridge'),
-            'apiKeyConfigured' => filled(config('services.whatsapp_service.api_key')),
+            'baseUrl' => $connection['baseUrl'],
+            'driver' => $connection['driver'],
+            'apiKeyConfigured' => $connection['apiKeyConfigured'],
         ]);
     }
 
@@ -127,7 +151,7 @@ class WhatsappSettingController extends AccountBaseController
             return Reply::error('Please set a test number first.');
         }
 
-        $sessionKey = $setting->resolved_whatsapp_session_key;
+        $sessionKey = $gatewayService->connectionDetails()['session'];
 
         $sent = $gatewayService->sendMessage(
             $mobile,

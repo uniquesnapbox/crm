@@ -61,6 +61,10 @@
                                 ajax="false">WhatsApp API / QR<i title="Channel setting is {{ $whatsappStatus === 'active' ? 'enabled' : 'disabled' }}"
                                 class="fa fa-circle ml-1 {{ $whatsappSettings->status == 'active' ? 'text-light-green' : 'text-red' }}"></i>
                             </a>
+                            <a class="nav-item nav-link f-15 {{ $activeTab === 'usnapnex-setting' ? 'active' : '' }} usnapnex-setting"
+                                href="{{ route('notifications.index') }}?tab=usnapnex-setting" role="tab"
+                                aria-controls="nav-usnapnex" aria-selected="{{ $activeTab === 'usnapnex-setting' ? 'true' : 'false' }}"
+                                ajax="false">USNAPNEX</a>
                         </div>
                     </nav>
                 </div>
