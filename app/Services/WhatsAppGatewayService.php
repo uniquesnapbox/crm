@@ -30,6 +30,13 @@ class WhatsAppGatewayService
         return $this->lastHttpStatus;
     }
 
+    public function forCompany(?int $companyId): self
+    {
+        $this->companyId = $companyId;
+
+        return $this;
+    }
+
     public function shouldRetryLastFailure(): bool
     {
         if ($this->isPermanentRecipientError((string) $this->lastError)) {

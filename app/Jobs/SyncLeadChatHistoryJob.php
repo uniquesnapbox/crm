@@ -25,7 +25,12 @@ class SyncLeadChatHistoryJob implements ShouldQueue
     {
         $lead = Lead::withoutGlobalScopes()->find($this->leadId);
 
-        if (!$lead || !$gatewayService->isConfigured()) {
+        if (!$lead) {
+            return;
+        }
+
+        $gatewayService->forCompany((int) $lead->company_id);
+        if (!$gatewayService->isConfigured()) {
             return;
         }
 
