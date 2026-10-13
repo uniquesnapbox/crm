@@ -29,6 +29,10 @@ class WhatsappNotificationSetting extends BaseModel
 
     public function getResolvedWhatsAppSessionKeyAttribute(): string
     {
+        if (strtolower(trim((string) ($this->api_driver ?? ''))) === 'waha') {
+            return $this->resolved_api_session;
+        }
+
         $preferred = preg_replace('/\D+/', '', (string) $this->lead_created_sender_number);
         if ($preferred !== '') {
             return $preferred;

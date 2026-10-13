@@ -13,6 +13,7 @@ class WhatsAppGatewayService
     private ?string $lastError = null;
     private ?array $lastResponseData = null;
     private ?int $lastHttpStatus = null;
+    private ?int $companyId = null;
 
     public function getLastError(): ?string
     {
@@ -67,9 +68,12 @@ class WhatsAppGatewayService
         string $message,
         ?string $sessionKey = null,
         ?array $attachment = null,
-        ?string $idempotencySeed = null
+        ?string $idempotencySeed = null,
+        ?int $companyId = null
     ): bool
     {
+        $this->companyId = $companyId;
+
         if ($this->usesWaha()) {
             return $this->sendWahaMessage($mobile, $message, $sessionKey, $attachment);
         }
@@ -450,7 +454,7 @@ class WhatsAppGatewayService
 
         try {
             $company = function_exists('company') ? company() : null;
-            $companyId = $company?->id;
+            $companyId = $this->companyId ?: $company?->id;
 
             if ($companyId) {
                 $setting = WhatsappNotificationSetting::withoutGlobalScopes()

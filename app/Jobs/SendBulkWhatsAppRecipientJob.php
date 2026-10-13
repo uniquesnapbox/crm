@@ -76,7 +76,8 @@ class SendBulkWhatsAppRecipientJob implements ShouldQueue
                 (string) $recipient->rendered_message,
                 $sessionKey,
                 $attachment,
-                'bulk-whatsapp:campaign:' . $campaign->id . ':recipient:' . $recipient->id
+                'bulk-whatsapp:campaign:' . $campaign->id . ':recipient:' . $recipient->id,
+                (int) $campaign->company_id
             );
 
             $responseData = (array) ($gatewayService->getLastResponseData() ?? []);
