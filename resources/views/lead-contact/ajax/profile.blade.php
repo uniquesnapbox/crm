@@ -1407,8 +1407,11 @@
             <div class="col-xl-6 mb-4">
                 <div class="lead-card">
                     <div class="lead-card-title"><i class="fa fa-sticky-note text-primary"></i>Notes</div>
-                    @if (!empty($leadContact->note))
-                        <p class="mb-3 text-dark-grey">{{ strip_tags($leadContact->note) }}</p>
+                    @php
+                        $previewNote = $leadContact->latestNote?->details ?: $leadContact->note;
+                    @endphp
+                    @if (!empty($previewNote))
+                        <p class="mb-3 text-dark-grey">{{ strip_tags($previewNote) }}</p>
                     @else
                         <p class="mb-3 text-muted">No notes added yet.</p>
                     @endif
