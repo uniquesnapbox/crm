@@ -97,6 +97,7 @@
         const CHAT_REFRESH_INTERVAL_MS = 10000;
         let lastMessageSignature = null;
         let refreshInProgress = false;
+        let refreshQueued = false;
 
         const escapeHtml = function(value) { return $('<div>').text(value || '').html(); };
         const formatTime = function(value) {
@@ -140,9 +141,12 @@
                 const sender = direction === 'outbound' ? 'You' : @json($leadContact->client_name ?: 'Lead');
                 const photo = item.media_url ? '<a href="' + escapeHtml(item.media_url) + '" target="_blank" rel="noopener"><img class="lead-chat-photo" src="' + escapeHtml(item.media_url) + '" alt="WhatsApp photo"></a>' : '';
                 const caption = item.message ? '<div class="lead-chat-caption">' + escapeHtml(item.message) + '</div>' : '';
+                const status = direction === 'outbound'
+                    ? ' &middot; ' + escapeHtml(item.status === 'sent' ? 'Sent ✓' : (item.status || 'Pending'))
+                    : '';
 
                 return '<div class="lead-chat-bubble-row ' + direction + '"><div class="lead-chat-bubble">' + photo + caption +
-                    '<span class="lead-chat-bubble-meta">' + escapeHtml(sender) + ' &middot; ' + escapeHtml(formatTime(item.message_at)) + '</span></div></div>';
+                    '<span class="lead-chat-bubble-meta">' + escapeHtml(sender) + ' &middot; ' + escapeHtml(formatTime(item.message_at)) + status + '</span></div></div>';
             }).join(''));
             if (forceScroll || wasNearBottom) {
                 $thread.scrollTop($thread[0].scrollHeight);
@@ -154,7 +158,11 @@
                 stopPolling();
                 return;
             }
-            if (refreshInProgress || document.hidden) return;
+            if (document.hidden) return;
+            if (refreshInProgress) {
+                refreshQueued = refreshQueued || !!forceScroll;
+                return;
+            }
             refreshInProgress = true;
             $.ajax({
                 url: $thread.data('messages-url'),
@@ -173,6 +181,10 @@
                 }
             }).always(function() {
                 refreshInProgress = false;
+                if (refreshQueued) {
+                    refreshQueued = false;
+                    refreshMessages(true);
+                }
             });
         };
 
