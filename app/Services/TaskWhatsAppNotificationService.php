@@ -182,6 +182,8 @@ class TaskWhatsAppNotificationService
 
     public function sendDailyPendingSummaryForCompany(int $companyId): void
     {
+        $this->gatewayService->forCompany($companyId);
+
         $setting = WhatsappNotificationSetting::where('company_id', $companyId)->first();
 
         if (!$setting || $setting->status !== 'active' || !$setting->isTaskDailyPendingMessageEnabled()) {

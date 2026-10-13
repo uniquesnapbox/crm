@@ -35,6 +35,8 @@ class LeadFollowUpWhatsAppReminderService
 
     private function processCompanyReminderWindow(int $companyId, ?int $lookbackHours = null): void
     {
+        $this->gatewayService->forCompany($companyId);
+
         $company = Company::query()
             ->select('id', 'company_name', 'timezone', 'date_format', 'time_format')
             ->find($companyId);
@@ -114,6 +116,8 @@ class LeadFollowUpWhatsAppReminderService
 
     public function sendReminderForFollowUp(int $companyId, int $followUpId, ?string $scheduledAtUtc = null): bool
     {
+        $this->gatewayService->forCompany($companyId);
+
         $company = Company::query()
             ->select('id', 'company_name', 'timezone', 'date_format', 'time_format')
             ->find($companyId);

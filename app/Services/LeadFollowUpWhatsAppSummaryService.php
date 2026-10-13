@@ -19,6 +19,8 @@ class LeadFollowUpWhatsAppSummaryService
 
     public function sendDailySummaryForCompany(int $companyId, bool $force = false): void
     {
+        $this->gatewayService->forCompany($companyId);
+
         if (!config('services.lead_followup_summary.enabled', true)) {
             return;
         }
