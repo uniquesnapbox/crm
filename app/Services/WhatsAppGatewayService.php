@@ -39,7 +39,13 @@ class WhatsAppGatewayService
 
     public function isConfigured(): bool
     {
-        return filled(config('services.whatsapp_service.base_url'));
+        $configured = filled(config('services.whatsapp_service.base_url'));
+
+        if ($this->usesWaha()) {
+            return $configured && filled(config('services.whatsapp_service.api_key'));
+        }
+
+        return $configured;
     }
 
     public function sendMessage(
@@ -50,6 +56,10 @@ class WhatsAppGatewayService
         ?string $idempotencySeed = null
     ): bool
     {
+        if ($this->usesWaha()) {
+            return $this->sendWahaMessage($mobile, $message, $sessionKey, $attachment);
+        }
+
         $this->lastResponseData = null;
         $this->lastHttpStatus = null;
         $baseUrl = rtrim((string) config('services.whatsapp_service.base_url'), '/');
@@ -144,8 +154,106 @@ class WhatsAppGatewayService
         return false;
     }
 
+    /**
+     * Send through the documented WAHA API. The API key remains on the
+     * server because this method is only called by Laravel services/jobs.
+     */
+    private function sendWahaMessage(
+        string $mobile,
+        string $message,
+        ?string $sessionKey = null,
+        ?array $attachment = null
+    ): bool {
+        $this->lastError = null;
+        $this->lastResponseData = null;
+        $this->lastHttpStatus = null;
+
+        $baseUrl = rtrim((string) config('services.whatsapp_service.base_url'), '/');
+        $apiKey = (string) config('services.whatsapp_service.api_key');
+        $session = $this->resolveSessionKey($sessionKey);
+        $phone = $this->normalizePhone($mobile);
+
+        if ($baseUrl === '' || $apiKey === '') {
+            $this->lastError = 'WAHA API URL or API key is not configured.';
+            return false;
+        }
+
+        if ($phone === '') {
+            $this->lastError = 'Lead mobile number is invalid.';
+            return false;
+        }
+
+        $payload = [
+            'session' => $session,
+            'chatId' => $phone . '@c.us',
+        ];
+        $endpoint = '/api/sendText';
+
+        if (!empty($attachment) && !empty($attachment['data'])) {
+            $mimeType = (string) ($attachment['mimeType'] ?? 'application/octet-stream');
+            $isImage = str_starts_with(strtolower($mimeType), 'image/');
+            $endpoint = $isImage && empty($attachment['sendAsDocument'])
+                ? '/api/sendImage'
+                : '/api/sendFile';
+            $payload['file'] = [
+                'data' => (string) $attachment['data'],
+                'mimetype' => $mimeType,
+                'filename' => (string) ($attachment['fileName'] ?? 'attachment'),
+            ];
+            $payload['caption'] = trim($message);
+        } else {
+            $payload['text'] = trim($message);
+        }
+
+        try {
+            $response = $this->client($baseUrl, $apiKey, max(10, min(60, (int) config('services.whatsapp_service.timeout', 30))))
+                ->post($endpoint, $payload);
+        } catch (ConnectionException $exception) {
+            $this->lastError = 'WAHA connection failed: ' . $exception->getMessage();
+            return false;
+        } catch (\Throwable $exception) {
+            $this->lastError = $exception->getMessage();
+            return false;
+        }
+
+        $this->lastHttpStatus = $response->status();
+        $json = $response->json();
+        $this->lastResponseData = is_array($json) ? $json : ['response' => $response->body()];
+
+        if ($response->successful()) {
+            return true;
+        }
+
+        $this->lastError = (string) ($json['error'] ?? ($response->body() ?: 'WAHA message send failed.'));
+        return false;
+    }
+
     public function getMessageHistory(string $mobile, ?string $sessionKey = null, int $limit = 100): array
     {
+        if ($this->usesWaha()) {
+            $baseUrl = rtrim((string) config('services.whatsapp_service.base_url'), '/');
+            $apiKey = (string) config('services.whatsapp_service.api_key');
+            $session = $this->resolveSessionKey($sessionKey);
+            $phone = $this->normalizePhone($mobile);
+
+            if ($baseUrl === '' || $apiKey === '' || $phone === '') {
+                return ['success' => false, 'error' => 'WAHA history service is not configured.', 'data' => null];
+            }
+
+            try {
+                $response = $this->client($baseUrl, $apiKey, max(10, min(60, (int) config('services.whatsapp_service.timeout', 30))))
+                    ->get('/api/' . rawurlencode($session) . '/chats/' . rawurlencode($phone . '@c.us') . '/messages', [
+                        'limit' => max(1, min(200, $limit)),
+                    ]);
+
+                return $this->mapJsonResponse($response, 'Unable to read WAHA message history.');
+            } catch (ConnectionException $exception) {
+                return ['success' => false, 'error' => $exception->getMessage(), 'data' => null];
+            } catch (\Throwable $exception) {
+                return ['success' => false, 'error' => $exception->getMessage(), 'data' => null];
+            }
+        }
+
         $baseUrl = rtrim((string) config('services.whatsapp_service.base_url'), '/');
         $apiKey = (string) config('services.whatsapp_service.api_key');
         $session = $this->resolveSessionKey($sessionKey);
@@ -174,6 +282,10 @@ class WhatsAppGatewayService
 
     public function getHealth(): array
     {
+        if ($this->usesWaha()) {
+            return $this->getWahaHealth();
+        }
+
         $baseUrl = rtrim((string) config('services.whatsapp_service.base_url'), '/');
         $apiKey = (string) config('services.whatsapp_service.api_key');
         $timeout = (int) config('services.whatsapp_service.timeout', 30);
@@ -211,6 +323,26 @@ class WhatsAppGatewayService
      */
     public function hasReadySession(array $sessionKeys): bool
     {
+        if ($this->usesWaha()) {
+            $health = $this->getWahaHealth();
+            $wantedSessions = array_values(array_unique(array_filter(array_map(
+                fn ($sessionKey) => $this->resolveSessionKey((string) $sessionKey),
+                $sessionKeys
+            ))));
+
+            foreach (($health['data']['sessions'] ?? []) as $session) {
+                if (is_array($session)
+                    && in_array((string) ($session['sessionKey'] ?? ''), $wantedSessions, true)
+                    && (string) ($session['status'] ?? '') === 'ready') {
+                    $this->lastError = null;
+                    return true;
+                }
+            }
+
+            $this->lastError = (string) ($health['error'] ?? 'No configured WAHA session is ready.');
+            return false;
+        }
+
         $health = $this->getHealth();
 
         if (!($health['success'] ?? false)) {
@@ -245,6 +377,10 @@ class WhatsAppGatewayService
 
     public function getQr(?string $sessionKey = null, bool $forceRefresh = false): array
     {
+        if ($this->usesWaha()) {
+            return $this->getWahaQr($sessionKey);
+        }
+
         $baseUrl = rtrim((string) config('services.whatsapp_service.base_url'), '/');
         $apiKey = (string) config('services.whatsapp_service.api_key');
         $timeout = (int) config('services.whatsapp_service.timeout', 30);
@@ -284,6 +420,154 @@ class WhatsAppGatewayService
         }
     }
 
+    private function usesWaha(): bool
+    {
+        return strtolower((string) config('services.whatsapp_service.driver', 'bridge')) === 'waha';
+    }
+
+    private function getWahaHealth(): array
+    {
+        $baseUrl = rtrim((string) config('services.whatsapp_service.base_url'), '/');
+        $apiKey = (string) config('services.whatsapp_service.api_key');
+        $session = $this->resolveSessionKey();
+        $timeout = max(10, min(60, (int) config('services.whatsapp_service.timeout', 30)));
+
+        if ($baseUrl === '' || $apiKey === '') {
+            return ['success' => false, 'error' => 'WAHA API URL or API key is not configured.', 'data' => null];
+        }
+
+        try {
+            $versionResponse = $this->client($baseUrl, $apiKey, $timeout)->get('/api/version');
+            $sessionResponse = $this->ensureWahaSession($baseUrl, $apiKey, $timeout, $session);
+        } catch (ConnectionException $exception) {
+            return ['success' => false, 'error' => 'WAHA connection failed: ' . $exception->getMessage(), 'data' => null];
+        } catch (\Throwable $exception) {
+            return ['success' => false, 'error' => $exception->getMessage(), 'data' => null];
+        }
+
+        $version = $versionResponse->json();
+        $sessionData = $sessionResponse->json();
+        $rawStatus = is_array($sessionData) ? (string) ($sessionData['status'] ?? '') : '';
+        $status = $this->normalizeWahaStatus($rawStatus);
+
+        if (!$versionResponse->successful() || !$sessionResponse->successful()) {
+            $error = is_array($sessionData)
+                ? ($sessionData['error'] ?? null)
+                : null;
+            $error = (string) ($error ?: $sessionResponse->body() ?: $versionResponse->body() ?: 'Unable to read WAHA status.');
+
+            return [
+                'success' => false,
+                'error' => $error,
+                'data' => [
+                    'version' => $version,
+                    'sessions' => [[
+                        'sessionKey' => $session,
+                        'status' => $status ?: 'unknown',
+                    ]],
+                ],
+            ];
+        }
+
+        return [
+            'success' => true,
+            'error' => null,
+            'data' => [
+                'version' => $version,
+                'sessions' => [[
+                    'sessionKey' => $session,
+                    'status' => $status ?: 'unknown',
+                ]],
+            ],
+        ];
+    }
+
+    private function getWahaQr(?string $sessionKey = null): array
+    {
+        $baseUrl = rtrim((string) config('services.whatsapp_service.base_url'), '/');
+        $apiKey = (string) config('services.whatsapp_service.api_key');
+        $session = $this->resolveSessionKey($sessionKey);
+        $timeout = max(10, min(60, (int) config('services.whatsapp_service.timeout', 30)));
+
+        if ($baseUrl === '' || $apiKey === '') {
+            return ['success' => false, 'error' => 'WAHA API URL or API key is not configured.', 'data' => null];
+        }
+
+        try {
+            $sessionResponse = $this->ensureWahaSession($baseUrl, $apiKey, $timeout, $session);
+            $sessionJson = $sessionResponse->json();
+            $sessionStatus = $this->normalizeWahaStatus((string) data_get($sessionJson, 'status', ''));
+
+            if ($sessionResponse->successful() && $sessionStatus === 'ready') {
+                return [
+                    'success' => true,
+                    'error' => null,
+                    'data' => [
+                        'sessionKey' => $session,
+                        'status' => 'ready',
+                        'generatedAt' => null,
+                        'qr' => null,
+                    ],
+                ];
+            }
+
+            $response = $this->client($baseUrl, $apiKey, $timeout)
+                ->withHeaders(['Accept' => 'application/json'])
+                ->get('/api/' . rawurlencode($session) . '/auth/qr', ['format' => 'raw']);
+            $json = $response->json();
+            $value = is_array($json) ? (string) ($json['value'] ?? '') : '';
+
+            return [
+                'success' => $response->successful() && $value !== '',
+                'error' => ($response->successful() && $value !== '')
+                    ? null
+                    : (string) (data_get($json, 'error') ?: $response->body() ?: 'Unable to load WAHA QR.'),
+                'data' => [
+                    'sessionKey' => $session,
+                    'status' => $sessionStatus ?: 'qr_required',
+                    'generatedAt' => now()->toIso8601String(),
+                    'qr' => $value !== '' ? $value : null,
+                ],
+            ];
+        } catch (ConnectionException $exception) {
+            return ['success' => false, 'error' => 'WAHA connection failed: ' . $exception->getMessage(), 'data' => null];
+        } catch (\Throwable $exception) {
+            return ['success' => false, 'error' => $exception->getMessage(), 'data' => null];
+        }
+    }
+
+    private function normalizeWahaStatus(string $status): string
+    {
+        return match (strtoupper(trim($status))) {
+            'WORKING' => 'ready',
+            'SCAN_QR_CODE' => 'qr_required',
+            'STARTING' => 'initializing',
+            'STOPPED' => 'stopped',
+            'FAILED' => 'failed',
+            default => strtolower(trim($status)) ?: 'unknown',
+        };
+    }
+
+    private function ensureWahaSession(string $baseUrl, string $apiKey, int $timeout, string $session): Response
+    {
+        $client = $this->client($baseUrl, $apiKey, $timeout);
+        $response = $client->get('/api/sessions/' . rawurlencode($session));
+
+        if ($response->status() === 404) {
+            $client->post('/api/sessions', [
+                'name' => $session,
+            ]);
+            $response = $client->get('/api/sessions/' . rawurlencode($session));
+        }
+
+        if ($response->successful() && strtoupper((string) data_get($response->json(), 'status', '')) === 'STOPPED') {
+            $client->post('/api/sessions/' . rawurlencode($session) . '/start');
+            $response = $client->get('/api/sessions/' . rawurlencode($session));
+        }
+
+        return $response;
+    }
+
     private function client(string $baseUrl, string $apiKey, int $timeout, bool $withApiKey = true)
     {
         $client = Http::baseUrl($baseUrl)
@@ -314,6 +598,17 @@ class WhatsAppGatewayService
 
     private function resolveSessionKey(?string $sessionKey = null): string
     {
+        if ($this->usesWaha()) {
+            $requested = trim((string) $sessionKey);
+            $configured = trim((string) config('services.whatsapp_service.session', 'default'));
+
+            if ($requested !== '' && !preg_match('/^\d+$/', $requested)) {
+                return $requested;
+            }
+
+            return $configured !== '' ? $configured : 'default';
+        }
+
         $normalized = preg_replace('/\D+/', '', (string) $sessionKey);
 
         if ($normalized !== '') {

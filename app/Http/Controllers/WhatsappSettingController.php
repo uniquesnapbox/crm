@@ -109,6 +109,8 @@ class WhatsappSettingController extends AccountBaseController
             ],
             'sessionKey' => $sessionKey,
             'baseUrl' => config('services.whatsapp_service.base_url'),
+            'driver' => config('services.whatsapp_service.driver', 'bridge'),
+            'apiKeyConfigured' => filled(config('services.whatsapp_service.api_key')),
         ]);
     }
 

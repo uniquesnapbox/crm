@@ -66,10 +66,10 @@
                                 <div>
                                     <h5 class="text-dark-grey f-15 mb-1">WhatsApp Connection</h5>
                                     <div class="text-muted f-12">
-                                        Scan this QR from the WhatsApp account you want to connect with the microservice.
+                                        Scan this QR from the WhatsApp account you want to connect with the WhatsApp API.
                                     </div>
                                     <div class="text-muted f-12 mt-1">
-                                        If the QR is missing, this panel will re-check the bridge automatically and keep your existing WhatsApp login intact.
+                                        The API key stays server-side. The CRM never sends it to browser JavaScript.
                                     </div>
                                 </div>
                                 <button type="button" class="btn btn-outline-secondary btn-sm mt-2 mt-lg-0" id="refresh-whatsapp-connection">
@@ -84,6 +84,9 @@
 
                             <div class="text-muted f-12 mb-3" id="whatsapp-connection-meta">
                                 Session: <code>--</code>
+                            </div>
+                            <div class="text-muted f-12 mb-3">
+                                Configure <code>WHATSAPP_SERVICE_DRIVER=waha</code>, the WAHA API URL, API key and session in the server <code>.env</code> file.
                             </div>
 
                             <div class="alert alert-warning d-none" id="whatsapp-connection-error"></div>
@@ -394,6 +397,10 @@
 
                 if (response.baseUrl) {
                     metaHtml += ' | URL: <code>' + response.baseUrl + '</code>';
+                }
+
+                if (response.driver) {
+                    metaHtml += ' | Driver: <code>' + response.driver + '</code>';
                 }
 
                 if (generatedAt && !Number.isNaN(generatedAt.getTime())) {
