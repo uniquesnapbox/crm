@@ -292,7 +292,18 @@ class LeadContactController extends AccountBaseController
         $providerResponse = $gatewayService->getLastResponseData();
         $contentType = $photo ? 'image' : 'text';
 
-        $providerMessageId = trim((string) data_get($providerResponse, 'id'));
+        // WAHA/WhatsApp providers may return the message id as either a
+        // scalar string or a nested object/array. Never cast an array to a
+        // string here because Laravel converts that warning into a 500.
+        $providerMessageId = data_get($providerResponse, 'id');
+        if (is_array($providerMessageId)) {
+            $providerMessageId = data_get($providerMessageId, '_serialized')
+                ?? data_get($providerMessageId, 'id')
+                ?? data_get($providerMessageId, 'serialized');
+        }
+        $providerMessageId = is_scalar($providerMessageId)
+            ? trim((string) $providerMessageId)
+            : '';
         $sentAt = now();
         $sentMessage = $providerMessageId !== ''
             ? LeadWhatsAppMessage::withoutGlobalScopes()
