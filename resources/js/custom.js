@@ -67,6 +67,7 @@ const showBulkActions = () => {
     const $pickers = $("#quick-actions .select-picker");
     if ($pickers.length > 0 && typeof $pickers.selectpicker === "function") {
         $pickers.selectpicker("enable");
+        $pickers.selectpicker("refresh");
     }
     if ($("#quick-action-type").val() == "") {
         $("#quick-action-apply").prop("disabled", true);
@@ -85,6 +86,7 @@ const hideBulkActions = () => {
     const $pickers = $("#quick-actions .select-picker");
     if ($pickers.length > 0 && typeof $pickers.selectpicker === "function") {
         $pickers.selectpicker("disable");
+        $pickers.selectpicker("refresh");
     }
 };
 
@@ -155,6 +157,8 @@ const selectAllTable = (source) => {
     } else {
         hideBulkActions();
     }
+
+    scheduleBulkActionUpdate(syncBulkActionState);
 
 };
 
