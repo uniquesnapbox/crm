@@ -32,6 +32,10 @@ class WhatsAppGatewayService
 
     public function shouldRetryLastFailure(): bool
     {
+        if ($this->isPermanentRecipientError((string) $this->lastError)) {
+            return false;
+        }
+
         if (in_array($this->lastHttpStatus, [408, 425, 429, 500, 502, 503, 504], true)) {
             return true;
         }
@@ -153,7 +157,10 @@ class WhatsAppGatewayService
                 return true;
             }
 
-            $this->lastError = (string) ($json['error'] ?? ($response->body() ?: 'WhatsApp service send failed.'));
+            $this->lastError = $this->errorMessage(
+                $json['error'] ?? null,
+                $response->body() ?: 'WhatsApp service send failed.'
+            );
 
             Log::warning('WhatsApp gateway send failed.', [
                 'mobile' => $phone,
@@ -244,7 +251,10 @@ class WhatsAppGatewayService
             return true;
         }
 
-        $this->lastError = (string) ($json['error'] ?? ($response->body() ?: 'WAHA message send failed.'));
+        $this->lastError = $this->errorMessage(
+            $json['error'] ?? null,
+            $response->body() ?: 'WAHA message send failed.'
+        );
         return false;
     }
 
@@ -361,14 +371,14 @@ class WhatsAppGatewayService
                 }
             }
 
-            $this->lastError = (string) ($health['error'] ?? 'No configured WAHA session is ready.');
+            $this->lastError = $this->errorMessage($health['error'] ?? null, 'No configured WAHA session is ready.');
             return false;
         }
 
         $health = $this->getHealth();
 
         if (!($health['success'] ?? false)) {
-            $this->lastError = (string) ($health['error'] ?? 'WhatsApp service is unavailable.');
+            $this->lastError = $this->errorMessage($health['error'] ?? null, 'WhatsApp service is unavailable.');
             return false;
         }
 
@@ -511,7 +521,10 @@ class WhatsAppGatewayService
             $error = is_array($sessionData)
                 ? ($sessionData['error'] ?? null)
                 : null;
-            $error = (string) ($error ?: $sessionResponse->body() ?: $versionResponse->body() ?: 'Unable to read WAHA status.');
+            $error = $this->errorMessage(
+                $error,
+                $sessionResponse->body() ?: $versionResponse->body() ?: 'Unable to read WAHA status.'
+            );
 
             return [
                 'success' => false,
@@ -579,7 +592,10 @@ class WhatsAppGatewayService
                 'success' => $response->successful() && $value !== '',
                 'error' => ($response->successful() && $value !== '')
                     ? null
-                    : (string) (data_get($json, 'error') ?: $response->body() ?: 'Unable to load WAHA QR.'),
+                    : $this->errorMessage(
+                        data_get($json, 'error'),
+                        $response->body() ?: 'Unable to load WAHA QR.'
+                    ),
                 'data' => [
                     'sessionKey' => $session,
                     'status' => $sessionStatus ?: 'qr_required',
@@ -649,7 +665,10 @@ class WhatsAppGatewayService
 
         return array_merge([
             'success' => $success,
-            'error' => $success ? null : (string) ($json['error'] ?? ($response->body() ?: $fallbackError)),
+            'error' => $success ? null : $this->errorMessage(
+                $json['error'] ?? null,
+                $response->body() ?: $fallbackError
+            ),
             'data' => $json['data'] ?? null,
         ], $extra);
     }
@@ -676,6 +695,61 @@ class WhatsAppGatewayService
         $fallback = $this->connectionConfig()['session'];
 
         return $fallback !== '' ? $fallback : 'default';
+    }
+
+    private function isPermanentRecipientError(string $error): bool
+    {
+        $normalized = strtolower($error);
+
+        foreach ([
+            'no lid for user',
+            'not on whatsapp',
+            'invalid phone',
+            'invalid recipient',
+            'chat not found',
+        ] as $needle) {
+            if (str_contains($normalized, $needle)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function errorMessage(mixed $error, string $fallback): string
+    {
+        if (is_string($error) && trim($error) !== '') {
+            $message = trim($error);
+            $decoded = json_decode($message, true);
+
+            if (is_array($decoded)) {
+                return $this->errorMessage($decoded, $fallback);
+            }
+
+            if (str_contains(strtolower($message), 'no lid for user')) {
+                return 'WhatsApp recipient could not be found. Check that this number is registered on WhatsApp.';
+            }
+
+            return $message;
+        }
+
+        if (is_scalar($error) && (string) $error !== '') {
+            return (string) $error;
+        }
+
+        if (is_array($error)) {
+            $message = $error['message'] ?? $error['error'] ?? null;
+            if (is_string($message) && trim($message) !== '') {
+                return trim($message);
+            }
+
+            $encoded = json_encode($error, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            if (is_string($encoded) && $encoded !== '') {
+                return $encoded;
+            }
+        }
+
+        return trim($fallback) !== '' ? $fallback : 'WhatsApp service request failed.';
     }
 
     private function normalizePhone(string $mobile): string
