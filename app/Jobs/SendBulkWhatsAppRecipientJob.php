@@ -114,7 +114,15 @@ class SendBulkWhatsAppRecipientJob implements ShouldQueue
                 return;
             }
 
-            $providerMessageId = trim((string) data_get($responseData, 'id', ''));
+            $providerMessageId = data_get($responseData, 'id');
+            if (is_array($providerMessageId)) {
+                $providerMessageId = data_get($providerMessageId, '_serialized')
+                    ?? data_get($providerMessageId, 'id')
+                    ?? data_get($providerMessageId, 'serialized');
+            }
+            $providerMessageId = is_scalar($providerMessageId)
+                ? trim((string) $providerMessageId)
+                : '';
             if ($providerMessageId === '') {
                 $providerMessageId = 'crm:bulk:' . $campaign->id . ':' . $recipient->id;
             }

@@ -302,9 +302,19 @@ class BulkWhatsAppService
 
     public function markRecipientSent(BulkWhatsAppCampaignRecipient $recipient, array $responseData): void
     {
+        $providerMessageId = data_get($responseData, 'id');
+        if (is_array($providerMessageId)) {
+            $providerMessageId = data_get($providerMessageId, '_serialized')
+                ?? data_get($providerMessageId, 'id')
+                ?? data_get($providerMessageId, 'serialized');
+        }
+        $providerMessageId = is_scalar($providerMessageId)
+            ? trim((string) $providerMessageId)
+            : '';
+
         $recipient->forceFill([
             'status' => 'sent',
-            'provider_message_id' => Str::limit((string) data_get($responseData, 'id', ''), 191, ''),
+            'provider_message_id' => Str::limit($providerMessageId, 191, ''),
             'response_data' => $responseData,
             'sent_at' => now(),
             'error_message' => null,
