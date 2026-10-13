@@ -83,7 +83,11 @@ class WhatsAppGatewayService
         ?int $companyId = null
     ): bool
     {
-        $this->companyId = $companyId;
+        // Keep the company context set by forCompany() when callers do not
+        // pass the optional company id explicitly.
+        if ($companyId !== null) {
+            $this->companyId = $companyId;
+        }
 
         if ($this->usesWaha()) {
             return $this->sendWahaMessage($mobile, $message, $sessionKey, $attachment);
