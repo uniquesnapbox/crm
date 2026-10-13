@@ -401,7 +401,17 @@ class LeadContactController extends AccountBaseController
     private function storeSyncedChatMessages(Lead $leadContact, string $phone, ?string $sessionKey, array $messages): void
     {
         foreach ($messages as $item) {
-            $providerMessageId = trim((string) data_get($item, 'messageId'));
+            $providerMessageId = data_get($item, 'messageId')
+                ?? data_get($item, 'id._serialized')
+                ?? data_get($item, 'id.id')
+                ?? data_get($item, 'id');
+            if (is_array($providerMessageId)) {
+                $providerMessageId = data_get($providerMessageId, '_serialized')
+                    ?? data_get($providerMessageId, 'id');
+            }
+            $providerMessageId = is_scalar($providerMessageId)
+                ? trim((string) $providerMessageId)
+                : '';
             if ($providerMessageId === '') {
                 continue;
             }
@@ -446,7 +456,7 @@ class LeadContactController extends AccountBaseController
                 'direction' => $direction,
                 'phone' => $itemPhone,
                 'provider_message_id' => $normalizedProviderId,
-                'content_type' => (string) data_get($item, 'contentType', 'text'),
+                'content_type' => (string) data_get($item, 'contentType', data_get($item, 'type', 'text')),
                 'message' => $messageText,
                 'status' => $fromMe ? 'sent' : 'received',
                 'metadata' => array_merge((array) $chatMessage->metadata, [

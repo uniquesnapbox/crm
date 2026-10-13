@@ -284,6 +284,21 @@ class WhatsAppGatewayService
                         'limit' => max(1, min(200, $limit)),
                     ]);
 
+                if ($response->successful()) {
+                    $json = $response->json();
+                    $messages = is_array($json) && array_is_list($json)
+                        ? $json
+                        : (is_array($json['messages'] ?? null)
+                            ? $json['messages']
+                            : (is_array(data_get($json, 'data.messages')) ? data_get($json, 'data.messages') : []));
+
+                    return [
+                        'success' => true,
+                        'error' => null,
+                        'data' => ['messages' => $messages],
+                    ];
+                }
+
                 return $this->mapJsonResponse($response, 'Unable to read WAHA message history.');
             } catch (ConnectionException $exception) {
                 return ['success' => false, 'error' => $exception->getMessage(), 'data' => null];
