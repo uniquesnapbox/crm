@@ -846,7 +846,13 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
         });
 
         $('#' + leadContactTableId).on('draw.dt', function() {
-            leadContactSyncBulkActionState();
+            // DataTables redraws rows after filtering. Re-sync after the DOM
+            // has been replaced so the bulk action bar does not stay hidden.
+            window.setTimeout(function() {
+                if (typeof leadContactSyncBulkActionState === 'function') {
+                    leadContactSyncBulkActionState();
+                }
+            }, 0);
         });
 
         const showTable = () => {
@@ -1174,6 +1180,7 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
 
             if ($actionType.length > 0 && typeof $actionType.selectpicker === 'function') {
                 $actionType.selectpicker('enable');
+                $actionType.selectpicker('refresh');
             }
 
             if ($actionType.val() == '') {
@@ -1209,6 +1216,7 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
             const $actionType = $('#quick-action-type');
             if ($actionType.length > 0 && typeof $actionType.selectpicker === 'function') {
                 $actionType.selectpicker('disable');
+                $actionType.selectpicker('refresh');
             }
             leadContactSetAssignedToState(false);
         };
