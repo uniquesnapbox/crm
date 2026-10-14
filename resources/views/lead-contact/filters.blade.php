@@ -259,7 +259,7 @@
     <span class="text-dark-grey f-13 mr-3" id="lead-contact-selected-count"></span>
     <x-datatable.actions>
         <div class="select-status mr-2">
-            <select name="action_type" class="form-control select-picker" id="quick-action-type" disabled>
+            <select name="action_type" class="form-control select-picker" id="quick-action-type">
                 <option value="">@lang('app.selectAction')</option>
                 @if ($canBulkAssignLead)
                     <option value="assign-to">@lang('modules.tasks.assignTo')</option>

@@ -285,14 +285,16 @@
         }
 
         .lead-contact-bulk-bar.d-none {
-            display: none !important;
+            /* Keep bulk actions available after DataTables filter redraws. */
+            display: flex !important;
         }
 
         .lead-contact-bulk-bar.is-visible {
             display: flex !important;
         }
 
-        .lead-contact-bulk-bar #quick-action-form {
+        .lead-contact-bulk-bar #quick-action-form,
+        .lead-contact-bulk-bar #quick-action-form.d-none {
             display: block !important;
             flex: 1 1 auto;
         }
@@ -895,8 +897,9 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
 
         $('#quick-action-type').change(function() {
             const actionValue = $(this).val();
+            const hasSelectedRows = $('#lead-contact-table .select-table-row:checked').length > 0;
             if (actionValue != '') {
-                $('#quick-action-apply').removeAttr('disabled');
+                $('#quick-action-apply').prop('disabled', !hasSelectedRows);
 
                 if (actionValue == 'assign-to') {
                     $('.quick-action-field').addClass('d-none');
@@ -927,7 +930,25 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
 
         $('#quick-action-apply').click(function() {
             const actionValue = $('#quick-action-type').val();
+            const rowdIds = $("#lead-contact-table input[name='datatable_ids[]']:checked").map(function() {
+                return $(this).val();
+            }).get();
             const selectedAssignees = $('#assigned_to').val() || [];
+
+            if (rowdIds.length === 0) {
+                Swal.fire({
+                    title: "@lang('messages.sweetAlertTitle')",
+                    text: "Please select at least one lead first.",
+                    icon: 'warning',
+                    confirmButtonText: "@lang('app.ok')",
+                    customClass: {
+                        confirmButton: 'btn btn-primary'
+                    },
+                    buttonsStyling: false
+                });
+                return;
+            }
+
             if (actionValue == 'assign-to' && selectedAssignees.length === 0) {
                 Swal.fire({
                     title: "@lang('messages.sweetAlertTitle')",
@@ -1196,13 +1217,13 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
             const bulkBar = document.getElementById('lead-contact-bulk-bar');
 
             if (bulkBar) {
-                bulkBar.classList.remove('is-visible');
-                bulkBar.classList.add('d-none');
+                bulkBar.classList.add('is-visible');
+                bulkBar.classList.remove('d-none');
             }
 
             if (form) {
-                form.classList.add('d-none');
-                form.style.display = 'none';
+                form.classList.remove('d-none');
+                form.style.display = '';
             }
 
             if (!leadContactBulkActionsVisible) {
@@ -1212,12 +1233,13 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
             leadContactBulkActionsVisible = false;
 
             const $fields = $('#quick-actions').find('input, textarea, button, select');
-            $fields.prop('disabled', true);
+            $fields.prop('disabled', false);
             const $actionType = $('#quick-action-type');
             if ($actionType.length > 0 && typeof $actionType.selectpicker === 'function') {
-                $actionType.selectpicker('disable');
+                $actionType.selectpicker('enable');
                 $actionType.selectpicker('refresh');
             }
+            $('#quick-action-apply').prop('disabled', true);
             leadContactSetAssignedToState(false);
         };
 
