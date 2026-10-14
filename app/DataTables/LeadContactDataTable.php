@@ -355,6 +355,11 @@ class LeadContactDataTable extends BaseDataTable
                             this.style.setProperty("--lead-status-color", "#" + colorClass);
                         }
                     });
+                    // Keep the bulk action bar in sync after every server-side
+                    // redraw, including filtering, paging and searching.
+                    if (typeof window.leadContactSyncBulkActionState === "function") {
+                        window.setTimeout(window.leadContactSyncBulkActionState, 0);
+                    }
                 }',
             ]);
 

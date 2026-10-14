@@ -1221,7 +1221,7 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
             leadContactSetAssignedToState(false);
         };
 
-        const leadContactSyncBulkActionState = () => {
+        function leadContactSyncBulkActionState() {
             const $selectedRows = $("#lead-contact-table .select-table-row:checked");
             const selectedCount = $selectedRows.length;
             const $selectAll = $("#select-all-table");
@@ -1260,7 +1260,12 @@ $canBulkAssignLead = $canBulkAssignLead ?? false;
 
                 window.resetActionButtons();
             }
-        };
+        }
+
+        // The DataTable draw callback runs outside this script's lexical scope.
+        // Expose the synchronizer so filtering/paging can always refresh the
+        // bulk action bar after DataTables replaces the table rows.
+        window.leadContactSyncBulkActionState = leadContactSyncBulkActionState;
 
         window.dataTableRowCheck = (id) => {
             const checkbox = document.getElementById("datatable-row-" + id);
