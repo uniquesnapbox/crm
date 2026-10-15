@@ -230,11 +230,19 @@ class WhatsAppGatewayService
         if (!empty($attachment) && !empty($attachment['data'])) {
             $mimeType = (string) ($attachment['mimeType'] ?? 'application/octet-stream');
             $isImage = str_starts_with(strtolower($mimeType), 'image/');
+            $fileData = (string) $attachment['data'];
+
+            // WAHA's WebJS engine passes this value to atob(), so it must be
+            // raw base64 rather than a data URI such as data:image/jpeg;base64,...
+            if (str_starts_with(strtolower($fileData), 'data:') && str_contains($fileData, ',')) {
+                $fileData = substr($fileData, strpos($fileData, ',') + 1);
+            }
+
             $endpoint = $isImage && empty($attachment['sendAsDocument'])
                 ? '/api/sendImage'
                 : '/api/sendFile';
             $payload['file'] = [
-                'data' => (string) $attachment['data'],
+                'data' => $fileData,
                 'mimetype' => $mimeType,
                 'filename' => (string) ($attachment['fileName'] ?? 'attachment'),
             ];
