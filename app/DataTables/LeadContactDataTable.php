@@ -313,6 +313,7 @@ class LeadContactDataTable extends BaseDataTable
             $leadContact = $leadContact->where(function ($query) {
                 $query->where('leads.client_name', 'like', '%' . request('searchText') . '%')
                     ->orWhere('leads.client_email', 'like', '%' . request('searchText') . '%')
+                    ->orWhere('leads.company_name', 'like', '%' . request('searchText') . '%')
                     ->orwhere('leads.mobile', 'like', '%' . request('searchText') . '%');
             });
         }
