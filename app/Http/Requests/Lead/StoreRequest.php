@@ -69,6 +69,7 @@ class StoreRequest extends CoreRequest
         $rules['client_email'] = 'nullable|email:rfc,strict|unique:leads,client_email,null,id,company_id,' . company()->id;
         $rules['status_id'] = 'nullable|integer|exists:lead_status,id';
         $rules['category_id'] = 'nullable|integer|exists:lead_category,id';
+        $rules['company_category_id'] = 'nullable|integer|exists:company_categories,id';
         $rules['assigned_to'] = 'nullable|integer|exists:users,id';
         $rules['interest_level'] = 'nullable|in:low,medium,high,very_high';
         $rules['deal_size'] = 'nullable|numeric|min:0';

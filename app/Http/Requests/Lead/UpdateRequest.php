@@ -54,6 +54,7 @@ class UpdateRequest extends CoreRequest
             'client_email' => 'nullable|email:rfc,strict|unique:leads,client_email,' . ($leadId ?? 'NULL') . ',id,company_id,' . company()->id,
             'status_id' => 'nullable|integer|exists:lead_status,id',
             'category_id' => 'nullable|integer|exists:lead_category,id',
+            'company_category_id' => 'nullable|integer|exists:company_categories,id',
             'assigned_to' => 'nullable|integer|exists:users,id',
             'interest_level' => 'nullable|in:low,medium,high,very_high',
             'deal_size' => 'nullable|numeric|min:0',

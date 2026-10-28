@@ -242,7 +242,7 @@ $editMobileLocal = (str_starts_with($rawEditMobile, '91') && strlen($rawEditMobi
                 <div class="row lead-contact-grid">
 
                     <div class="col-lg-3 col-md-6">
-                        <x-forms.text :fieldLabel="__('modules.lead.companyName')" fieldName="company_name"
+                        <x-forms.text fieldLabel="Business Name" fieldName="company_name"
                             fieldId="company_name" :fieldPlaceholder="__('placeholders.company')"
                             :fieldValue="$leadContact->company_name" field-label-inside="true" />
                     </div>

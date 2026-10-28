@@ -17,6 +17,8 @@ use App\Jobs\ImportLeadJob;
 use App\Jobs\SyncLeadChatHistoryJob;
 use App\Models\ClientNote;
 use App\Models\ClientCategory;
+use App\Models\CompanyArea;
+use App\Models\CompanyCategory;
 use App\Models\LeadCategory;
 use App\Models\Lead;
 use App\Models\LeadCustomForm;
@@ -68,6 +70,19 @@ class LeadContactController extends AccountBaseController
 
         if (!request()->ajax()) {
             $this->categories = LeadCategory::query()->select('id', 'category_name')->orderBy('category_name')->get();
+            $this->companyCategories = CompanyCategory::query()->select('id', 'name')->orderBy('name')->get();
+            $this->businessNames = Lead::query()
+                ->whereNotNull('company_name')
+                ->where('company_name', '!=', '')
+                ->select('company_name')
+                ->distinct()
+                ->orderBy('company_name')
+                ->pluck('company_name');
+            $this->businessAreas = CompanyArea::query()
+                ->select('name')
+                ->distinct()
+                ->orderBy('name')
+                ->pluck('name');
             $this->sources = LeadSource::query()->select('id', 'type')->orderBy('type')->get();
             $this->statuses = LeadStatus::query()->select('id', 'type', 'label_color', 'priority', 'default')->orderBy('priority')->get();
             $this->employees = User::allEmployees();
@@ -100,7 +115,7 @@ class LeadContactController extends AccountBaseController
         $isProfileTab = blank($tab) || $tab === 'profile';
 
         $leadRelations = $isProfileTab
-            ? ['leadSource', 'leadStatus', 'category', 'addedBy', 'assignedTo', 'followUps', 'latestFollowUp']
+            ? ['leadSource', 'leadStatus', 'category', 'companyCategory', 'addedBy', 'assignedTo', 'followUps', 'latestFollowUp']
             : ['addedBy'];
 
         $this->leadContact = Lead::with($leadRelations)->findOrFail($id);
@@ -155,6 +170,12 @@ class LeadContactController extends AccountBaseController
     private function loadLeadProfileData(): void
     {
         $this->categories = LeadCategory::query()->select('id', 'category_name')->orderBy('category_name')->get();
+        $this->companyCategories = CompanyCategory::query()->select('id', 'name')->orderBy('name')->get();
+        $this->companyAreas = CompanyArea::query()
+            ->when($this->leadContact->district, fn ($query, $district) => $query->where('district', $district), fn ($query) => $query->whereRaw('1 = 0'))
+            ->select('id', 'name', 'district')
+            ->orderBy('name')
+            ->get();
         $this->sources = LeadSource::query()->select('id', 'type')->orderBy('type')->get();
         $this->statuses = LeadStatus::query()->select('id', 'type', 'label_color', 'priority', 'default')->orderBy('priority')->get();
         $this->products = Product::query()->select('id', 'name')->orderBy('name')->get();
@@ -752,6 +773,7 @@ class LeadContactController extends AccountBaseController
         $this->sources = LeadSource::query()->select('id', 'type')->orderBy('type')->get();
         $this->status = LeadStatus::query()->select('id', 'type', 'label_color', 'priority', 'default')->orderBy('priority')->get();
         $this->categories = LeadCategory::query()->select('id', 'category_name')->orderBy('category_name')->get();
+        $this->companyCategories = CompanyCategory::query()->select('id', 'name')->orderBy('name')->get();
         $this->countries = countries();
         // salutations removed
 
@@ -815,6 +837,7 @@ class LeadContactController extends AccountBaseController
         $leadContact->source_id = $this->normalizeNullableInteger($request->input('source_id'));
         $leadContact->status_id = $this->normalizeNullableInteger($request->input('status_id'));
         $leadContact->category_id = $this->normalizeNullableInteger($request->input('category_id'));
+        $leadContact->company_category_id = $this->normalizeNullableInteger($request->input('company_category_id'));
         $leadContact->client_id = $existingUser?->id;
         if ($request->has('company_name')) {
             $leadContact->company_name = $request->company_name;
@@ -915,6 +938,7 @@ class LeadContactController extends AccountBaseController
         $this->sources = LeadSource::query()->select('id', 'type')->orderBy('type')->get();
         $this->status = LeadStatus::query()->select('id', 'type', 'label_color', 'priority', 'default')->orderBy('priority')->get();
         $this->categories = LeadCategory::query()->select('id', 'category_name')->orderBy('category_name')->get();
+        $this->companyCategories = CompanyCategory::query()->select('id', 'name')->orderBy('name')->get();
         $this->countries = countries();
 
         $this->pageTitle = __('modules.leadContact.updateTitle');
@@ -968,6 +992,10 @@ class LeadContactController extends AccountBaseController
 
         if ($request->exists('category_id')) {
             $leadContact->category_id = $this->normalizeNullableInteger($request->input('category_id'));
+        }
+
+        if ($request->exists('company_category_id')) {
+            $leadContact->company_category_id = $this->normalizeNullableInteger($request->input('company_category_id'));
         }
 
         if ($request->exists('company_name')) {
@@ -1085,7 +1113,7 @@ class LeadContactController extends AccountBaseController
         $rawValue = $request->input('value');
         $value = is_string($rawValue) ? trim($rawValue) : $rawValue;
 
-        if (in_array($field, ['source_id', 'category_id', 'status_id', 'assigned_to', 'added_by'], true)) {
+        if (in_array($field, ['source_id', 'category_id', 'company_category_id', 'status_id', 'assigned_to', 'added_by'], true)) {
             $value = ($value === '' || is_null($value)) ? null : (int) $value;
         }
 
@@ -1102,6 +1130,14 @@ class LeadContactController extends AccountBaseController
 
             if (!is_null($value)) {
                 abort_unless(LeadCategory::whereKey($value)->exists(), 422, 'Invalid lead category selected.');
+            }
+        }
+
+        if ($field === 'company_category_id') {
+            abort_403(user()->permission('view_lead_category') === 'none');
+
+            if (!is_null($value)) {
+                abort_unless(CompanyCategory::whereKey($value)->exists(), 422, 'Invalid company category selected.');
             }
         }
 
@@ -1208,13 +1244,14 @@ class LeadContactController extends AccountBaseController
 
         $currentValue = $leadContact->{$field};
         if ((is_null($currentValue) ? '' : (string) $currentValue) === (is_null($value) ? '' : (string) $value)) {
-            $leadContact->loadMissing(['leadSource', 'category', 'leadStatus', 'assignedTo', 'addedBy']);
+            $leadContact->loadMissing(['leadSource', 'category', 'companyCategory', 'leadStatus', 'assignedTo', 'addedBy']);
 
             return Reply::successWithData(__('messages.updateSuccess'), [
                 'field' => $field,
                 'value' => $value,
                 'source' => $leadContact->leadSource?->type,
                 'category' => $leadContact->category?->category_name,
+                'company_category' => $leadContact->companyCategory?->name,
                 'lead_status' => $leadContact->leadStatus?->type,
                 'statusColor' => $leadContact->leadStatus?->label_color,
                 'added_by_name' => $leadContact->addedBy?->name,
@@ -1240,13 +1277,14 @@ class LeadContactController extends AccountBaseController
             $this->syncConvertedClientDealSize($leadContact);
         }
 
-        $leadContact->loadMissing(['leadSource', 'category', 'leadStatus', 'assignedTo', 'addedBy']);
+        $leadContact->loadMissing(['leadSource', 'category', 'companyCategory', 'leadStatus', 'assignedTo', 'addedBy']);
 
         return Reply::successWithData(__('messages.updateSuccess'), [
             'field' => $field,
             'value' => $value,
             'source' => $leadContact->leadSource?->type,
             'category' => $leadContact->category?->category_name,
+            'company_category' => $leadContact->companyCategory?->name,
             'lead_status' => $leadContact->leadStatus?->type,
             'statusColor' => $leadContact->leadStatus?->label_color,
             'added_by_name' => $leadContact->addedBy?->name,
@@ -1260,6 +1298,22 @@ class LeadContactController extends AccountBaseController
         $this->quickAddType = $type;
 
         return view('lead-contact.quick-add-option-modal', $this->data);
+    }
+
+    public function companyAreas(Request $request)
+    {
+        $district = trim((string) $request->query('district'));
+
+        if ($district === '') {
+            return response()->json(['data' => []]);
+        }
+
+        return response()->json([
+            'data' => CompanyArea::query()
+                ->where('district', $district)
+                ->orderBy('name')
+                ->get(['name']),
+        ]);
     }
 
     public function quickAddStore(Request $request, string $type)
@@ -1291,6 +1345,31 @@ class LeadContactController extends AccountBaseController
             $option->category_name = $validated['name'];
             $field = 'category_id';
             $value = null;
+        } elseif ($type === 'company-category') {
+            $alreadyExists = CompanyCategory::where('name', $validated['name'])->exists();
+            abort_unless(!$alreadyExists, 422, 'This company category already exists.');
+
+            $option = new CompanyCategory();
+            $option->company_id = company()->id;
+            $option->name = $validated['name'];
+            $field = 'company_category_id';
+            $value = null;
+        } elseif ($type === 'company-area') {
+            $district = trim((string) $request->input('district'));
+            abort_unless($district !== '', 422, 'Select a district before adding an area.');
+
+            $alreadyExists = CompanyArea::where('district', $district)
+                ->where('name', $validated['name'])
+                ->exists();
+            abort_unless(!$alreadyExists, 422, 'This area already exists in the selected district.');
+
+            $option = new CompanyArea();
+            $option->company_id = company()->id;
+            $option->state = trim((string) $request->input('state')) ?: null;
+            $option->district = $district;
+            $option->name = $validated['name'];
+            $field = 'area';
+            $value = $validated['name'];
         } elseif ($type === 'status') {
             $option = new LeadStatus();
             $option->type = $validated['name'];
@@ -1320,11 +1399,11 @@ class LeadContactController extends AccountBaseController
 
     private function authorizeQuickAdd(string $type): void
     {
-        abort_unless(in_array($type, ['source', 'category', 'status', 'product'], true), 404);
+        abort_unless(in_array($type, ['source', 'category', 'company-category', 'company-area', 'status', 'product'], true), 404);
 
         if ($type === 'source') {
             abort_403(!in_array(user()->permission('add_lead_sources'), ['all', 'added'], true));
-        } elseif ($type === 'category') {
+        } elseif (in_array($type, ['category', 'company-category', 'company-area'], true)) {
             abort_403(!in_array(user()->permission('add_lead_category'), ['all', 'added'], true));
         } elseif ($type === 'status') {
             abort_403(!in_array('admin', user_roles(), true));

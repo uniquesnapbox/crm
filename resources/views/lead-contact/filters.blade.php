@@ -141,12 +141,57 @@
         </div>
 
         <div class="more-filter-items">
+            <label class="f-14 text-dark-grey mb-12 text-capitalize" for="filter_area">Area</label>
+            <div class="select-filter mb-4">
+                <div class="select-others">
+                    <select class="form-control select-picker" id="filter_area" data-live-search="true" data-container="body" data-size="8">
+                        <option value="all">@lang('app.all')</option>
+                        <option value="__blank__">-- (Blank)</option>
+                        @foreach ($businessAreas ?? [] as $businessArea)
+                            <option value="{{ $businessArea }}">{{ $businessArea }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="more-filter-items">
             <label class="f-14 text-dark-grey mb-12 text-capitalize" for="date_filter_on">@lang('app.dateFilterOn')</label>
             <div class="select-filter mb-4">
                 <select class="form-control select-picker" name="date_filter_on" id="date_filter_on">
                     <option value="created_at">@lang('app.createdOn')</option>
                     <option value="updated_at">@lang('app.updatedOn')</option>
                 </select>
+            </div>
+        </div>
+
+        <div class="more-filter-items">
+            <label class="f-14 text-dark-grey mb-12 text-capitalize" for="filter_business_name">Business Name</label>
+            <div class="select-filter mb-4">
+                <div class="select-others">
+                    <select class="form-control select-picker" id="filter_business_name" data-live-search="true" data-container="body" data-size="8">
+                        <option value="all">@lang('app.all')</option>
+                        <option value="__blank__">-- (Blank)</option>
+                        @foreach ($businessNames ?? [] as $businessName)
+                            <option value="{{ $businessName }}">{{ $businessName }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="more-filter-items">
+            <label class="f-14 text-dark-grey mb-12 text-capitalize" for="filter_company_category_id">Business Category</label>
+            <div class="select-filter mb-4">
+                <div class="select-others">
+                    <select class="form-control select-picker" id="filter_company_category_id" data-live-search="true" data-container="body" data-size="8">
+                        <option value="all">@lang('app.all')</option>
+                        <option value="__blank__">-- (Blank)</option>
+                        @foreach ($companyCategories ?? [] as $companyCategory)
+                            <option value="{{ $companyCategory->id }}">{{ $companyCategory->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
             </div>
         </div>
 
@@ -295,6 +340,9 @@
         const initialLeadDistrictOptions = $('#filter_district option').map(function() {
             return { value: this.value, text: $(this).text() };
         }).get();
+        const initialLeadAreaOptions = $('#filter_area option').map(function() {
+            return { value: this.value, text: $(this).text() };
+        }).get();
 
         function replaceLeadLocationFilterOptions($select, options, selectedValue) {
             $select.empty();
@@ -311,6 +359,32 @@
             ].concat(values.map(function(value) {
                 return { value: value, text: value };
             }));
+        }
+
+        function loadLeadFilterAreas(district) {
+            const $area = $('#filter_area');
+
+            if (!district || district === 'all' || district === '__blank__') {
+                replaceLeadLocationFilterOptions($area, initialLeadAreaOptions, 'all');
+                return;
+            }
+
+            $area.empty()
+                .append($('<option>', { value: 'all', text: 'Loading...' }))
+                .val('all')
+                .prop('disabled', true)
+                .selectpicker('refresh');
+
+            $.get(@json(route('lead-contact.company_areas')), { district: district })
+                .done(function(response) {
+                    const areas = Array.isArray(response.data)
+                        ? response.data.map(function(item) { return typeof item === 'string' ? item : item.name; }).filter(Boolean)
+                        : [];
+                    replaceLeadLocationFilterOptions($area, defaultLeadLocationOptions(areas), 'all');
+                })
+                .fail(function() {
+                    replaceLeadLocationFilterOptions($area, initialLeadAreaOptions, 'all');
+                });
         }
 
         function loadLeadFilterDistricts(country, state) {
@@ -352,6 +426,7 @@
             }
 
             replaceLeadLocationFilterOptions($('#filter_district'), initialLeadDistrictOptions, 'all');
+            replaceLeadLocationFilterOptions($('#filter_area'), initialLeadAreaOptions, 'all');
             $('#reset-filters').toggleClass('d-none', country === 'all');
             showTable();
         });
@@ -361,12 +436,13 @@
             const state = $(this).val();
 
             replaceLeadLocationFilterOptions($('#filter_district'), initialLeadDistrictOptions, 'all');
+            replaceLeadLocationFilterOptions($('#filter_area'), initialLeadAreaOptions, 'all');
             $('#reset-filters').toggleClass('d-none', country === 'all' && state === 'all');
             showTable();
             loadLeadFilterDistricts(country, state);
         });
 
-        $('#type, #filter_assigned_to, #filter_category_id, #filter_status_id, #filter_interest_level, #filter_source_id, #filter_district, #date_filter_on, #filter_duplicate_leads, #min, #max, #filter_addedBy')
+        $('#type, #filter_assigned_to, #filter_category_id, #filter_company_category_id, #filter_business_name, #filter_status_id, #filter_interest_level, #filter_source_id, #filter_district, #filter_area, #date_filter_on, #filter_duplicate_leads, #min, #max, #filter_addedBy')
             .on('change keyup', function() {
                 if ($('#type').val() != "lead") {
                     $('#reset-filters').removeClass('d-none');
@@ -378,6 +454,12 @@
                     $('#reset-filters').removeClass('d-none');
                     showTable();
                 } else if ($('#filter_category_id').val() != "all") {
+                    $('#reset-filters').removeClass('d-none');
+                    showTable();
+                } else if ($('#filter_company_category_id').val() != "all") {
+                    $('#reset-filters').removeClass('d-none');
+                    showTable();
+                } else if ($('#filter_business_name').val() != "all") {
                     $('#reset-filters').removeClass('d-none');
                     showTable();
                 } else if ($('#filter_source_id').val() != "all") {
@@ -404,6 +486,9 @@
                 } else if ($('#filter_district').val() != "all") {
                     $('#reset-filters').removeClass('d-none');
                     showTable();
+                } else if ($('#filter_area').val() != "all") {
+                    $('#reset-filters').removeClass('d-none');
+                    showTable();
                 } else if ($('#filter_addedBy').val() != "all") {
                     $('#reset-filters').removeClass('d-none');
                     showTable();
@@ -415,6 +500,10 @@
                     showTable();
                 }
             });
+
+        $('#filter_district').on('change', function() {
+            loadLeadFilterAreas($(this).val());
+        });
 
         $('#search-text-field').on('keyup', function() {
             if ($('#search-text-field').val() != "") {

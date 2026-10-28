@@ -836,6 +836,11 @@
             $quickUpdateUrl = route('lead-contact.quick_update', $leadContact->id);
             $leadSourceCreateUrl = ($addLeadSourcesPermission === 'all' || $addLeadSourcesPermission === 'added') ? route('lead-contact.quick_add_form', 'source') : null;
             $leadCategoryCreateUrl = ($addLeadCategoryPermission === 'all' || $addLeadCategoryPermission === 'added') ? route('lead-contact.quick_add_form', 'category') : null;
+            $companyCategoryCreateUrl = ($addLeadCategoryPermission === 'all' || $addLeadCategoryPermission === 'added') ? route('lead-contact.quick_add_form', 'company-category') : null;
+            $companyAreaCreateUrl = ($addLeadCategoryPermission === 'all' || $addLeadCategoryPermission === 'added')
+                ? route('lead-contact.quick_add_form', 'company-area') . '?state=' . urlencode((string) ($leadContact->state ?? '')) . '&district=' . urlencode((string) ($leadContact->district ?? ''))
+                : null;
+            $companyAreasUrl = route('lead-contact.company_areas');
             $leadStatusCreateUrl = in_array('admin', user_roles()) ? route('lead-contact.quick_add_form', 'status') : null;
             $addProductPermission = user()->permission('add_product');
             $leadProductCreateUrl = in_array('products', user_modules()) && in_array($addProductPermission, ['all', 'added'])
@@ -913,7 +918,7 @@
                                 </span>
                             @endif
                         </div>
-                        <p class="lead-company">{{ $leadContact->company_name ?: 'No company assigned' }}</p>
+                        <p class="lead-company">{{ $leadContact->company_name ?: 'No business assigned' }}</p>
                         <p class="lead-phone mb-0">
                             <i class="fa fa-phone mr-1"></i>{{ $contactNumber ?: '--' }}
                             <span class="lead-status-badge {{ $statusClass }} ml-2" id="lead-contact-status-badge">{{ $statusLabel }}</span>
@@ -1229,7 +1234,7 @@
 
                     @if ($canInlineQuickEdit)
                         <div class="lead-profile-row">
-                            <p class="lead-label">@lang('modules.lead.companyName')</p>
+                            <p class="lead-label">Business Name</p>
                             <div class="lead-value-wrap w-100">
                                 <input type="text" class="form-control js-lead-inline-field" id="lead-company-name" name="company_name" data-field="company_name" data-url="{{ $quickUpdateUrl }}"
                                     data-prev-value="{{ $leadContact->company_name ?? '' }}" value="{{ $leadContact->company_name ?? '' }}">
@@ -1237,7 +1242,32 @@
                             </div>
                         </div>
                     @else
-                        <div class="lead-profile-row"><p class="lead-label">@lang('modules.lead.companyName')</p><div class="lead-value-wrap"><p class="mb-0 text-dark">{{ $leadContact->company_name ?: '--' }}</p></div></div>
+                        <div class="lead-profile-row"><p class="lead-label">Business Name</p><div class="lead-value-wrap"><p class="mb-0 text-dark">{{ $leadContact->company_name ?: '--' }}</p></div></div>
+                    @endif
+
+                    @if ($viewLeadCategoryPermission !== 'none')
+                        <div class="lead-profile-row">
+                            <p class="lead-label">Business Category</p>
+                            @if ($canInlineQuickEdit)
+                                <div class="lead-value-wrap w-100">
+                                    <div class="lead-inline-select-group">
+                                        <select class="form-control select-picker js-lead-inline-field js-lead-inline-select js-inline-autosave" id="lead-company-category-id" name="company_category_id" data-live-search="true"
+                                            data-field="company_category_id" data-url="{{ $quickUpdateUrl }}" data-prev-value="{{ $leadContact->company_category_id ?? '' }}">
+                                            <option value="">--</option>
+                                            @foreach ($companyCategories as $companyCategory)
+                                                <option value="{{ $companyCategory->id }}" @selected($leadContact->company_category_id == $companyCategory->id)>{{ $companyCategory->name }}</option>
+                                            @endforeach
+                                        </select>
+                                        <button type="button" class="btn-inline-add js-inline-create-option"
+                                            data-create-url="{{ $companyCategoryCreateUrl }}"
+                                            title="Add business category">+</button>
+                                    </div>
+                                    <small class="text-muted d-none js-inline-save-state"></small>
+                                </div>
+                            @else
+                                <div class="lead-value-wrap"><p class="mb-0 text-dark">{{ $leadContact->companyCategory->name ?? '--' }}</p></div>
+                            @endif
+                        </div>
                     @endif
 
                     @if ($canInlineQuickEdit)
@@ -1339,6 +1369,33 @@
                             <div class="lead-profile-row lead-location-row"><div class="lead-value-wrap"><p class="mb-0 text-dark">{{ $leadContact->{$locationField} ?? '--' }}</p></div></div>
                         @endif
                     @endforeach
+
+                    @if ($canInlineQuickEdit)
+                        <div class="lead-profile-row lead-location-row lead-area-row">
+                            <p class="lead-label">Area</p>
+                            <div class="lead-value-wrap w-100">
+                                <div class="lead-inline-select-group">
+                                    <select class="form-control select-picker js-lead-inline-field js-lead-inline-select js-inline-autosave" id="lead-area" name="area" data-live-search="true"
+                                        data-field="area" data-url="{{ $quickUpdateUrl }}" data-areas-url="{{ $companyAreasUrl }}" data-prev-value="{{ $leadContact->area ?? '' }}" data-current-value="{{ $leadContact->area ?? '' }}">
+                                        <option value="">Select Area</option>
+                                        @foreach ($companyAreas as $companyArea)
+                                            <option value="{{ $companyArea->name }}" @selected($leadContact->area === $companyArea->name)>{{ $companyArea->name }}</option>
+                                        @endforeach
+                                        @if ($leadContact->area && !$companyAreas->contains('name', $leadContact->area))
+                                            <option value="{{ $leadContact->area }}" selected>{{ $leadContact->area }}</option>
+                                        @endif
+                                    </select>
+                                    <button type="button" class="btn-inline-add js-inline-create-option"
+                                        data-create-url="{{ $companyAreaCreateUrl }}"
+                                        data-base-create-url="{{ $companyAreaCreateUrl ? route('lead-contact.quick_add_form', 'company-area') : '' }}"
+                                        title="Add area">+</button>
+                                </div>
+                                <small class="text-muted d-none js-inline-save-state"></small>
+                            </div>
+                        </div>
+                    @else
+                        <div class="lead-profile-row lead-location-row"><p class="lead-label">Area</p><div class="lead-value-wrap"><p class="mb-0 text-dark">{{ $leadContact->area ?? '--' }}</p></div></div>
+                    @endif
                         </div>
                     </div>
 
@@ -2059,18 +2116,82 @@
 
     function loadLeadDistricts(state, selectedDistrict) {
         const $district = $('#lead-district');
+        const $area = $('#lead-area');
         if (!state) {
             $district.empty().append($('<option>', { value: '', text: 'Select District' })).prop('disabled', true);
+            loadLeadAreas('', '');
             return;
         }
 
-        loadLocationOptions('https://countriesnow.space/api/v0.1/countries/state/cities', { country: 'India', state: state }, $district, selectedDistrict, 'Select District');
+        loadLocationOptions('https://countriesnow.space/api/v0.1/countries/state/cities', { country: 'India', state: state }, $district, selectedDistrict, 'Select District')
+            .done(function() {
+                loadLeadAreas($district.val() || '', $area.data('current-value') || '');
+            });
+    }
+
+    function loadLeadAreas(district, selectedArea) {
+        const $area = $('#lead-area');
+        if (!$area.length) {
+            return;
+        }
+
+        const $addButton = $('.js-inline-create-option[data-base-create-url]').first();
+        const baseCreateUrl = ($addButton.attr('data-base-create-url') || '').toString();
+        const state = String($('#lead-state').val() || '').trim();
+        const areaUrl = ($area.data('areas-url') || '').toString();
+
+        if ($addButton.length && baseCreateUrl) {
+            const createUrl = new URL(baseCreateUrl, window.location.origin);
+            createUrl.searchParams.set('state', state);
+            createUrl.searchParams.set('district', district || '');
+            $addButton.attr('data-create-url', createUrl.pathname + createUrl.search).data('create-url', createUrl.pathname + createUrl.search);
+        }
+
+        if (!areaUrl || !district) {
+            $area.empty().append($('<option>', { value: '', text: 'Select Area' })).val('').prop('disabled', !district);
+            if (typeof $area.selectpicker === 'function') {
+                $area.selectpicker('refresh');
+            }
+            return;
+        }
+
+        $area.prop('disabled', true).empty().append($('<option>', { value: '', text: 'Loading...' }));
+        $.get(areaUrl, { state: state, district: district }, function(response) {
+            $area.empty().append($('<option>', { value: '', text: 'Select Area' }));
+            (response.data || []).forEach(function(item) {
+                $area.append($('<option>', { value: item.name, text: item.name }));
+            });
+
+            if (selectedArea && (response.data || []).some(function(item) { return item.name === selectedArea; })) {
+                $area.val(selectedArea);
+            }
+            $area.prop('disabled', false);
+            if (typeof $area.selectpicker === 'function') {
+                $area.selectpicker('refresh');
+            }
+        }).fail(function() {
+            $area.empty().append($('<option>', { value: '', text: 'Unable to load areas' })).prop('disabled', true);
+            if (typeof $area.selectpicker === 'function') {
+                $area.selectpicker('refresh');
+            }
+        });
     }
 
     $('body').off('change.leadLocationState').on('change.leadLocationState', '#lead-state', function() {
         const $district = $('#lead-district');
+        const $area = $('#lead-area');
         $district.data('current-value', '');
+        $area.data('current-value', '');
+        $area.val('').trigger('change');
         loadLeadDistricts($(this).val(), '');
+        queueInlineAutosave($(this), DROPDOWN_AUTO_SAVE_DELAY_MS);
+    });
+
+    $('body').off('change.leadLocationDistrict').on('change.leadLocationDistrict', '#lead-district', function() {
+        const $area = $('#lead-area');
+        $area.data('current-value', '');
+        $area.val('').trigger('change');
+        loadLeadAreas($(this).val(), '');
         queueInlineAutosave($(this), DROPDOWN_AUTO_SAVE_DELAY_MS);
     });
 
@@ -2104,6 +2225,18 @@
         min-width: 0;
         padding: 0;
         margin: 0 !important;
+    }
+
+    .lead-card .lead-area-row {
+        grid-column: 1 / -1;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .lead-card .lead-area-row .lead-label {
+        flex: 0 0 110px;
+        margin-bottom: 0;
     }
 
     .lead-card .lead-location-grid {

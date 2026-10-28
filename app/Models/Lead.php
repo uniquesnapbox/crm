@@ -25,6 +25,7 @@ use App\Models\User;
  * @property int|null $status_id
  * @property int $column_priority
  * @property string|null $company_name
+ * @property int|null $company_category_id
  * @property string|null $website
  * @property string|null $address
  * @property string $client_name
@@ -86,6 +87,7 @@ use App\Models\User;
  * @method static \Illuminate\Database\Eloquent\Builder|Lead whereWebsite($value)
  * @property string|null $hash
  * @property-read \App\Models\LeadCategory|null $category
+ * @property-read \App\Models\CompanyCategory|null $companyCategory
  * @method static \Illuminate\Database\Eloquent\Builder|Lead whereHash($value)
  * @property int|null $company_id
  * @property-read \App\Models\Company|null $company
@@ -148,6 +150,11 @@ class Lead extends BaseModel
     public function category(): BelongsTo
     {
         return $this->belongsTo(LeadCategory::class, 'category_id');
+    }
+
+    public function companyCategory(): BelongsTo
+    {
+        return $this->belongsTo(CompanyCategory::class, 'company_category_id');
     }
 
     public function leadStatus(): BelongsTo

@@ -2,6 +2,8 @@
     $config = [
         'source' => ['title' => 'Add Source', 'label' => 'Source Name'],
         'category' => ['title' => 'Add Lead Category', 'label' => 'Category Name'],
+        'company-category' => ['title' => 'Add Business Category', 'label' => 'Business Category Name'],
+        'company-area' => ['title' => 'Add Area', 'label' => 'Area Name'],
         'status' => ['title' => 'Add Lead Status', 'label' => 'Status Name'],
         'product' => ['title' => 'Add Product / Service', 'label' => 'Product / Service Name'],
     ][$quickAddType];
@@ -16,6 +18,10 @@
     </div>
 
     <div class="modal-body">
+        @if ($quickAddType === 'company-area')
+            <input type="hidden" name="district" value="{{ request('district') }}">
+            <input type="hidden" name="state" value="{{ request('state') }}">
+        @endif
         <x-forms.text fieldId="quick_add_name" :fieldLabel="$config['label']" fieldName="name"
             fieldRequired="true" />
 

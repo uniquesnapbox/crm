@@ -238,7 +238,7 @@ $assignLeadPermission = in_array('admin', user_roles()) || user()->permission('a
                 <div class="row lead-contact-grid" id="other-details">
 
                     <div class="col-lg-3 col-md-6">
-                        <x-forms.text :fieldLabel="__('modules.lead.companyName')" fieldName="company_name"
+                        <x-forms.text fieldLabel="Business Name" fieldName="company_name"
                             fieldId="company_name" :fieldPlaceholder="__('placeholders.company')" field-label-inside="true" />
                     </div>
 

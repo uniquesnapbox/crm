@@ -205,6 +205,26 @@ class LeadContactDataTable extends BaseDataTable
             $leadContact = $leadContact->where('category_id', $this->request()->category_id);
         }
 
+        $businessName = $this->request()->input('business_name', 'all');
+        if (is_array($businessName)) {
+            $leadContact = $this->applyMultiSelectFilter($leadContact, 'business_name', 'leads.company_name');
+        } elseif ($businessName === '__blank__') {
+            $leadContact = $leadContact->where(function ($query) {
+                $query->whereNull('leads.company_name')->orWhere('leads.company_name', '');
+            });
+        } elseif ($businessName !== 'all' && $businessName !== '') {
+            $leadContact = $leadContact->where('leads.company_name', $businessName);
+        }
+
+        $companyCategory = $this->request()->input('company_category_id', 'all');
+        if (is_array($companyCategory)) {
+            $leadContact = $this->applyMultiSelectFilter($leadContact, 'company_category_id', 'leads.company_category_id');
+        } elseif ($companyCategory === '__blank__') {
+            $leadContact = $leadContact->whereNull('leads.company_category_id');
+        } elseif ($companyCategory !== 'all' && $companyCategory !== '') {
+            $leadContact = $leadContact->where('leads.company_category_id', $companyCategory);
+        }
+
         if (is_array($this->request()->source_id)) {
             $leadContact = $this->applyMultiSelectFilter($leadContact, 'source_id', 'leads.source_id');
         } elseif ($this->request()->source_id === '__blank__') {
@@ -258,6 +278,17 @@ class LeadContactDataTable extends BaseDataTable
             } elseif ($filterValue !== 'all' && $filterValue !== '') {
                 $leadContact = $leadContact->where('leads.' . $locationField, $filterValue);
             }
+        }
+
+        $area = $this->request()->input('filter_area', 'all');
+        if (is_array($area)) {
+            $leadContact = $this->applyMultiSelectFilter($leadContact, 'filter_area', 'leads.area');
+        } elseif ($area === '__blank__') {
+            $leadContact = $leadContact->where(function ($query) {
+                $query->whereNull('leads.area')->orWhere('leads.area', '');
+            });
+        } elseif ($area !== 'all' && $area !== '') {
+            $leadContact = $leadContact->where('leads.area', $area);
         }
 
         if ($this->request()->input('duplicate_leads', 'all') === 'duplicates') {
