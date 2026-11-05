@@ -70,6 +70,7 @@
                         <input type="password" class="form-control height-35 f-14 mb-3" id="drive_client_secret" placeholder="Blank chhodein to existing secret rahega" autocomplete="new-password">
                         <label class="f-14 text-dark-grey mb-12 w-100">Google Drive Folder ID (optional)</label>
                         <input type="text" class="form-control height-35 f-14" id="drive_folder_id" value="{{ $integration->drive_folder_id }}">
+                        <small class="text-muted">Blank chhodne par first backup me <strong>CRM Backup</strong> folder automatically banega.</small>
                     </div>
                     <div class="col-lg-6">
                         <label class="f-14 text-dark-grey mb-12 w-100">Backup Schedule</label>

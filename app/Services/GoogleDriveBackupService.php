@@ -74,7 +74,7 @@ class GoogleDriveBackupService
                 'name' => $history->file_name,
                 'description' => 'USB CRM automated backup',
             ]);
-            $folderId = $integration->drive_folder_id ?: null;
+            $folderId = $this->ensureBackupFolder($drive, $integration);
             if ($folderId) {
                 $metadata->setParents([$folderId]);
             }
@@ -100,6 +100,31 @@ class GoogleDriveBackupService
         } finally {
             File::deleteDirectory($tmpRoot);
         }
+    }
+
+    protected function ensureBackupFolder(Google_Service_Drive $drive, GoogleDriveBackupIntegration $integration): ?string
+    {
+        if ($integration->drive_folder_id) {
+            return $integration->drive_folder_id;
+        }
+
+        $folders = $drive->files->listFiles([
+            'q' => "name = 'CRM Backup' and mimeType = 'application/vnd.google-apps.folder' and trashed = false",
+            'spaces' => 'drive',
+            'fields' => 'files(id,name)',
+            'pageSize' => 1,
+        ])->getFiles();
+        $folder = $folders[0] ?? null;
+
+        if (!$folder) {
+            $folder = $drive->files->create(new Google_Service_Drive_DriveFile([
+                'name' => 'CRM Backup',
+                'mimeType' => 'application/vnd.google-apps.folder',
+            ]), ['fields' => 'id,name']);
+        }
+
+        $integration->update(['drive_folder_id' => $folder->getId()]);
+        return $folder->getId();
     }
 
     protected function createArchive(GoogleDriveBackupIntegration $integration, string $archive, string $tmpRoot): void
