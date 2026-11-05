@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Helper\Reply;
 use App\Http\Requests\Settings\UpdateOrganisationSettings;
+use App\Models\GoogleDriveBackupHistory;
+use App\Models\GoogleDriveBackupIntegration;
 use App\Traits\CurrencyExchange;
 
 class SettingsController extends AccountBaseController
@@ -28,6 +30,9 @@ class SettingsController extends AccountBaseController
      */
     public function index()
     {
+        $this->integration = GoogleDriveBackupIntegration::firstOrCreate(['company_id' => company()->id]);
+        $this->driveBackupHistories = GoogleDriveBackupHistory::where('company_id', company()->id)->latest()->limit(20)->get();
+        $this->driveCallbackUrl = route('google-drive-backup.callback');
         return view('company-settings.index', $this->data);
     }
 

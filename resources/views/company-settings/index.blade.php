@@ -52,6 +52,73 @@
                     </div>
                 </div>
 
+                <hr class="my-4">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h5 class="mb-0"><i class="fa fa-google-drive mr-2"></i>Google Drive Automated Backup</h5>
+                    @if($integration->refresh_token)
+                        <span class="badge badge-success">Connected{{ $integration->google_email ? ': '.$integration->google_email : '' }}</span>
+                    @else
+                        <span class="badge badge-secondary">Not connected</span>
+                    @endif
+                </div>
+                <div class="alert alert-info">Backup ZIP me database, uploaded documents aur safe configuration files honge. <strong>.env, passwords, private keys aur logs include nahi honge.</strong></div>
+                <div class="row">
+                    <div class="col-lg-6">
+                        <label class="f-14 text-dark-grey mb-12 w-100">OAuth Client ID</label>
+                        <input type="text" class="form-control height-35 f-14 mb-3" id="drive_client_id" value="{{ $integration->client_id }}">
+                        <label class="f-14 text-dark-grey mb-12 w-100">OAuth Client Secret</label>
+                        <input type="password" class="form-control height-35 f-14 mb-3" id="drive_client_secret" placeholder="Blank chhodein to existing secret rahega" autocomplete="new-password">
+                        <label class="f-14 text-dark-grey mb-12 w-100">Google Drive Folder ID (optional)</label>
+                        <input type="text" class="form-control height-35 f-14" id="drive_folder_id" value="{{ $integration->drive_folder_id }}">
+                    </div>
+                    <div class="col-lg-6">
+                        <label class="f-14 text-dark-grey mb-12 w-100">Backup Schedule</label>
+                        <select class="form-control height-35 f-14 mb-3" id="drive_schedule">
+                            <option value="manual" @selected($integration->schedule === 'manual')>Manual only</option>
+                            <option value="daily" @selected($integration->schedule === 'daily')>Daily</option>
+                            <option value="weekly" @selected($integration->schedule === 'weekly')>Weekly</option>
+                        </select>
+                        <label class="f-14 text-dark-grey mb-12 w-100">Retention</label>
+                        <select class="form-control height-35 f-14 mb-3" id="drive_retention_days">
+                            @foreach([7,15,30,90] as $days)<option value="{{ $days }}" @selected((int)$integration->retention_days === $days)>{{ $days }} days</option>@endforeach
+                        </select>
+                        <label class="d-block mb-2"><input type="checkbox" id="drive_include_uploads" @checked($integration->include_uploads)> Include uploaded files/documents</label>
+                        <label class="d-block"><input type="checkbox" id="drive_include_configuration" @checked($integration->include_configuration)> Include safe configuration/settings</label>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <small class="text-muted d-block mb-2">OAuth callback URL: <code>{{ $driveCallbackUrl }}</code></small>
+                    <button type="button" id="save-drive-settings" class="btn btn-primary mr-2">Save Drive Settings</button>
+                    <a href="{{ route('google-drive-backup.connect') }}" class="btn btn-info mr-2">Connect / Reconnect</a>
+                    @if($integration->refresh_token)
+                        <button type="button" id="verify-drive" class="btn btn-secondary mr-2">Verify</button>
+                        <button type="button" id="disconnect-drive" class="btn btn-outline-danger">Disconnect</button>
+                    @endif
+                </div>
+
+                <hr class="my-4">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h5 class="mb-0">Google Drive Backup History</h5>
+                    <button type="button" id="backup-now-drive" class="btn btn-primary" @disabled(!$integration->refresh_token)>Backup Now</button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm">
+                        <thead><tr><th>File name</th><th>Date/time</th><th>Size</th><th>Status</th><th>Drive link</th><th>Error</th></tr></thead>
+                        <tbody>
+                        @forelse($driveBackupHistories as $history)
+                            <tr>
+                                <td>{{ $history->file_name }}</td>
+                                <td>{{ $history->created_at?->timezone(company()->timezone)->format('d-m-Y H:i') }}</td>
+                                <td>{{ $history->file_size ? \App\Http\Controllers\DatabaseBackupSettingController::humanFileSize($history->file_size) : '-' }}</td>
+                                <td><span class="badge badge-{{ $history->status === 'success' ? 'success' : ($history->status === 'failed' ? 'danger' : 'warning') }}">{{ ucfirst($history->status) }}</span></td>
+                                <td>@if($history->google_drive_url)<a href="{{ $history->google_drive_url }}" target="_blank">Open Drive</a>@else - @endif</td>
+                                <td>{{ $history->error_message ?: '-' }}</td>
+                            </tr>
+                        @empty <tr><td colspan="6" class="text-center">No Google Drive backups yet.</td></tr> @endforelse
+                        </tbody>
+                    </table>
+                </div>
+
             </div>
 
             <x-slot name="action">
@@ -111,5 +178,30 @@
                 window.location.href = "{{ route('database-backup-settings.create_backup_download') }}";
             });
         });
+
+        function drivePost(url, data) {
+            $.easyAjax({
+                url: url,
+                type: 'POST',
+                data: Object.assign({_token: '{{ csrf_token() }}'}, data || {}),
+                blockUI: true,
+                success: function () { window.location.reload(); }
+            });
+        }
+
+        $('#save-drive-settings').click(function () {
+            drivePost('{{ route('google-drive-backup.save') }}', {
+                client_id: $('#drive_client_id').val(),
+                client_secret: $('#drive_client_secret').val(),
+                drive_folder_id: $('#drive_folder_id').val(),
+                schedule: $('#drive_schedule').val(),
+                retention_days: $('#drive_retention_days').val(),
+                include_uploads: $('#drive_include_uploads').is(':checked') ? 1 : 0,
+                include_configuration: $('#drive_include_configuration').is(':checked') ? 1 : 0
+            });
+        });
+        $('#verify-drive').click(function () { drivePost('{{ route('google-drive-backup.verify') }}'); });
+        $('#disconnect-drive').click(function () { drivePost('{{ route('google-drive-backup.disconnect') }}'); });
+        $('#backup-now-drive').click(function () { drivePost('{{ route('google-drive-backup.now') }}'); });
     </script>
 @endpush

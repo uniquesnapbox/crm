@@ -25,10 +25,7 @@ class GoogleDriveBackupController extends AccountBaseController
 
     public function index()
     {
-        $this->integration = GoogleDriveBackupIntegration::firstOrCreate(['company_id' => company()->id]);
-        $this->histories = GoogleDriveBackupHistory::where('company_id', company()->id)->latest()->limit(50)->get();
-        $this->callbackUrl = route('google-drive-backup.callback');
-        return view('google-drive-backup.index', $this->data);
+        return redirect()->route('company-settings.index');
     }
 
     public function save(Request $request)
