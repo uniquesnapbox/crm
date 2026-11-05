@@ -21,6 +21,12 @@
                         <x-forms.button-secondary icon="cog" id="auto-backup" class="mb-2 mb-lg-0 mb-md-0 ml-3">
                             @lang('modules.databaseBackup.autobackup')
                         </x-forms.button-secondary>
+
+                        @if(in_array('admin', user_roles()))
+                            <a href="{{ route('google-drive-backup.index') }}" class="btn btn-info mb-2 mb-lg-0 mb-md-0 ml-3">
+                                <i class="fa fa-google-drive mr-1"></i> Google Drive Backup
+                            </a>
+                        @endif
                     </div>
                 </div>
             </x-slot>

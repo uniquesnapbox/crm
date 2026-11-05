@@ -31,6 +31,7 @@ use App\Console\Commands\SendTimeTracker;
 use App\Console\Commands\InActiveEmployee;
 use App\Console\Commands\PrewarmDashboardCache;
 use App\Console\Commands\PerformanceReport;
+use App\Console\Commands\GoogleDriveBackupCommand;
 use DateTimeZone;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
@@ -73,6 +74,7 @@ class Kernel extends ConsoleKernel
         InActiveEmployee::class,
         PerformanceReport::class,
         PrewarmDashboardCache::class,
+        GoogleDriveBackupCommand::class,
     ];
 
     /**
@@ -140,6 +142,8 @@ class Kernel extends ConsoleKernel
         $schedule->command('queue:prune-failed --hours=168')->dailyAt('03:10');
         $schedule->command('perf:report --hours=24 --top=10 --prune')->hourly()->withoutOverlapping();
         $schedule->command('dashboard:prewarm-cache --users=20')->everyMinute()->withoutOverlapping();
+
+        $schedule->command('crm:google-drive-backup')->hourly()->withoutOverlapping(30);
 
         // Queue worker with queue priority and bounded run time.
         $schedule->command('queue:work database --queue=high,default,low --sleep=3 --tries=3 --max-time=3600 --stop-when-empty')

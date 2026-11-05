@@ -46,6 +46,7 @@ use App\Http\Controllers\TicketEmailSettingController;
 use App\Http\Controllers\TicketReplyTemplatesController;
 use App\Http\Controllers\DatabaseBackupSettingController;
 use App\Http\Controllers\GoogleCalendarSettingController;
+use App\Http\Controllers\GoogleDriveBackupController;
 use App\Http\Controllers\LeadPipelineSettingController;
 use App\Http\Controllers\LeadStageSettingController;
 use App\Http\Controllers\OfflinePaymentSettingController;
@@ -208,6 +209,16 @@ Route::group(['middleware' => 'auth', 'prefix' => 'account/settings'], function 
     Route::resource('google-calendar-settings', GoogleCalendarSettingController::class);
     Route::get('google-auth', [GoogleAuthController::class, 'index'])->name('googleAuth');
     Route::delete('google-auth', [GoogleAuthController::class, 'destroy'])->name('googleAuth.destroy');
+
+    // Google Drive CRM backup
+    Route::get('google-drive-backup/callback', [GoogleDriveBackupController::class, 'callback'])->name('google-drive-backup.callback');
+    Route::get('google-drive-backup/connect', [GoogleDriveBackupController::class, 'connect'])->name('google-drive-backup.connect');
+    Route::post('google-drive-backup/save', [GoogleDriveBackupController::class, 'save'])->name('google-drive-backup.save');
+    Route::post('google-drive-backup/verify', [GoogleDriveBackupController::class, 'verify'])->name('google-drive-backup.verify');
+    Route::post('google-drive-backup/disconnect', [GoogleDriveBackupController::class, 'disconnect'])->name('google-drive-backup.disconnect');
+    Route::post('google-drive-backup/now', [GoogleDriveBackupController::class, 'backupNow'])->name('google-drive-backup.now');
+    Route::post('google-drive-backup/{history}/retry', [GoogleDriveBackupController::class, 'retry'])->name('google-drive-backup.retry');
+    Route::get('google-drive-backup', [GoogleDriveBackupController::class, 'index'])->name('google-drive-backup.index');
 
 
     // Database Backup Settings
