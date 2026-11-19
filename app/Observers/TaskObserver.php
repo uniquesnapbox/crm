@@ -340,7 +340,8 @@ class TaskObserver
             $task->event_id = $this->googleCalendarEvent($task);
         }
 
-        if (pusher_settings()->status == 1 && pusher_settings()->taskboard == 1) {
+        $pusherSettings = pusher_settings();
+        if ($pusherSettings?->status == 1 && $pusherSettings?->taskboard == 1) {
             Config::set('queue.default', 'sync'); // Set intentionally for instant delivery of messages
             Config::set('broadcasting.default', 'pusher'); // Set intentionally for instant delivery of messages
         }

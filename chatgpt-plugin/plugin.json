@@ -1,0 +1,20 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "usb-crm-chatgpt",
+  "version": "0.1.0",
+  "description": "Secure local MCP tools for USB CRM leads, tasks, follow-ups and reports.",
+  "author": { "name": "USB CRM" },
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "USB CRM",
+        "shortDescription": "Manage USB CRM securely",
+        "longDescription": "Use authenticated USB CRM APIs to search and manage leads, tasks, follow-ups and performance reports.",
+        "developerName": "USB CRM",
+        "category": "Productivity",
+        "capabilities": [],
+        "defaultPrompt": "Help me manage my USB CRM leads, tasks, follow-ups and reports."
+      }
+    }
+  }
+}

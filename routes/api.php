@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\MobileAttendanceController;
 use App\Http\Controllers\Api\AttendanceAdminController;
 use App\Http\Controllers\Api\DashboardApiController;
 use App\Http\Controllers\Api\MobileCrmApiController;
+use App\Http\Controllers\Api\McpApiController;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\WhatsappWebhookController;
 
@@ -90,4 +91,25 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Dashboard stats
     Route::get('dashboard/stats', [DashboardApiController::class, 'stats'])->name('api.dashboard.stats');
+
+    // ChatGPT/MCP operations. These use the authenticated CRM user and the
+    // existing permission model; no shared integration token is accepted.
+    Route::prefix('mcp/v1')->middleware('throttle:api')->group(function () {
+        Route::get('leads', [McpApiController::class, 'leads']);
+        Route::post('leads', [McpApiController::class, 'storeLead']);
+        Route::patch('leads/{lead}', [McpApiController::class, 'updateLead']);
+        Route::delete('leads/{lead}', [McpApiController::class, 'deleteLead']);
+        Route::patch('leads/{lead}/status', [McpApiController::class, 'updateLeadStatus']);
+        Route::get('leads/{lead}/follow-ups', [McpApiController::class, 'followUps']);
+        Route::post('leads/{lead}/follow-ups', [McpApiController::class, 'storeFollowUp']);
+        Route::patch('leads/{lead}/follow-ups/{followUp}', [McpApiController::class, 'updateFollowUp']);
+        Route::get('follow-ups', [McpApiController::class, 'pendingFollowUps']);
+        Route::get('tasks', [McpApiController::class, 'tasks']);
+        Route::post('tasks', [McpApiController::class, 'storeTask']);
+        Route::patch('tasks/{task}', [McpApiController::class, 'updateTask']);
+        Route::delete('tasks/{task}', [McpApiController::class, 'deleteTask']);
+        Route::patch('tasks/{task}/status', [McpApiController::class, 'updateTaskStatus']);
+        Route::patch('tasks/{task}/assignees', [McpApiController::class, 'assignTask']);
+        Route::get('reports/performance', [McpApiController::class, 'performanceReport']);
+    });
 });

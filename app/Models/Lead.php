@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\User;
 
 /**
@@ -101,7 +102,7 @@ use App\Models\User;
 class Lead extends BaseModel
 {
 
-    use Notifiable, HasFactory;
+    use Notifiable, HasFactory, SoftDeletes;
     use CustomFieldsTrait;
     use HasCompany;
 
