@@ -343,7 +343,7 @@ if ((process.env.MCP_TRANSPORT || 'stdio').toLowerCase() !== 'http') {
         return;
       }
       const authorization = req.headers.authorization || '';
-      const bearerMatch = /^Bearer\\s+(.+)$/i.exec(authorization);
+      const bearerMatch = /^Bearer\s+(.+)$/i.exec(authorization);
       const bearer = bearerMatch ? bearerMatch[1].trim() : '';
       const oauthToken = decryptOAuthPayload(bearer);
       const identity = bearer === accessToken
