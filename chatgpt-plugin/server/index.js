@@ -1,5 +1,8 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { createServer } from 'node:http';
+import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
 const apiBaseUrl = (process.env.CRM_API_URL || 'http://127.0.0.1:8081/api/mcp/v1').replace(/\/$/, '');
@@ -83,5 +86,47 @@ server.tool('delete_task', 'Soft-delete an authorized task. Requires explicit co
 
 server.tool('performance_report', 'Generate daily, weekly, monthly or custom CRM performance totals from database records.', { period: z.enum(['daily', 'weekly', 'monthly', 'custom']).optional(), from: z.string().optional(), to: z.string().optional() }, async ({ period, from, to }) => text(await crm(`/reports/performance?${new URLSearchParams(Object.entries({ period, from, to }).filter(([, v]) => v !== undefined))}`)));
 
-const transport = new StdioServerTransport();
-await server.connect(transport);
+if ((process.env.MCP_TRANSPORT || 'stdio').toLowerCase() !== 'http') {
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+} else {
+  const port = Number(process.env.MCP_PORT || 3015);
+  const path = process.env.MCP_PATH || '/mcp';
+  const accessToken = process.env.MCP_ACCESS_TOKEN || apiToken;
+  if (!accessToken) throw new Error('MCP_ACCESS_TOKEN is required for HTTP mode.');
+  const transports = new Map();
+  const readBody = async (req) => {
+    if (req.method !== 'POST') return undefined;
+    let raw = '';
+    for await (const chunk of req) raw += chunk;
+    return raw ? JSON.parse(raw) : undefined;
+  };
+  const httpServer = createServer(async (req, res) => {
+    try {
+      const requestPath = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`).pathname;
+      if (requestPath === `${path}/health`) {
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, service: 'usb-crm-mcp' }));
+        return;
+      }
+      if (requestPath !== path) { res.writeHead(404); res.end(); return; }
+      if (req.headers.authorization !== `Bearer ${accessToken}`) {
+        res.writeHead(401, { 'content-type': 'application/json', 'www-authenticate': 'Bearer' });
+        res.end(JSON.stringify({ error: 'Unauthorized' })); return;
+      }
+      const sessionId = req.headers['mcp-session-id'];
+      let transport = sessionId ? transports.get(sessionId) : undefined;
+      if (!transport) {
+        transport = new StreamableHTTPServerTransport({ sessionIdGenerator: () => randomUUID() });
+        transport.onclose = () => { if (transport.sessionId) transports.delete(transport.sessionId); };
+        await server.connect(transport);
+      }
+      await transport.handleRequest(req, res, await readBody(req));
+      if (transport.sessionId) transports.set(transport.sessionId, transport);
+    } catch (error) {
+      if (!res.headersSent) res.writeHead(500, { 'content-type': 'application/json' });
+      if (!res.writableEnded) res.end(JSON.stringify({ error: error.message }));
+    }
+  });
+  httpServer.listen(port, '127.0.0.1', () => console.error(`USB CRM MCP listening on 127.0.0.1:${port}${path}`));
+}

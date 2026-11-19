@@ -1,9 +1,17 @@
 # USB CRM ChatGPT MCP Plugin
 
-This is a local stdio MCP plugin. It calls the Laravel CRM API with a
-Sanctum token belonging to the CRM user who should be represented in ChatGPT.
+This plugin connects to the USB CRM MCP server over HTTPS. It calls the Laravel
+CRM API with a Sanctum token belonging to the CRM user who should be
+represented in ChatGPT.
 
-Set these environment variables in the local plugin process:
+The packaged ChatGPT configuration uses:
+
+```text
+https://crm.uniquzsnapbox.com/mcp
+```
+
+For local development only, the server can still run in stdio mode. Set these
+environment variables in the local plugin process:
 
 ```text
 CRM_API_URL=http://127.0.0.1:8081/api/mcp/v1
