@@ -15,6 +15,7 @@ const publicBaseUrl = (process.env.MCP_PUBLIC_URL || apiBaseUrl.replace(/\/api\/
 const oauthIssuer = (process.env.MCP_OAUTH_ISSUER || publicBaseUrl).replace(/\/$/, '');
 const oauthResource = process.env.MCP_OAUTH_RESOURCE || `${publicBaseUrl}${mcpPath}`;
 const crmLoginUrl = process.env.CRM_LOGIN_URL || `${publicBaseUrl}/api/login`;
+const allowPublicDiscovery = process.env.MCP_ALLOW_PUBLIC_DISCOVERY !== 'false';
 const oauthEncryptionKey = createHash('sha256')
   .update(process.env.MCP_OAUTH_ENCRYPTION_KEY || apiToken)
   .digest();
@@ -363,7 +364,7 @@ if ((process.env.MCP_TRANSPORT || 'stdio').toLowerCase() !== 'http') {
       const identity = bearer === accessToken
         ? { crmToken: apiToken }
         : (oauthToken?.kind === 'access' && oauthToken.crmToken ? oauthToken : null);
-      if (!identity && !isPublicProtocolRequest) {
+      if (!identity && !allowPublicDiscovery && !isPublicProtocolRequest) {
         console.warn(`MCP authorization rejected: header=${authorization ? 'present' : 'missing'}, tokenParts=${bearer ? bearer.split('.').length : 0}, decrypted=${oauthToken ? 'yes' : 'no'}, kind=${oauthToken?.kind || 'none'}`);
         res.writeHead(401, {
           'content-type': 'application/json',
@@ -371,6 +372,7 @@ if ((process.env.MCP_TRANSPORT || 'stdio').toLowerCase() !== 'http') {
         });
         res.end(JSON.stringify({ error: 'Unauthorized' })); return;
       }
+      if (!identity) console.warn(`MCP discovery request without OAuth token: method=${requestBody?.method || 'none'}`);
       const requestIdentity = identity || { crmToken: null, publicProtocolRequest: true };
       const sessionId = req.headers['mcp-session-id'];
       let transport = sessionId ? transports.get(sessionId) : undefined;
