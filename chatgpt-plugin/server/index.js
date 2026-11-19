@@ -267,14 +267,14 @@ const handleOAuth = async (req, res, requestPath, requestUrl) => {
       }
       const expectedChallenge = base64Url(createHash('sha256').update(params.code_verifier || '').digest());
       if (expectedChallenge !== record.code_challenge) { sendJson(res, 400, { error: 'invalid_grant', error_description: 'PKCE verification failed.' }); return true; }
-      const tokenData = { crmToken: record.crmToken, user: record.user, scope: record.scope || 'crm:read crm:write offline_access' };
+      const tokenData = { crmToken: record.crmToken, user: record.user, resource: record.resource || oauthResource, scope: record.scope || 'crm:read crm:write offline_access' };
       sendJson(res, 200, { token_type: 'Bearer', access_token: issueOAuthToken('access', tokenData, 3600), expires_in: 3600, refresh_token: issueOAuthToken('refresh', tokenData, 2592000), scope: tokenData.scope });
       return true;
     }
     if (params.grant_type === 'refresh_token') {
       const token = decryptOAuthPayload(params.refresh_token);
       if (!token || token.kind !== 'refresh') { sendJson(res, 400, { error: 'invalid_grant' }); return true; }
-      const tokenData = { crmToken: token.crmToken, user: token.user, scope: token.scope || 'crm:read crm:write offline_access' };
+      const tokenData = { crmToken: token.crmToken, user: token.user, resource: token.resource || oauthResource, scope: token.scope || 'crm:read crm:write offline_access' };
       sendJson(res, 200, { token_type: 'Bearer', access_token: issueOAuthToken('access', tokenData, 3600), expires_in: 3600, refresh_token: issueOAuthToken('refresh', tokenData, 2592000), scope: tokenData.scope });
       return true;
     }
@@ -361,7 +361,7 @@ if ((process.env.MCP_TRANSPORT || 'stdio').toLowerCase() !== 'http') {
         console.warn(`MCP authorization rejected: header=${authorization ? 'present' : 'missing'}, tokenParts=${bearer ? bearer.split('.').length : 0}, decrypted=${oauthToken ? 'yes' : 'no'}, kind=${oauthToken?.kind || 'none'}`);
         res.writeHead(401, {
           'content-type': 'application/json',
-          'www-authenticate': `Bearer resource_metadata="${oauthIssuer}/.well-known/oauth-protected-resource", scope="crm:read crm:write", error="invalid_token", error_description="A valid CRM OAuth access token is required."`,
+          'www-authenticate': `Bearer resource_metadata="${oauthIssuer}/.well-known/oauth-protected-resource", scope="crm:read crm:write"`,
         });
         res.end(JSON.stringify({ error: 'Unauthorized' })); return;
       }
@@ -375,6 +375,7 @@ if ((process.env.MCP_TRANSPORT || 'stdio').toLowerCase() !== 'http') {
       await requestContext.run(identity, async () => transport.handleRequest(req, res, await readBody(req)));
       if (transport.sessionId) transports.set(transport.sessionId, transport);
     } catch (error) {
+      console.error(`MCP request failed: ${req.method} ${req.url} - ${error.stack || error.message}`);
       if (!res.headersSent) res.writeHead(500, { 'content-type': 'application/json' });
       if (!res.writableEnded) res.end(JSON.stringify({ error: error.message }));
     }
