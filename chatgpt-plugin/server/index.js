@@ -342,14 +342,15 @@ if ((process.env.MCP_TRANSPORT || 'stdio').toLowerCase() !== 'http') {
         res.end();
         return;
       }
-      const bearer = req.headers.authorization?.startsWith('Bearer ')
-        ? req.headers.authorization.slice('Bearer '.length).trim()
-        : '';
+      const authorization = req.headers.authorization || '';
+      const bearerMatch = /^Bearer\\s+(.+)$/i.exec(authorization);
+      const bearer = bearerMatch ? bearerMatch[1].trim() : '';
       const oauthToken = decryptOAuthPayload(bearer);
       const identity = bearer === accessToken
         ? { crmToken: apiToken }
         : (oauthToken?.kind === 'access' && oauthToken.crmToken ? oauthToken : null);
       if (!identity) {
+        console.warn(`MCP authorization rejected: header=${authorization ? 'present' : 'missing'}, tokenParts=${bearer ? bearer.split('.').length : 0}, decrypted=${oauthToken ? 'yes' : 'no'}, kind=${oauthToken?.kind || 'none'}`);
         res.writeHead(401, {
           'content-type': 'application/json',
           'www-authenticate': `Bearer resource_metadata="${oauthIssuer}/.well-known/oauth-protected-resource"`,
