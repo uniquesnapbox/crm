@@ -35,13 +35,16 @@ async function crm(path, options = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
+    const identity = requestContext.getStore();
+    const currentToken = identity ? identity.crmToken : apiToken;
+    if (identity && !currentToken) throw new Error('CRM OAuth authorization is required.');
     const response = await fetch(`${apiBaseUrl}${path}`, {
       ...options,
       signal: controller.signal,
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${requestContext.getStore()?.crmToken || apiToken}`,
+        Authorization: `Bearer ${currentToken}`,
         ...(options.headers || {}),
       },
     });
@@ -350,6 +353,9 @@ if ((process.env.MCP_TRANSPORT || 'stdio').toLowerCase() !== 'http') {
         res.end();
         return;
       }
+      const requestBody = await readBody(req);
+      const publicProtocolMethods = new Set(['initialize', 'notifications/initialized', 'tools/list', 'resources/list', 'prompts/list']);
+      const isPublicProtocolRequest = requestBody?.method && publicProtocolMethods.has(requestBody.method);
       const authorization = req.headers.authorization || '';
       const bearerMatch = /^Bearer\s+(.+)$/i.exec(authorization);
       const bearer = bearerMatch ? bearerMatch[1].trim() : '';
@@ -357,7 +363,7 @@ if ((process.env.MCP_TRANSPORT || 'stdio').toLowerCase() !== 'http') {
       const identity = bearer === accessToken
         ? { crmToken: apiToken }
         : (oauthToken?.kind === 'access' && oauthToken.crmToken ? oauthToken : null);
-      if (!identity) {
+      if (!identity && !isPublicProtocolRequest) {
         console.warn(`MCP authorization rejected: header=${authorization ? 'present' : 'missing'}, tokenParts=${bearer ? bearer.split('.').length : 0}, decrypted=${oauthToken ? 'yes' : 'no'}, kind=${oauthToken?.kind || 'none'}`);
         res.writeHead(401, {
           'content-type': 'application/json',
@@ -365,6 +371,7 @@ if ((process.env.MCP_TRANSPORT || 'stdio').toLowerCase() !== 'http') {
         });
         res.end(JSON.stringify({ error: 'Unauthorized' })); return;
       }
+      const requestIdentity = identity || { crmToken: null, publicProtocolRequest: true };
       const sessionId = req.headers['mcp-session-id'];
       let transport = sessionId ? transports.get(sessionId) : undefined;
       if (!transport) {
@@ -372,7 +379,7 @@ if ((process.env.MCP_TRANSPORT || 'stdio').toLowerCase() !== 'http') {
         transport.onclose = () => { if (transport.sessionId) transports.delete(transport.sessionId); };
         await server.connect(transport);
       }
-      await requestContext.run(identity, async () => transport.handleRequest(req, res, await readBody(req)));
+      await requestContext.run(requestIdentity, async () => transport.handleRequest(req, res, requestBody));
       if (transport.sessionId) transports.set(transport.sessionId, transport);
     } catch (error) {
       console.error(`MCP request failed: ${req.method} ${req.url} - ${error.stack || error.message}`);
