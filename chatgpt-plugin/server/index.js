@@ -28,8 +28,6 @@ if (!apiToken) {
   throw new Error('CRM_API_TOKEN is required. Store a CRM Sanctum token in the local plugin environment.');
 }
 
-const server = new McpServer({ name: 'usb-crm-chatgpt', version: '0.2.0' });
-
 const text = (value) => ({ content: [{ type: 'text', text: JSON.stringify(value, null, 2) }] });
 
 async function crm(path, options = {}) {
@@ -67,14 +65,6 @@ const patchBody = (data) => ({ method: 'PATCH', body: JSON.stringify(data) });
 const requireConfirm = (confirm) => {
   if (!confirm) throw new Error('This action requires confirm=true.');
 };
-
-const registerTool = (name, description, inputSchema, handler) => server.registerTool(name, {
-  description,
-  inputSchema,
-  _meta: {
-    securitySchemes: [{ type: 'oauth2', scopes: ['crm:read', 'crm:write', 'offline_access'] }],
-  },
-}, handler);
 
 const base64Url = (value) => Buffer.from(value).toString('base64')
   .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
@@ -288,6 +278,16 @@ const handleOAuth = async (req, res, requestPath, requestUrl) => {
   return false;
 };
 
+const createMcpServer = () => {
+  const server = new McpServer({ name: 'usb-crm-chatgpt', version: '0.2.0' });
+  const registerTool = (name, description, inputSchema, handler) => server.registerTool(name, {
+    description,
+    inputSchema,
+    _meta: {
+      securitySchemes: [{ type: 'oauth2', scopes: ['crm:read', 'crm:write', 'offline_access'] }],
+    },
+  }, handler);
+
 registerTool('list_leads', 'Search leads visible to the authenticated CRM user.', {
   search: z.string().optional(), status_id: z.number().int().optional(), per_page: z.number().int().min(1).max(50).optional(),
 }, async ({ search, status_id, per_page }) => text(await crm(`/leads?${new URLSearchParams(Object.entries({ search, status_id, per_page }).filter(([, v]) => v !== undefined))}`)));
@@ -324,7 +324,11 @@ registerTool('delete_task', 'Soft-delete an authorized task. Requires explicit c
 
 registerTool('performance_report', 'Generate daily, weekly, monthly or custom CRM performance totals from database records.', { period: z.enum(['daily', 'weekly', 'monthly', 'custom']).optional(), from: z.string().optional(), to: z.string().optional() }, async ({ period, from, to }) => text(await crm(`/reports/performance?${new URLSearchParams(Object.entries({ period, from, to }).filter(([, v]) => v !== undefined))}`)));
 
+  return server;
+};
+
 if ((process.env.MCP_TRANSPORT || 'stdio').toLowerCase() !== 'http') {
+  const server = createMcpServer();
   const transport = new StdioServerTransport();
   await server.connect(transport);
 } else {
@@ -379,7 +383,8 @@ if ((process.env.MCP_TRANSPORT || 'stdio').toLowerCase() !== 'http') {
       if (!transport) {
         transport = new StreamableHTTPServerTransport({ sessionIdGenerator: () => randomUUID() });
         transport.onclose = () => { if (transport.sessionId) transports.delete(transport.sessionId); };
-        await server.connect(transport);
+        const mcpServer = createMcpServer();
+        await mcpServer.connect(transport);
       }
       await requestContext.run(requestIdentity, async () => transport.handleRequest(req, res, requestBody));
       if (transport.sessionId) transports.set(transport.sessionId, transport);
